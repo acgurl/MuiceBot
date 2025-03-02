@@ -1,0 +1,35 @@
+ci:
+  autofix_commit_msg: "style: auto fix by pre-commit hooks"
+  autofix_prs: true
+  autoupdate_branch: main
+  autoupdate_schedule: quarterly
+  autoupdate_commit_msg: "chore: auto update by pre-commit hooks"
+
+
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0  # 版本号
+    hooks:
+      - id: trailing-whitespace  # 删除行尾空格
+      - id: check-yaml  # 检查 YAML 文件格式
+
+  - repo: https://github.com/psf/black
+    rev: 25.1.0
+    hooks:
+      - id: black  # 自动格式化 Python 代码
+
+  - repo: https://github.com/pycqa/flake8
+    rev: 7.1.0
+    hooks:
+      - id: flake8  # 代码风格检查
+        args: ["--max-line-length=120"]
+
+  - repo: https://github.com/timothycrosley/isort
+    rev: 6.0.0
+    hooks:
+      - id: isort  # 自动整理 import 语句
+
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.15.0
+    hooks:
+      - id: mypy # mypy 类型检查
