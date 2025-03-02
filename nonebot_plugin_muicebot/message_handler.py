@@ -1,5 +1,5 @@
 import traceback
-from typing import Any, Callable, Dict, Optional, Type, Union
+from typing import Callable, Dict, Optional, Union
 
 from nonebot import logger
 from nonebot.adapters import Bot, Event, Message

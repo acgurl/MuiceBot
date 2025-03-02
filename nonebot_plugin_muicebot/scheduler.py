@@ -1,5 +1,4 @@
 import random
-from typing import Literal
 
 import yaml
 from apscheduler.schedulers.asyncio import AsyncIOScheduler

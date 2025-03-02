@@ -1,14 +1,13 @@
 from importlib.util import find_spec
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 
 import yaml as yaml_
-from nonebot import get_plugin_config, logger
 from pydantic import BaseModel, field_validator
 from ruamel.yaml import YAML
 
 
-class Config(BaseModel, extra="allow"):
+class Config(BaseModel):
     # 模型配置
     model: Dict[str, Any] = {
         "loader": str,
@@ -44,6 +43,9 @@ class Config(BaseModel, extra="allow"):
 
     # 错误时的默认回复
     error_response: str = "处理消息时出现错误，请稍后再试。"
+
+    class Config:
+        extra = "allow"
 
 
 # https://github.com/Moemu/Muice-Chatbot/blob/main/utils/configs.py

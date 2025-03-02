@@ -1,5 +1,4 @@
 import base64
-import datetime
 import hashlib
 import hmac
 import json
@@ -53,14 +52,19 @@ class Xfyun(BasicModel):
 
         # 进行hmac-sha256进行加密
         signature_sha = hmac.new(
-            self.api_secret.encode("utf-8"), # type: ignore
+            self.api_secret.encode("utf-8"),  # type: ignore
             signature_origin.encode("utf-8"),  # type: ignore
             digestmod=hashlib.sha256,
         ).digest()
 
         signature_sha_base64 = base64.b64encode(signature_sha).decode(encoding="utf-8")
 
-        authorization_origin = f'api_key="{self.api_key}", algorithm="hmac-sha256", headers="host date request-line", signature="{signature_sha_base64}"'
+        authorization_origin = (
+            f'api_key="{self.api_key}", '
+            f'algorithm="hmac-sha256", '
+            f'headers="host date request-line", '
+            f'signature="{signature_sha_base64}"'
+        )
 
         authorization = base64.b64encode(authorization_origin.encode("utf-8")).decode(
             encoding="utf-8"

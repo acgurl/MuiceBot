@@ -35,5 +35,5 @@ class BasicModel(metaclass=ABCMeta):
         :param image_paths: 图片路径列表
         :return: 图片描述
         """
-        logger.error(f"模型加载器 {self.__qualname__} 不是多模态的")
-        return f"模型加载器 {self.__qualname__} 不是多模态的"
+        logger.error("此模型加载器不是多模态的")
+        return "此模型加载器不是多模态的"

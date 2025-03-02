@@ -1,7 +1,8 @@
 import importlib
 import time
+from typing import Optional
 
-from nonebot import get_plugin_config, logger
+from nonebot import logger
 
 from .config import Config, config, get
 from .database import Database
@@ -22,14 +23,14 @@ class Muice:
         self.database = Database()
         self.__load_model()
 
-    def __load_model(self):
+    def __load_model(self) -> None:
         """
         初始化模型类
         """
         module_name = f"nonebot_plugin_muicebot.llm.{self.model_loader}"
         module = importlib.import_module(module_name)
         ModelClass = getattr(module, self.model_loader, None)
-        self.model: BasicModel | None = ModelClass() if ModelClass else None
+        self.model: Optional[BasicModel] = ModelClass() if ModelClass else None
 
     def load_model(self) -> bool:
         """
@@ -60,8 +61,9 @@ class Muice:
         new_config.update({"model": model_config})
         try:
             Config(**new_config)  # 校验模型配置可用性
-        except:
-            return "指定的模型加载器不存在，请检查配置文件"
+        except ValueError as e:
+            logger.error(f"模型配置文件加载出现问题: {e}")
+            return "指定的模型加载器不存在或配置有误，请检查配置文件"
 
         self.model_config = model_config
         self.think = self.model_config.get("think", 0)
@@ -125,22 +127,6 @@ class Muice:
 
         history = [[item[5], item[6]] for item in history]
         return history
-
-    def create_a_new_topic(self, last_time: int) -> str:
-        """
-        主动发起对话
-
-        :param last_time: 上次对话时间
-        """
-        ...
-
-    def get_recent_chat_memory(self) -> list:
-        """
-        获取最近一条记忆
-        """
-        ...
-
-    def image_query(self, image_path: str) -> str: ...
 
     def refresh(self, userid: str) -> str:
         """

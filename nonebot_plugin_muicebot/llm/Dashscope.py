@@ -6,7 +6,6 @@ from dashscope.api_entities.dashscope_response import (
     GenerationResponse, MultiModalConversationResponse)
 from nonebot import logger
 
-from ..config import Config
 from .types import BasicModel
 from .utils.auto_system_prompt import auto_system_prompt
 
@@ -115,7 +114,7 @@ class Dashscope(BasicModel):
             return "（模型内部错误）"
 
         if isinstance(response, MultiModalConversationResponse):
-            if type(response.output.choices[0].message.content) == str:
+            if isinstance(response.output.choices[0].message.content, str):
                 return response.output.choices[0].message.content
             return response.output.choices[0].message.content[0]["text"]  # type: ignore
 

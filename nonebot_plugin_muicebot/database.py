@@ -38,6 +38,8 @@ class Database:
                 return cursor.fetchall()
             conn.commit()
 
+        return None
+
     def __create_database(self) -> None:
         self.__execute(
             """CREATE TABLE MSG(
