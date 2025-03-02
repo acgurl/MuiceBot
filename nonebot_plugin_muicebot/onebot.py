@@ -2,10 +2,12 @@ from nonebot import on_message
 from nonebot import logger, get_driver, get_adapters
 from nonebot.adapters import Event, Message
 from nonebot_plugin_alconna import on_alconna, Match, AlconnaMatch
-from nonebot.adapters.onebot.v12 import PrivateMessageEvent, GroupMessageEvent, Bot
+from nonebot.adapters.onebot.v12 import (PrivateMessageEvent as PrivateMessageEventv12, GroupMessageEvent as GroupMessageEventv12, Bot as Botv12)
+from nonebot.adapters.onebot.v11 import (PrivateMessageEvent as PrivateMessageEventv11, GroupMessageEvent as GroupMessageEventv11 , Bot as Botv11)
 from nonebot.rule import to_me
 from arclet.alconna import Args, Option, Alconna, Arparma, MultiVar, Subcommand
 from .muice import Muice
+from .utils import save_image
 
 muice = Muice()
 
@@ -29,7 +31,7 @@ command_refresh = on_alconna(Alconna(['.', '/'], "refresh"), priority=10, block=
 
 command_undo = on_alconna(Alconna(['.', '/'], "undo"), priority=10, block=True)
 
-command_load = on_alconna(Alconna(['.', '/'], "load", Args["config_name", str, "model"]), priority=10, block=True)
+command_load = on_alconna(Alconna(['.', '/'], "load", Args["config_name", str, "model.default"]), priority=10, block=True)
 
 chat = on_message(priority=100, rule=to_me())
 
@@ -49,8 +51,10 @@ async def handle_command_help():
 async def handle_command_status():
     model_loader = muice.model_loader
     model_status = "运行中" if muice.model and muice.model.is_running else "未启动"
+    multimodal_enable = "是" if muice.multimodal else "否"
     await command_status.finish(f'当前模型加载器：{model_loader}\n'
-                                f'模型加载器状态：{model_status}')
+                                f'模型加载器状态：{model_status}\n'
+                                f'多模态模型: {multimodal_enable}\n')
 
 
 @command_reset.handle()
@@ -78,14 +82,23 @@ async def handle_command_undo(event: Event):
     await command_undo.finish(response)
 
 @command_load.handle()
-async def handle_test3(config: Match[str] = AlconnaMatch("config_name")):
+async def handle_command_load(config: Match[str] = AlconnaMatch("config_name")):
     config_name = config.result
-    muice.change_model_config(config_name)
-    await command_load.finish('已成功切换模型配置文件！')
+    result = muice.change_model_config(config_name)
+    await command_load.finish(result)
 
 @chat.handle()
-async def handle_onebot(bot: Bot, event: PrivateMessageEvent | GroupMessageEvent):
-    message = event.get_plaintext()
+async def handle_onebotv12(bot: Botv12, event: PrivateMessageEventv12 | GroupMessageEventv12):
+    message = event.get_message()
+    message_text = message.extract_plain_text()
+    image_paths = []
+
+    if muice.multimodal:
+        image_file_ids = [m.data["file_id"] for m in message if m.type == "image"]
+        for file_id in image_file_ids:
+            image_path = await bot.get_file(type='url', file_id=file_id)
+            image_paths.append(image_path)
+
     session = event.get_session_id()
 
     if session.startswith('group_'):
@@ -95,12 +108,12 @@ async def handle_onebot(bot: Bot, event: PrivateMessageEvent | GroupMessageEvent
 
     userinfo = await bot.get_user_info(user_id=userid)
     username = userinfo.get('user_displayname')
-    logger.info(f"Received a message: {message}")
+    logger.info(f"Received a message: {message_text}")
     
-    if not message:
+    if not message_text:
         return
     
-    response = muice.ask(message, username, userid, groupid=groupid).strip()
+    response = muice.ask(message_text, username, userid, groupid=groupid, image_paths=image_paths).strip()
 
     paragraphs = response.split('\n')
 
@@ -108,6 +121,39 @@ async def handle_onebot(bot: Bot, event: PrivateMessageEvent | GroupMessageEvent
         if index == len(paragraphs) - 1:
             await chat.finish(paragraph)
         await chat.send(paragraph)
+
+@chat.handle()
+async def handle_onebotv11(bot: Botv11, event: PrivateMessageEventv11 | GroupMessageEventv11):
+    message = event.get_message()
+    message_text = message.extract_plain_text()
+    image_paths = []
+
+    if muice.multimodal:
+        image_paths = [save_image(m.data["url"], m.data['file']) for m in message if m.type == "image"]
+
+    session = event.get_session_id()
+
+    if session.startswith('group_'):
+        _, groupid, userid = session.split('_')
+    else:
+        groupid, userid = '-1', session
+
+    userinfo = await bot.get_stranger_info(user_id=int(userid))
+    username = userinfo.get('user_displayname', userid)
+    logger.info(f"Received a message: {message_text}")
+    
+    if not (message_text or image_paths):
+        return
+    
+    response = muice.ask(message_text, username, userid, groupid=groupid, image_paths=image_paths).strip()
+
+    paragraphs = response.split('\n')
+
+    for index, paragraph in enumerate(paragraphs):
+        if index == len(paragraphs) - 1:
+            await chat.finish(paragraph)
+        await chat.send(paragraph)
+
 
 @chat.handle()
 async def handle_general(event: Event):

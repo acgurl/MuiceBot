@@ -1,6 +1,7 @@
 import sqlite3,os,time
 from nonebot import logger
 import nonebot_plugin_localstore as store
+import json
 
 class Database:
     def __init__(self) -> None:
@@ -41,13 +42,14 @@ class Database:
             GROUPID TEXT NOT NULL,
             MESSAGE TEXT NOT NULL,
             RESPOND TEXT NOT NULL,
-            HISTORY INTEGER NOT NULL DEFAULT (1));''')
+            HISTORY INTEGER NOT NULL DEFAULT (1),
+            IMAGES TEXT NOT NULL DEFAULT "[]");''')
     
-    def add_item(self, username: str, userid: str, message: str, respond: str, group_id:str = '-1'):
+    def add_item(self, username: str, userid: str, message: str, respond: str, group_id:str = '-1', image_paths: list = []):
         current_time = time.strftime('%Y.%m.%d %H:%M:%S')
-        query = '''INSERT INTO MSG (TIME, USERNAME, USERID, MESSAGE, RESPOND, GROUPID) 
-                   VALUES (?, ?, ?, ?, ?, ?)'''
-        self.__execute(query, (current_time, username, userid, message, respond, group_id))
+        query = '''INSERT INTO MSG (TIME, USERNAME, USERID, MESSAGE, RESPOND, GROUPID, IMAGES) 
+                   VALUES (?, ?, ?, ?, ?, ?, ?)'''
+        self.__execute(query, (current_time, username, userid, message, respond, group_id, json.dumps(image_paths)))
         
     def mark_history_as_unavailable(self, userid: str):
         query = "UPDATE MSG SET HISTORY = 0 WHERE USERID = ?"

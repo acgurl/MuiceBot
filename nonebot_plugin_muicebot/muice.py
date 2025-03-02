@@ -1,7 +1,7 @@
 from nonebot import logger,get_plugin_config
 from .llm import BasicModel
 from .llm.utils.thought import process_thoughts
-from .config import config
+from .config import config,Config,get
 from .database import Database
 import time
 import importlib
@@ -14,6 +14,7 @@ class Muice:
         self.model_config = model_config
         self.think = self.model_config.get('think', 0)
         self.model_loader = self.model_config.get('loader', '')
+        self.multimodal = self.model_config.get('multimodal', False)
         self.database = Database()
         self.__load_model()
 
@@ -42,22 +43,37 @@ class Muice:
         logger.info('模型加载成功')
         return True
 
-    def change_model_config(self, config_name:str):
+    def change_model_config(self, config_name:str) -> str:
         '''
         更换模型配置文件并重新加载模型
         '''
         if not hasattr(config, config_name):
             logger.error('指定的模型配置不存在')
             return '指定的模型配置不存在'
+        
         model_config = getattr(config, config_name)
-        self.__init__(model_config)
+        new_config = get()
+        new_config.update({'model':model_config})
+        try:
+            Config(**new_config) # 校验模型配置可用性
+        except:
+            return '指定的模型加载器不存在，请检查配置文件'
+
+        self.model_config = model_config
+        self.think = self.model_config.get('think', 0)
+        self.model_loader = self.model_config.get('loader', '')
+        self.multimodal = self.model_config.get('multimodal', False)
+        self.__load_model()
         self.load_model()
 
-    def ask(self, message: str, username: str, userid:str, groupid: str = '-1') -> str:
+        return f'已成功加载 {config_name}'
+
+    def ask(self, message: str, username: str, userid:str, groupid: str = '-1', image_paths:list = []) -> str:
         '''
         调用模型
 
         :param message: 消息内容
+        :param image_paths: 图片URL列表（仅在多模态启用时生效）
         :param user_id: 用户ID
         :param group_id: 群组ID
         :return: 模型回复
@@ -72,14 +88,17 @@ class Muice:
 
         start_time = time.time()
         logger.debug(f'模型调用参数：Prompt: {message}, History: {history}')
-        reply = self.model.ask(message, history).strip()
+        if self.multimodal:
+            reply = self.model.ask_vision(message, image_paths, history).strip()
+        else:
+            reply = self.model.ask(message, history).strip()
         end_time = time.time()
         logger.info(f'模型调用时长: {end_time - start_time} s')
 
         thought, result = process_thoughts(reply, self.think)
         reply = "".join([thought,result])
 
-        self.database.add_item(username, userid, message, result, groupid)
+        self.database.add_item(username, userid, message, result, groupid, image_paths)
 
         return reply
     
@@ -127,12 +146,16 @@ class Muice:
             return '(模型未加载)'
 
         username, userid, groupid, message, = set(last_item[0][2:6])
+        image_paths = last_item[0][8]
         self.database.remove_last_item(userid)
         history = self.get_chat_memory(userid)
 
         start_time = time.time()
         logger.debug(f'模型调用参数：Prompt: {message}, History: {history}')
-        reply = self.model.ask(message, history).strip()
+        if self.multimodal and image_paths:
+            reply = self.model.ask_vision(message, image_paths, history).strip()
+        else:
+            reply = self.model.ask(message, history).strip()
         end_time = time.time()
         logger.info(f'模型调用时长: {end_time - start_time} s')
         logger.info(f"模型返回：{reply}")
@@ -141,7 +164,7 @@ class Muice:
         thought, result = process_thoughts(reply, self.think)
         reply = "".join([thought,result])
 
-        self.database.add_item(username, userid, message, result, groupid)
+        self.database.add_item(username, userid, message, result, groupid, image_paths)
 
         return reply
 

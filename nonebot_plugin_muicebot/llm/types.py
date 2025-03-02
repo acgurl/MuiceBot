@@ -1,4 +1,5 @@
 from abc import ABCMeta, abstractmethod
+from nonebot import logger
 
 class BasicModel(metaclass=ABCMeta):
     def __init__(self) -> None:
@@ -25,11 +26,12 @@ class BasicModel(metaclass=ABCMeta):
         """
         pass
 
-    def query_image(self, image:str) -> str:
+    def ask_vision(self, prompt, image_paths: list, history=None) -> str:
         """
-        查询图片
+        多模态：图像识别
 
-        :param image: 图片路径
+        :param image_paths: 图片路径列表
         :return: 图片描述
         """
-        return ''
+        logger.error(f'模型加载器 {self.__qualname__} 不是多模态的')
+        return f'模型加载器 {self.__qualname__} 不是多模态的'

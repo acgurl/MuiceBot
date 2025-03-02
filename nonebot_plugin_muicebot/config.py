@@ -25,7 +25,7 @@ class Config(BaseModel, extra='allow'):
         # 使用 find_spec 仅检测模块是否存在，不实际导入
         if find_spec(module_path) is None:
             raise ValueError(f"指定的模型加载器 '{v['loader']}' 不存在于 llm 目录中")
-        
+               
         return v
 
     # 适配器特定配置
@@ -54,12 +54,9 @@ yaml = YAML()
 def get() -> dict:
     with open(CONFIG_PATH, "r", encoding="utf-8") as f:
         configs = yaml_.load(f, Loader=yaml_.FullLoader)
-    
-    return configs
 
-def change(config_name:str):
-    config_data = get()
-    new_config = config_data.get(f'model.{config_name}', config_data)
-    config = Config()
+    configs.update({'model.default':configs.get('model',{})})
+
+    return configs
 
 config = Config(**get())
