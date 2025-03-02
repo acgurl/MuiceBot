@@ -10,5 +10,5 @@ adapters = [
     { name = "OneBot V12", module_name = "nonebot.adapters.onebot.v12" },
     {name = "OneBot V11", module_name = "nonebot.adapters.onebot.v11"}
 ]
-plugins = ["nonebot_plugin_muicebot"]
+plugins = ["nonebot_plugin_muicebot", "nonebot_plugin_apscheduler"]
 builtin_plugins = []

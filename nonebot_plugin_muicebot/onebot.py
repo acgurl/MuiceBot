@@ -1,5 +1,4 @@
-from nonebot import on_message
-from nonebot import logger, get_driver, get_adapters
+from nonebot import on_message, logger, get_driver, get_adapters, get_bot
 from nonebot.adapters import Event, Message
 from nonebot_plugin_alconna import on_alconna, Match, AlconnaMatch
 from nonebot.adapters.onebot.v12 import (PrivateMessageEvent as PrivateMessageEventv12, GroupMessageEvent as GroupMessageEventv12, Bot as Botv12)
@@ -8,8 +7,10 @@ from nonebot.rule import to_me
 from arclet.alconna import Args, Option, Alconna, Arparma, MultiVar, Subcommand
 from .muice import Muice
 from .utils import save_image
+from .scheduler import setup_scheduler
 
 muice = Muice()
+scheduler = None
 
 driver = get_driver()
 adapters = get_adapters()
@@ -33,8 +34,23 @@ command_undo = on_alconna(Alconna(['.', '/'], "undo"), priority=10, block=True)
 
 command_load = on_alconna(Alconna(['.', '/'], "load", Args["config_name", str, "model.default"]), priority=10, block=True)
 
+command_schedule = on_alconna(Alconna(['.', '/'], "schedule"), priority=10, block=True)
+
 chat = on_message(priority=100, rule=to_me())
 
+@driver.on_bot_connect
+@command_schedule.handle()
+async def on_bot_connect():
+    global scheduler
+    if not scheduler:
+        scheduler = setup_scheduler(muice, get_bot())
+
+@driver.on_bot_disconnect
+async def on_bot_disconnect():
+    global scheduler
+    if scheduler:
+        scheduler.remove_all_jobs()
+        scheduler = None
 
 @command_help.handle()
 async def handle_command_help():

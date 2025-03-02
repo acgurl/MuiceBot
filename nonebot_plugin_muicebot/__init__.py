@@ -2,6 +2,7 @@ from nonebot import require
 
 require("nonebot_plugin_alconna")
 require("nonebot_plugin_localstore")
+require("nonebot_plugin_apscheduler")
 
 from nonebot.plugin import PluginMetadata, inherit_supported_adapters
 from .config import Config

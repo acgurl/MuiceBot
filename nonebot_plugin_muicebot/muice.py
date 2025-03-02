@@ -68,7 +68,7 @@ class Muice:
 
         return f'已成功加载 {config_name}'
 
-    def ask(self, message: str, username: str, userid:str, groupid: str = '-1', image_paths:list = []) -> str:
+    def ask(self, message: str, username: str, userid:str, groupid: str = '-1', image_paths:list = [], enable_history:bool = True) -> str:
         '''
         调用模型
 
@@ -76,6 +76,7 @@ class Muice:
         :param image_paths: 图片URL列表（仅在多模态启用时生效）
         :param user_id: 用户ID
         :param group_id: 群组ID
+        :param enable_history: 启用历史记录
         :return: 模型回复
         '''
         if not (self.model and self.model.is_running):
@@ -84,7 +85,7 @@ class Muice:
 
         logger.info('正在调用模型...')
 
-        history = self.get_chat_memory(userid)
+        history = self.get_chat_memory(userid) if enable_history else []
 
         start_time = time.time()
         logger.debug(f'模型调用参数：Prompt: {message}, History: {history}')
