@@ -1,11 +1,15 @@
-import requests as r
 import json
+
+import requests as r
+
 from .types import BasicModel
+
 
 class RWKV(BasicModel):
     """
     通过RWKV-RUNNER的api服务, 使用第三方RWKV模型
     """
+
     def load(self, model_config: dict) -> bool:
         self.host = model_config.get("host", "http://localhost:5000")
         self.model = model_config.get("model", "Muice")
@@ -16,8 +20,11 @@ class RWKV(BasicModel):
         self.is_running = True
         return self.is_running
 
-
-    def ask(self, user_text: str, history: list, ):
+    def ask(
+        self,
+        user_text: str,
+        history: list,
+    ):
         messages = []
         if history:
             for chat in history:
@@ -25,17 +32,20 @@ class RWKV(BasicModel):
                 messages.append({"role": "assistant", "content": chat[1], "raw": False})
 
         messages.append({"role": "user", "content": user_text, "raw": False})
-        response = r.post(self.host, json={
-            "frequency_penalty": self.presence_penalty,
-            "max_tokens": self.max_tokens,
-            "messages": messages,
-            "model": self.model,
-            "presence_penalty": self.presence_penalty,
-            "presystem": True,
-            "stream": False,
-            "temperature": self.temperature,
-            "top_p": self.top_p
-        })
+        response = r.post(
+            self.host,
+            json={
+                "frequency_penalty": self.presence_penalty,
+                "max_tokens": self.max_tokens,
+                "messages": messages,
+                "model": self.model,
+                "presence_penalty": self.presence_penalty,
+                "presystem": True,
+                "stream": False,
+                "temperature": self.temperature,
+                "top_p": self.top_p,
+            },
+        )
 
         response = json.loads(response.text)
-        return response['choices'][0]["message"]["content"].lstrip()
+        return response["choices"][0]["message"]["content"].lstrip()

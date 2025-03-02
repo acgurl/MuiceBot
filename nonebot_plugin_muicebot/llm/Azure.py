@@ -1,10 +1,14 @@
 import os
-from azure.ai.inference import ChatCompletionsClient
-from azure.ai.inference.models import AssistantMessage, SystemMessage, UserMessage, ChatRequestMessage
-from azure.core.credentials import AzureKeyCredential
-from .utils.auto_system_prompt import auto_system_prompt
-from .types import BasicModel
 from typing import List
+
+from azure.ai.inference import ChatCompletionsClient
+from azure.ai.inference.models import (AssistantMessage, ChatRequestMessage,
+                                       SystemMessage, UserMessage)
+from azure.core.credentials import AzureKeyCredential
+
+from .types import BasicModel
+from .utils.auto_system_prompt import auto_system_prompt
+
 
 class Azure(BasicModel):
     def load(self, model_config: dict) -> bool:
@@ -42,18 +46,21 @@ class Azure(BasicModel):
         for h in history:
             messages.append(UserMessage(h[0]))
             messages.append(AssistantMessage(h[1]))
-        
+
         if self.user_instructions and len(history) == 0:
-            messages.append(UserMessage(self.user_instructions + '\n' + user_text))
+            messages.append(UserMessage(self.user_instructions + "\n" + user_text))
         else:
             messages.append(UserMessage(user_text))
-        
-        response = self.client.complete(messages=messages, model=self.model_name,
-                                        max_tokens=self.max_tokens,
-                                        temperature=self.temperature,
-                                        top_p=self.top_p, 
-                                        frequency_penalty=self.frequency_penalty, 
-                                        presence_penalty=self.presence_penalty)
+
+        response = self.client.complete(
+            messages=messages,
+            model=self.model_name,
+            max_tokens=self.max_tokens,
+            temperature=self.temperature,
+            top_p=self.top_p,
+            frequency_penalty=self.frequency_penalty,
+            presence_penalty=self.presence_penalty,
+        )
         response_content = response.choices[0].message.content
-        
+
         return response_content

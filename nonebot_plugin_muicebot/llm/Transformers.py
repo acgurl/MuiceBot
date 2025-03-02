@@ -1,9 +1,11 @@
 import logging
 import os
-import torch
 
-from transformers import AutoTokenizer, AutoModel, AutoConfig
+import torch
+from transformers import AutoConfig, AutoModel, AutoTokenizer
+
 from .types import BasicModel
+
 
 class Transformers(BasicModel):
     """
@@ -13,19 +15,29 @@ class Transformers(BasicModel):
     def load(self, model_config: dict) -> bool:
         model_path = model_config.get("model_path", None)
         pt_model_path = model_config.get("adapter_path", None)
-        config = AutoConfig.from_pretrained(model_path, trust_remote_code=True, pre_seq_len=128)
-        self.tokenizer = AutoTokenizer.from_pretrained(model_path, trust_remote_code=True)
+        config = AutoConfig.from_pretrained(
+            model_path, trust_remote_code=True, pre_seq_len=128
+        )
+        self.tokenizer = AutoTokenizer.from_pretrained(
+            model_path, trust_remote_code=True
+        )
         if torch.cuda.is_available():
-            model = AutoModel.from_pretrained(model_path, config=config, trust_remote_code=True).cuda()
+            model = AutoModel.from_pretrained(
+                model_path, config=config, trust_remote_code=True
+            ).cuda()
         else:
             logging.warning("未检测到GPU,将使用CPU进行推理")
-            model = AutoModel.from_pretrained(model_path, config=config, trust_remote_code=True).float()
+            model = AutoModel.from_pretrained(
+                model_path, config=config, trust_remote_code=True
+            ).float()
         if pt_model_path:
-            prefix_state_dict = torch.load(os.path.join(pt_model_path, "pytorch_model.bin"), map_location='cpu')
+            prefix_state_dict = torch.load(
+                os.path.join(pt_model_path, "pytorch_model.bin"), map_location="cpu"
+            )
             new_prefix_state_dict = {}
             for k, v in prefix_state_dict.items():
                 if k.startswith("transformer.prefix_encoder."):
-                    new_prefix_state_dict[k[len("transformer.prefix_encoder."):]] = v
+                    new_prefix_state_dict[k[len("transformer.prefix_encoder.") :]] = v
             model.transformer.prefix_encoder.load_state_dict(new_prefix_state_dict)
             model.transformer.prefix_encoder.float()
         self.model = model.eval()

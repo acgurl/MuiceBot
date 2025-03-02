@@ -5,10 +5,9 @@ require("nonebot_plugin_localstore")
 require("nonebot_plugin_apscheduler")
 
 from nonebot.plugin import PluginMetadata, inherit_supported_adapters
+
 from .config import Config
 from .onebot import *
-
-
 
 __plugin_meta__ = PluginMetadata(
     name="MuiceAI Plugin",

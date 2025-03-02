@@ -1,8 +1,9 @@
 import nonebot
-from nonebot.adapters.onebot.v12 import Adapter as Adapterv12
 from nonebot.adapters.onebot.v11 import Adapter as Adapterv11
-from nonebot.adapters.telegram import Adapter as TelegramAdapter
+from nonebot.adapters.onebot.v12 import Adapter as Adapterv12
 from nonebot.adapters.qq import Adapter as QQAdapter
+from nonebot.adapters.telegram import Adapter as TelegramAdapter
+
 from utils.logger import init_logger
 
 init_logger()

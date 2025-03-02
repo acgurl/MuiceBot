@@ -1,11 +1,15 @@
-import dashscope
-from dashscope.api_entities.dashscope_response import GenerationResponse, MultiModalConversationResponse
 import pathlib
-from .utils.auto_system_prompt import auto_system_prompt
-from .types import BasicModel
 from typing import Generator
+
+import dashscope
+from dashscope.api_entities.dashscope_response import (
+    GenerationResponse, MultiModalConversationResponse)
 from nonebot import logger
+
 from ..config import Config
+from .types import BasicModel
+from .utils.auto_system_prompt import auto_system_prompt
+
 
 class Dashscope(BasicModel):
     def load(self, config: dict) -> bool:
@@ -41,7 +45,7 @@ class Dashscope(BasicModel):
             max_tokens=self.max_tokens,
             temperature=self.temperature,
             top_p=self.top_p,
-            repetition_penalty=self.repetition_penalty
+            repetition_penalty=self.repetition_penalty,
         )
 
         if isinstance(response, Generator):
@@ -49,29 +53,38 @@ class Dashscope(BasicModel):
 
         if isinstance(response, GenerationResponse):
             return response.output.text
-        
+
         logger.error(f"DashScope failed to generate response: {response}")
 
-        return '（模型内部错误）'
-    
+        return "（模型内部错误）"
+
     def ask_vision(self, prompt, image_paths: list, history=None) -> str:
-        '''
+        """
         多模态：图像识别
 
         :param image_path: 图像路径
         :return: 识别结果
-        '''
+        """
         messages = []
 
         if self.auto_system_prompt:
             self.system_prompt = auto_system_prompt(prompt)
         if self.system_prompt:
-            messages.append({"role": "system", "content": [{"type": "text", "text": self.system_prompt}]})
-            
+            messages.append(
+                {
+                    "role": "system",
+                    "content": [{"type": "text", "text": self.system_prompt}],
+                }
+            )
+
         if history:
             for h in history:
-                messages.append({"role": "user", "content": [{"type": "text", "text": h[0]}]})
-                messages.append({"role": "assistant", "content": [{"type": "text", "text": h[1]}]})
+                messages.append(
+                    {"role": "user", "content": [{"type": "text", "text": h[0]}]}
+                )
+                messages.append(
+                    {"role": "assistant", "content": [{"type": "text", "text": h[1]}]}
+                )
 
         image_contents = []
         for image_path in image_paths:
@@ -80,20 +93,18 @@ class Dashscope(BasicModel):
                 image_path = abs_path.as_uri()
                 image_path = image_path.replace("file:///", "file://")
 
-            image_contents.append({'image': image_path})
+            image_contents.append({"image": image_path})
 
         user_content = [image_content for image_content in image_contents]
 
         if not prompt:
-            prompt = '请描述图像内容'
+            prompt = "请描述图像内容"
         user_content.append({"type": "text", "text": prompt})
 
         messages.append({"role": "user", "content": user_content})
 
-        response = dashscope.MultiModalConversation.call( # type: ignore
-            api_key=self.api_key,
-            model=self.model,
-            messages=messages
+        response = dashscope.MultiModalConversation.call(  # type: ignore
+            api_key=self.api_key, model=self.model, messages=messages
         )
 
         if isinstance(response, Generator):
@@ -101,12 +112,12 @@ class Dashscope(BasicModel):
 
         if response.status_code != 200:
             logger.error(f"DashScope failed to generate response: {response}")
-            return '（模型内部错误）'
+            return "（模型内部错误）"
 
         if isinstance(response, MultiModalConversationResponse):
             if type(response.output.choices[0].message.content) == str:
                 return response.output.choices[0].message.content
-            return response.output.choices[0].message.content[0]['text'] # type: ignore
+            return response.output.choices[0].message.content[0]["text"]  # type: ignore
 
         logger.error(f"DashScope failed to generate response: {response}")
-        return '（模型内部错误）'
+        return "（模型内部错误）"
