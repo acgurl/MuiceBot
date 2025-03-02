@@ -72,7 +72,10 @@ class Openai(BasicModel):
 
             # 获取并返回模型生成的文本
             if self.model in ["deepseek-reasoner"]:
-                return "<think>" + response.choices[0].message.reasoning_content + "</think>" + response.choices[0].message.content  # type: ignore
+                return (
+                    f"<think>{response.choices[0].message.reasoning_content}</think>"  # type: ignore
+                    f"{response.choices[0].message.content}"
+                )
 
             if response.choices[0].message.content:
                 return response.choices[0].message.content
