@@ -67,6 +67,9 @@ def setup_scheduler(muice: Muice, bot:Bot) -> AsyncIOScheduler:
     jobs = load_config_jobs()
     scheduler = AsyncIOScheduler()
 
+    if not jobs:
+        jobs = []
+
     for job in jobs:
         job_id = job["id"]
         job_type = 'send_message' if job.get('message', None) else 'model_ask'

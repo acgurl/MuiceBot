@@ -99,11 +99,14 @@ class Dashscope(BasicModel):
         if isinstance(response, Generator):
             response = next(response)
 
+        if response.status_code != 200:
+            logger.error(f"DashScope failed to generate response: {response}")
+            return '（模型内部错误）'
+
         if isinstance(response, MultiModalConversationResponse):
             if type(response.output.choices[0].message.content) == str:
                 return response.output.choices[0].message.content
             return response.output.choices[0].message.content[0]['text'] # type: ignore
 
         logger.error(f"DashScope failed to generate response: {response}")
-
         return '（模型内部错误）'
