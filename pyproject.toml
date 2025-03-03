@@ -3,7 +3,7 @@ name = "nonebot-plugin-muicebot"
 dynamic = ["version"]
 description = "一个可以用来调用多种模型，且被用来练手的Nonebot项目"
 readme = "README.md"
-requires-python = ">=3.9, <3.11"
+requires-python = ">=3.10, <3.11"
 dependencies = [
     "APScheduler>=3.11.0",
     "azure-ai-inference>=1.0.0b7",
@@ -19,6 +19,7 @@ dependencies = [
     "ollama>=0.4.7",
     "openai>=1.64.0",
     "pydantic>=2.10.5",
+    "requests>=2.32.3",
     "ruamel.yaml>=0.18.10",
     "SQLAlchemy>=2.0.38",
     "websocket_client>=1.8.0"
