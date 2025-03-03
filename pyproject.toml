@@ -1,7 +1,7 @@
 [project]
 name = "nonebot-plugin-muicebot"
 dynamic = ["version"]
-description = 一个可以用来调用多种模型，且被用来练手的Nonebot项目"
+description = "一个可以用来调用多种模型，且被用来练手的Nonebot项目"
 readme = "README.md"
 requires-python = ">=3.9, <3.11"
 dependencies = [
