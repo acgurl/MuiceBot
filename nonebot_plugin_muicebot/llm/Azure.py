@@ -2,8 +2,12 @@ import os
 from typing import List
 
 from azure.ai.inference import ChatCompletionsClient
-from azure.ai.inference.models import (AssistantMessage, ChatRequestMessage,
-                                       SystemMessage, UserMessage)
+from azure.ai.inference.models import (
+    AssistantMessage,
+    ChatRequestMessage,
+    SystemMessage,
+    UserMessage,
+)
 from azure.core.credentials import AzureKeyCredential
 
 from .types import BasicModel

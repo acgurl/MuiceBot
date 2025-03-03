@@ -7,29 +7,30 @@ ci:
 
 
 repos:
-  - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v5.0.0  # 版本号
-    hooks:
-      - id: trailing-whitespace  # 删除行尾空格
-      - id: check-yaml  # 检查 YAML 文件格式
-
-  - repo: https://github.com/psf/black
-    rev: 25.1.0
-    hooks:
-      - id: black  # 自动格式化 Python 代码
-
   - repo: https://github.com/pycqa/flake8
     rev: 7.1.0
     hooks:
       - id: flake8  # 代码风格检查
-        args: ["--max-line-length=120"]
+        args: ["--max-line-length=120", "--ignore=E203"]
+
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.15.0
+    hooks:
+      - id: mypy # mypy 类型检查
+        args: ['--ignore-missing-imports']
 
   - repo: https://github.com/timothycrosley/isort
     rev: 6.0.0
     hooks:
       - id: isort  # 自动整理 import 语句
 
-  - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v1.15.0
+  - repo: https://github.com/psf/black
+    rev: 25.1.0
     hooks:
-      - id: mypy # mypy 类型检查
+      - id: black  # 自动格式化 Python 代码
+
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0  # 版本号
+    hooks:
+      - id: trailing-whitespace  # 删除行尾空格
+      - id: check-yaml  # 检查 YAML 文件格式

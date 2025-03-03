@@ -3,7 +3,9 @@ from typing import Generator
 
 import dashscope
 from dashscope.api_entities.dashscope_response import (
-    GenerationResponse, MultiModalConversationResponse)
+    GenerationResponse,
+    MultiModalConversationResponse,
+)
 from nonebot import logger
 
 from .types import BasicModel
