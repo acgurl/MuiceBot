@@ -1,5 +1,3 @@
-import json
-
 import requests as r
 
 from .types import BasicModel
@@ -47,5 +45,9 @@ class RWKV(BasicModel):
             },
         )
 
-        response = json.loads(response.text)
-        return response["choices"][0]["message"]["content"].lstrip()
+        json_data = response.json()
+
+        if "choices" in json_data and len(json_data["choices"]) > 0:
+            return json_data["choices"][0]["message"]["content"].lstrip()
+        # Handle the case when the expected structure is not present
+        return "Error: Unexpected response format from RWKV API"

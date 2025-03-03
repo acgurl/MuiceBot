@@ -11,7 +11,7 @@ repos:
     rev: 7.1.0
     hooks:
       - id: flake8  # 代码风格检查
-        args: ["--max-line-length=120", "--ignore=E203"]
+        args: ["--max-line-length=120", "--extend-ignore=W503,E203"]
 
   - repo: https://github.com/pre-commit/mirrors-mypy
     rev: v1.15.0
@@ -19,15 +19,17 @@ repos:
       - id: mypy # mypy 类型检查
         args: ['--ignore-missing-imports']
 
-  - repo: https://github.com/timothycrosley/isort
-    rev: 6.0.0
-    hooks:
-      - id: isort  # 自动整理 import 语句
-
   - repo: https://github.com/psf/black
     rev: 25.1.0
     hooks:
-      - id: black  # 自动格式化 Python 代码
+      - id: black
+        args: ["--config=./pyproject.toml"]
+
+  - repo: https://github.com/PyCQA/isort
+    rev: 6.0.0
+    hooks:
+      - id: isort
+        args: ["--profile", "black"]
 
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v5.0.0  # 版本号
