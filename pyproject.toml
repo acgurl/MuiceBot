@@ -53,8 +53,6 @@ dev = [
     "nonebot-adapter-onebot>=2.4.6",
     "mypy>=1.15.0",
     "black>=25.1.0",
-    "litedoc>=0.1.0.dev20240906203154",
-    "viztracer>=1.0.0",
     "types-requests",
     "types-PyYAML"
 ]
