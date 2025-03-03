@@ -1,3 +1,4 @@
+import os
 from importlib.util import find_spec
 from pathlib import Path
 from typing import Any, Dict
@@ -57,6 +58,9 @@ yaml = YAML()
 
 # @update_config
 def get() -> dict:
+    if not os.path.isfile(CONFIG_PATH):
+        raise FileNotFoundError("configs.yml 不存在！请先创建")
+
     with open(CONFIG_PATH, "r", encoding="utf-8") as f:
         configs = yaml_.load(f, Loader=yaml_.FullLoader)
 

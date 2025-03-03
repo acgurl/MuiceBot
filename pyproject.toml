@@ -3,7 +3,7 @@ name = "nonebot-plugin-muicebot"
 version = "0.1.0"
 description = "一个可以用来调用多种模型，且被用来练手的Nonebot项目"
 readme = "README.md"
-requires-python = ">=3.10, <3.11"
+requires-python = ">=3.10, <=3.12"
 dependencies = [
     "APScheduler>=3.11.0",
     "azure-ai-inference>=1.0.0b7",
@@ -14,6 +14,7 @@ dependencies = [
     "nonebot-adapter-qq>=1.6.2",
     "nonebot-adapter-telegram>=0.1.0b20",
     "nonebot_plugin_alconna>=0.54.2",
+    "nonebot_plugin_apscheduler>=0.5.0",
     "nonebot_plugin_localstore>=0.7.3",
     "nonebot_plugin_orm>=0.7.6",
     "ollama>=0.4.7",
