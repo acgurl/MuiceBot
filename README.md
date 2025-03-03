@@ -26,21 +26,21 @@
 
 # TODO📝
 
-[ ]  撰写文档。你没听错，我们还没有文档。
+- [ ] 撰写文档。你没听错，我们还没有文档。
 
-[ ] 插件系统。世界上唯一一个还没支持插件的 Bot 诞生了
+- [ ] 插件系统。世界上唯一一个还没支持插件的 Bot 诞生了
 
-[ ] 多模态：工具集。沐雪还不会用呢
+- [ ] 多模态：工具集。沐雪还不会用呢
 
-[ ] OFA 图像识别。既然都有了多模态为什么还用 OFA？好吧，因为没钱调用接口
+- [ ] OFA 图像识别。既然都有了多模态为什么还用 OFA？好吧，因为没钱调用接口
 
-[ ] Faiss 记忆优化。沐雪总记不太清楚上一句话是什么
+- [ ] Faiss 记忆优化。沐雪总记不太清楚上一句话是什么
 
-[ ] 短期记忆和长期记忆优化。总感觉这是提示工程师该做的事情，~~和 Bot 没太大关系~~
+- [ ] 短期记忆和长期记忆优化。总感觉这是提示工程师该做的事情，~~和 Bot 没太大关系~~
 
-[ ] （多）对话语音合成器。比如 [GPT-SoVITS](https://github.com/RVC-Boss/GPT-SoVITS) 、[RVC](https://github.com/RVC-Project/Retrieval-based-Voice-Conversion-WebUI)之类的。
+- [ ] （多）对话语音合成器。比如 [GPT-SoVITS](https://github.com/RVC-Boss/GPT-SoVITS) 、[RVC](https://github.com/RVC-Project/Retrieval-based-Voice-Conversion-WebUI)之类的。
 
-[ ] 发布。我知道你很急，但是你先别急。
+- [ ] 发布。我知道你很急，但是你先别急。
 
 # 快速开始💻
 
@@ -364,11 +364,11 @@ MuxueAI 内嵌了多种指令方便开发者开发和日常聊天，只需使用
 
 此项目中基于或参考了部分开源项目的实现，在这里一并表示感谢：
 
-- `[nonebot/nonebot2](https://github.com/nonebot/nonebot2)` 本项目使用的机器人框架
+- [nonebot/nonebot2](https://github.com/nonebot/nonebot2) 本项目使用的机器人框架
 
-- `[@botuniverse](https://github.com/botuniverse)` 负责制定 Onebot 标准的组织
+- [@botuniverse](https://github.com/botuniverse) 负责制定 Onebot 标准的组织
 
-- `[@Tencent](https://github.com/Tencent)` 封了我两个号，直接导致本项目的出现
+- [@Tencent](https://github.com/Tencent) 封了我两个号，直接导致本项目的出现
 
 感谢各位开发者的协助，这里就不一一列举出名字了：
 
