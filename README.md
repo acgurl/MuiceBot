@@ -33,7 +33,7 @@
 
 # TODO📝
 
-- [ ] 撰写文档。你没听错，我们还没有文档。
+- [ ] 群管理指令。这是基本功能吧？
 
 - [ ] 插件系统。世界上唯一一个还没支持插件的 Bot 诞生了
 
@@ -72,9 +72,9 @@
 
 感谢各位开发者的协助，这里就不一一列举出名字了：
 
-<a href="https://github.com/eryajf/Moemu/MuiceBot/contributors">
+<!-- <a href="https://github.com/eryajf/Moemu/MuiceBot/contributors">
   <img src="https://contrib.rocks/image?repo=Moemu/MuiceBot"  alt="图片加载中..."/>
-</a>
+</a> -->
 
 友情链接：[LiteyukiStudio/nonebot-plugin-marshoai](https://github.com/LiteyukiStudio/nonebot-plugin-marshoai)
 

@@ -16,9 +16,9 @@
 
 感谢各位开发者的协助，这里就不一一列举出名字了：
 
-<a href="https://github.com/eryajf/Moemu/MuiceBot/contributors">
+<!-- <a href="https://github.com/eryajf/Moemu/MuiceBot/contributors">
   <img src="https://contrib.rocks/image?repo=Moemu/MuiceBot"  alt="图片加载中..."/>
-</a>
+</a> -->
 
 友情链接：[LiteyukiStudio/nonebot-plugin-marshoai](https://github.com/LiteyukiStudio/nonebot-plugin-marshoai)
 

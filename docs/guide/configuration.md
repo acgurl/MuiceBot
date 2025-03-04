@@ -113,7 +113,7 @@ auto_user_instructions: true # 自动配置沐雪的用户提示（默认为 fal
 
 可以愉快地和机器人玩耍啦！⭐
 
-## 定时任务（TODO 发生更改）
+## 定时任务
 
 > [!WARNING]
 >
