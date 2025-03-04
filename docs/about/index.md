@@ -1,6 +1,8 @@
 # 关于🎗️
 
-本项目基于 [BSD 3](https://github.com/Moemu/nonebot-plugin-muice/blob/main/LICENSE) 许可证提供（暂定），出现特殊用途时请仔细阅读许可证中的规定
+本项目基于 [BSD 3](https://github.com/Moemu/MuiceBot/blob/main/LICENSE) 许可证提供（暂定），出现特殊用途时请仔细阅读许可证中的规定
+
+本项目标识使用了 [nonebot/nonebot2](https://github.com/nonebot/nonebot2) 和 画师 [Nakkar](https://www.pixiv.net/users/28246124) ~~[已被删除](https://www.pixiv.net/artworks/101063891)~~ 的资产或作品。如有侵权，请及时与我们联系
 
 对于沐雪的人设和未明确注明许可证和使用范围的模型文件，虽然没有明确限制，但十分不建议将其作为商业用途
 
@@ -14,8 +16,8 @@
 
 感谢各位开发者的协助，这里就不一一列举出名字了：
 
-<a href="https://github.com/eryajf/Moemu/Muice-Chatbot/contributors">
-  <img src="https://contrib.rocks/image?repo=Moemu/Muice-Chatbot"  alt="图片加载中..."/>
+<a href="https://github.com/eryajf/Moemu/MuiceBot/contributors">
+  <img src="https://contrib.rocks/image?repo=Moemu/MuiceBot"  alt="图片加载中..."/>
 </a>
 
 友情链接：[LiteyukiStudio/nonebot-plugin-marshoai](https://github.com/LiteyukiStudio/nonebot-plugin-marshoai)

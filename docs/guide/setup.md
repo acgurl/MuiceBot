@@ -8,10 +8,12 @@
 
 如果您计划在本地与大语言模型交互，我们强烈建议您创建一个虚拟环境。
 
+## 安装插件⚙️
+
 由于此插件还在开发早期，因此请通过 git clone 等方式安装插件：
 
 ```shell
-git clone https://github.com/Moemu/nonebot-plugin-muice
+git clone https://github.com/Moemu/MuiceBot
 ```
 
 然后安装依赖：
@@ -43,7 +45,9 @@ pip install nonebot2[fastapi]
 
 这将安装 `pre-commit` 和其他必须项用于代码检查
 
-如一切顺利，我们可以开始配置：
+## 适配器配置🔧
+
+如一切顺利，我们可以开始 Nonebot 适配器的配置：
 
 在项目中创建 `.env` 文件并写入：
 
@@ -68,5 +72,23 @@ telegram_proxy = "http://127.0.0.1:10809"
 QQ_IS_SANDBOX=true
 QQ_BOTS='[{"id": "11451419", "token": "KFCvivo50MuxueYYDS", "secret": "GiveAStarToMuice5Q", "intent": {"guild_messages": true,"at_messages": true}, "use_websocket": true}]'
 ```
+
+## 响应昵称配置🧸
+
+正常情况下，MuiceBot 只会处理 `at_event` 事件或者是指令事件，对于某些客户端来说 @bot 的操作还是太麻烦了，有没有更加简单的方法？
+
+有的兄弟，有的。我们可以定义一个响应前缀来让沐雪响应消息事件。
+
+在 `.env` 文件中配置：
+
+```dotenv
+MUICE_NICKNAMES=["沐雪", "muice", "雪"]
+```
+
+这将响应前缀为“沐雪”、“muice”、“雪”的消息事件，且无需在响应前缀后面加入空格分隔符，比如下列的消息将被沐雪响应：
+
+> 雪，我只会对你动心你知道吗
+
+> 唔...真的嘛？（脸红）
 
 至此，`NoneBot` 的本身的配置部分到此结束

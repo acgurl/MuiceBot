@@ -6,7 +6,7 @@
 
 ## 模型配置
 
-这是 Azure 模型加载器一个实例配置，您可以在 [模型加载器配置](https://github.com/Moemu/Muice-Chatbot/blob/main/docs/model.md#模型加载器配置) 一节中获取这些模型加载器的配置项。
+这是 Azure 模型加载器的一个示例配置文件，您可以在 [模型加载器配置](https://github.com/Moemu/Muice-Chatbot/blob/main/docs/model.md#模型加载器配置) 一节中获取这些模型加载器的配置项。
 
 ```yaml
 model.azure:
