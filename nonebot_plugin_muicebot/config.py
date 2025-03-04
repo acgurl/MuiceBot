@@ -4,15 +4,19 @@ from pathlib import Path
 from typing import Any, Dict
 
 import yaml as yaml_
+from nonebot import get_plugin_config
 from pydantic import BaseModel, field_validator
 from ruamel.yaml import YAML
 
 
 class Config(BaseModel):
-    # 模型配置
     model: Dict[str, Any] = {
         "loader": str,
     }
+    """configs.yml 中的模型配置：计划对每个模型加载器引入设置模板"""
+
+    muice_nicknames: list = []
+    """沐雪的自定义昵称，作为消息前缀条件响应信息事件"""
 
     @field_validator("model")
     @classmethod
@@ -29,21 +33,6 @@ class Config(BaseModel):
             raise ValueError(f"指定的模型加载器 '{v['loader']}' 不存在于 llm 目录中")
 
         return v
-
-    # 适配器特定配置
-    adapter_configs: Dict[str, Dict[str, Any]] = {}
-
-    # 启用的适配器列表，空列表表示全部启用
-    enabled_adapters: list[str] = []
-
-    # 是否启用详细日志
-    debug_mode: bool = False
-
-    # 消息处理超时（秒）
-    message_timeout: int = 30
-
-    # 错误时的默认回复
-    error_response: str = "处理消息时出现错误，请稍后再试。"
 
     class Config:
         extra = "allow"
@@ -68,5 +57,7 @@ def get() -> dict:
 
     return configs
 
+
+plugin_config = get_plugin_config(Config)
 
 config = Config(**get())

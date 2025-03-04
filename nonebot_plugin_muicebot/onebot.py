@@ -1,4 +1,6 @@
-from arclet.alconna import Alconna, Args
+import re
+
+from arclet.alconna import Alconna, AllParam, Args
 from nonebot import get_adapters, get_bot, get_driver, logger, on_message
 from nonebot.adapters import Event
 from nonebot.adapters.onebot.v11 import Bot as Onebotv11Bot
@@ -12,14 +14,25 @@ from nonebot.adapters.telegram import Bot as TelegramBot
 from nonebot.adapters.telegram import Event as TelegramEvent
 from nonebot.adapters.telegram.message import File as TelegramFile
 from nonebot.rule import to_me
-from nonebot_plugin_alconna import AlconnaMatch, Match, on_alconna
+from nonebot_plugin_alconna import (
+    AlconnaMatch,
+    CommandMeta,
+    Match,
+    UniMessage,
+    on_alconna,
+)
 
+from .config import plugin_config
 from .muice import Muice
 from .scheduler import setup_scheduler
 from .utils import save_image
 
 muice = Muice()
 scheduler = None
+
+muice_nicknames = plugin_config.muice_nicknames
+regex_patterns = [f"^{re.escape(nick)}\\s*" for nick in muice_nicknames]
+combined_regex = "|".join(regex_patterns)
 
 driver = get_driver()
 adapters = get_adapters()
@@ -33,25 +46,68 @@ async def on_startup():
     logger.info("MuiceAI 聊天框架已开始运行⭐")
 
 
-command_help = on_alconna(Alconna([".", "/"], "help"), priority=90, block=True)
+command_help = on_alconna(
+    Alconna([".", "/"], "help", meta=CommandMeta("输出帮助信息")),
+    priority=90,
+    block=True,
+)
 
-command_status = on_alconna(Alconna([".", "/"], "status"), priority=90, block=True)
+command_status = on_alconna(
+    Alconna([".", "/"], "status", meta=CommandMeta("显示当前状态")),
+    priority=90,
+    block=True,
+)
 
-command_reset = on_alconna(Alconna([".", "/"], "reset"), priority=10, block=True)
-
-command_refresh = on_alconna(Alconna([".", "/"], "refresh"), priority=10, block=True)
-
-command_undo = on_alconna(Alconna([".", "/"], "undo"), priority=10, block=True)
-
-command_load = on_alconna(
-    Alconna([".", "/"], "load", Args["config_name", str, "model.default"]),
+command_reset = on_alconna(
+    Alconna([".", "/"], "reset", meta=CommandMeta("清空对话记录")),
     priority=10,
     block=True,
 )
 
-command_schedule = on_alconna(Alconna([".", "/"], "schedule"), priority=10, block=True)
+command_refresh = on_alconna(
+    Alconna([".", "/"], "refresh", meta=CommandMeta("刷新模型输出")),
+    priority=10,
+    block=True,
+)
 
-chat = on_message(priority=100, rule=to_me())
+command_undo = on_alconna(
+    Alconna([".", "/"], "undo", meta=CommandMeta("撤回上一个对话")),
+    priority=10,
+    block=True,
+)
+
+command_load = on_alconna(
+    Alconna(
+        [".", "/"],
+        "load",
+        Args["config_name", str, "model.default"],
+        meta=CommandMeta(
+            "加载模型", usage="load <config_name>", example="load model.deepseek"
+        ),
+    ),
+    priority=10,
+    block=True,
+)
+
+command_schedule = on_alconna(
+    Alconna([".", "/"], "schedule", meta=CommandMeta("加载定时任务")),
+    priority=10,
+    block=True,
+)
+
+command_whoami = on_alconna(
+    Alconna([".", "/"], "whoami", meta=CommandMeta("输出当前用户信息")),
+    priority=90,
+    block=True,
+)
+
+nickname_event = on_alconna(
+    Alconna(re.compile(combined_regex), Args["text?", AllParam], separators=""),
+    priority=99,
+    block=True,
+)
+
+at_event = on_message(priority=100, rule=to_me(), block=True)
 
 
 @driver.on_bot_connect
@@ -79,6 +135,7 @@ async def handle_command_help():
         "refresh 刷新模型输出\n"
         "reset 清空对话记录\n"
         "undo 撤回上一个对话\n"
+        "whoami 输出当前用户信息\n"
         "load <config_name> 加载模型\n"
         "（支持的命令前缀：“.”、“/”）"
     )
@@ -89,10 +146,24 @@ async def handle_command_status():
     model_loader = muice.model_loader
     model_status = "运行中" if muice.model and muice.model.is_running else "未启动"
     multimodal_enable = "是" if muice.multimodal else "否"
+
+    scheduler_status = "运行中" if scheduler and scheduler.running else "未启动"
+
+    if scheduler and scheduler.running:
+        job_ids = [job.id for job in scheduler.get_jobs()]
+        if job_ids:
+            current_scheduler = "、".join(job_ids)
+        else:
+            current_scheduler = "暂无运行中的调度器"
+    else:
+        current_scheduler = "调度器引擎未启动！"
+
     await command_status.finish(
         f"当前模型加载器：{model_loader}\n"
         f"模型加载器状态：{model_status}\n"
         f"多模态模型: {multimodal_enable}\n"
+        f"定时任务调度器引擎状态：{scheduler_status}\n"
+        f"运行中的运行任务调度器：{current_scheduler}"
     )
 
 
@@ -112,8 +183,8 @@ async def handle_command_refresh(event: Event):
 
     for index, paragraph in enumerate(paragraphs):
         if index == len(paragraphs) - 1:
-            await chat.finish(paragraph)
-        await chat.send(paragraph)
+            await command_refresh.finish(paragraph)
+        await command_refresh.send(paragraph)
 
 
 @command_undo.handle()
@@ -130,7 +201,13 @@ async def handle_command_load(config: Match[str] = AlconnaMatch("config_name")):
     await command_load.finish(result)
 
 
-@chat.handle()
+@command_whoami.handle()
+async def handle_command_handle(event: Event):
+    await command_whoami.finish(event.get_session_id())
+
+
+@at_event.handle()
+@nickname_event.handle()
 async def handle_supported_adapters(
     bot: Onebotv11Bot | Onebotv12Bot | TelegramBot | QQBot,
     event: Onebotv11MessageEvent | Onebotv12MessageEvent | TelegramEvent | QQEvent,
@@ -218,11 +295,12 @@ async def handle_supported_adapters(
 
     for index, paragraph in enumerate(paragraphs):
         if index == len(paragraphs) - 1:
-            await chat.finish(paragraph)
-        await chat.send(paragraph)
+            await UniMessage(paragraph).finish()
+        await UniMessage(paragraph).send()
 
 
-@chat.handle()
+@at_event.handle()
+@nickname_event.handle()
 async def handle_universal_adapters(event: Event):
     message = event.get_plaintext()
     user_id = event.get_user_id()
@@ -237,5 +315,5 @@ async def handle_universal_adapters(event: Event):
 
     for index, paragraph in enumerate(paragraphs):
         if index == len(paragraphs) - 1:
-            await chat.finish(paragraph)
-        await chat.send(paragraph)
+            await UniMessage(paragraph).finish()
+        await UniMessage(paragraph).send()

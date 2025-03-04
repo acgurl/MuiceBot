@@ -15,6 +15,6 @@ __plugin_meta__ = PluginMetadata(
     usage="瞎几把用",
     type="application",
     config=Config,
-    homepage="ai.snowy.moe/404.html",
+    homepage="https://bot.snowy.moe/",
     extra={},
 )
