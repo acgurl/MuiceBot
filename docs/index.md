@@ -1,0 +1,26 @@
+---
+pageType: home
+
+hero:
+  name: 沐雪 Bot
+  text: 一个会自动和你聊天的 AI 女孩子
+  tagline: Muice-Chatbot 的 NoneBot2 实现
+  actions:
+    - theme: brand
+      text: 介绍
+      link: /guide/introduction
+    - theme: alt
+      text: 快速开始
+      link: /guide/setup
+
+features:
+  - title: 'NB 内核驱动'
+    details: 基于 NoneBot2 和多种适配器实现，提供了稳健的机器人运行服务
+    icon: 🎖️
+  - title: '提供多种模型加载器'
+    details: 轻松运行本地模型和在线服务，比如 DeekSeek-R1
+    icon: 🚀
+  - title: '你说得对'
+    details: 我也不知道有什么能吹的了
+    icon: ❓
+---

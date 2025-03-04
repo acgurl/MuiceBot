@@ -1,0 +1,22 @@
+[
+    {
+        "type": "file",
+        "name": "introduction",
+        "label": "介绍"
+    },
+    {
+        "type": "file",
+        "name": "setup",
+        "label": "快速安装"
+    },
+    {
+        "type": "file",
+        "name": "configuration",
+        "label": "配置文件"
+    },
+    {
+        "type": "file",
+        "name": "command",
+        "label": "指令说明"
+    }
+]
