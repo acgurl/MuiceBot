@@ -140,7 +140,7 @@ schedule:
     args:
       hour: 12
       minute: 30
-    message: 中午好呀各位~吃饭了没有？
+    say: 中午好呀各位~吃饭了没有？
     target:
       detail_type: group
       group_id: '123456789'
@@ -168,7 +168,7 @@ schedule:
 
 - `interval` 接受以下参数值： `week`、`day_of_week`、`hour`、`minute`、`second`、`start_date`、`end_date`、`timezone`
 
-`ask` 和 `message` 虽作为可选参数但必须选择一个，分别代表了传递给模型的 prompt 和直接发送信息的文本内容
+`ask` 和 `say` 虽作为可选参数但必须选择一个，分别代表了传递给模型的 prompt 和直接发送信息的文本内容
 
 `target` 指定发送信息的目标用户/群聊，作为参数传入 `bot` 的 `send_message` 方法。具体参数内容请参见 [适配器文档](https://onebot.adapters.nonebot.dev/docs/api/v12/bot#Bot-send)
 
