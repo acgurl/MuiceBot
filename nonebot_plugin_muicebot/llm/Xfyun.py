@@ -1,9 +1,11 @@
+import asyncio
 import base64
 import hashlib
 import hmac
 import json
 import ssl
 from datetime import datetime
+from functools import partial
 from time import mktime
 from urllib.parse import urlencode, urlparse
 from wsgiref.handlers import format_date_time
@@ -11,7 +13,9 @@ from wsgiref.handlers import format_date_time
 import websocket
 from nonebot import logger
 
-from .types import BasicModel
+from nonebot_plugin_muicebot.llm._types import ModelConfig
+
+from ._types import BasicModel
 from .utils.auto_system_prompt import auto_system_prompt
 
 
@@ -20,18 +24,26 @@ class Xfyun(BasicModel):
     星火大模型
     """
 
-    def load(self, model_config: dict) -> bool:
-        self.app_id = model_config.get("app_id")
-        self.api_key = model_config.get("api_key")
-        self.api_secret = model_config.get("api_secret")
-        self.service_id = model_config.get("service_id")
-        self.resource_id = model_config.get("resource_id")
-        self.system_prompt = model_config.get("system_prompt", "")
-        self.auto_system_prompt = model_config.get("auto_system_prompt", False)
-        self.temperature = model_config.get("temperature", 0.75)
-        self.top_k = model_config.get("top_k", 4)
-        self.max_tokens = model_config.get("max_tokens", 1024)
-        self.url = "wss://maas-api.cn-huabei-1.xf-yun.com/v1.1/chat"
+    def __init__(self, model_config: ModelConfig) -> None:
+        super().__init__(model_config)
+        self._require("app_id", "api_key", "api_secret", "service_id", "resource_id")
+
+    def load(self) -> bool:
+        self.app_id = self.config.app_id
+        self.api_key = self.config.api_key
+        self.api_secret = self.config.api_secret
+        self.service_id = self.config.service_id
+        self.resource_id = self.config.resource_id
+        self.system_prompt = self.config.system_prompt
+        self.auto_system_prompt = self.config.auto_system_prompt
+        self.temperature = self.config.temperature
+        self.top_k = self.config.top_k
+        self.max_tokens = self.config.max_tokens
+        self.url = (
+            self.config.api_host
+            if self.config.api_host
+            else "wss://maas-api.cn-huabei-1.xf-yun.com/v1.1/chat"
+        )
         self.host = urlparse(self.url).netloc
         self.path = urlparse(self.url).path
         self.response = ""
@@ -136,7 +148,7 @@ class Xfyun(BasicModel):
             self.history.append({"role": "user", "content": item[0]})
             self.history.append({"role": "assistant", "content": item[1]})
 
-    def ask(self, prompt: str, history: list) -> str:
+    def __ask(self, prompt: str, history: list) -> str:
         self.response = ""
         self.__generate_history(history)
         if not self.is_history:
@@ -160,3 +172,9 @@ class Xfyun(BasicModel):
         ws.run_forever(sslopt={"cert_reqs": ssl.CERT_NONE}, ping_timeout=10)
 
         return self.response
+
+    async def ask(self, prompt, history=None) -> str:
+        loop = asyncio.get_event_loop()
+        return await loop.run_in_executor(
+            None, partial(self.__ask, prompt=prompt, history=history)
+        )

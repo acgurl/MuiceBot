@@ -72,7 +72,7 @@ command_load = on_alconna(
     Alconna(
         [".", "/"],
         "load",
-        Args["config_name", str, "model.default"],
+        Args["config_name", str, "model"],
         meta=CommandMeta(
             "加载模型", usage="load <config_name>", example="load model.deepseek"
         ),
@@ -164,14 +164,14 @@ async def handle_command_status():
 @command_reset.handle()
 async def handle_command_reset(event: Event):
     userid = event.get_user_id()
-    response = muice.reset(userid)
+    response = await muice.reset(userid)
     await command_reset.finish(response)
 
 
 @command_refresh.handle()
 async def handle_command_refresh(event: Event):
     userid = event.get_user_id()
-    response = muice.refresh(userid)
+    response = await muice.refresh(userid)
 
     paragraphs = response.split("\n")
 
@@ -184,7 +184,7 @@ async def handle_command_refresh(event: Event):
 @command_undo.handle()
 async def handle_command_undo(event: Event):
     userid = event.get_user_id()
-    response = muice.undo(userid)
+    response = await muice.undo(userid)
     await command_undo.finish(response)
 
 
@@ -192,7 +192,7 @@ async def handle_command_undo(event: Event):
 async def handle_command_load(config: Match[str] = AlconnaMatch("config_name")):
     config_name = config.result
     result = muice.change_model_config(config_name)
-    await command_load.finish(result)
+    await UniMessage(result).finish()
 
 
 @command_whoami.handle()
@@ -234,7 +234,10 @@ async def handle_supported_adapters(message: UniMsg, event: Event):
     if not (message_text or image_paths):
         return
 
-    response = muice.ask(message_text, userid, image_paths=image_paths).strip()
+    response = await muice.ask(message_text, userid, image_paths=image_paths)
+    response.strip()
+
+    logger.info(f"Response: {message_text}")
 
     paragraphs = response.split("\n")
 
@@ -254,7 +257,8 @@ async def handle_universal_adapters(event: Event):
     if not message:
         return
 
-    response = muice.ask(message, user_id).strip()
+    response = await muice.ask(message, user_id)
+    response.strip()
 
     paragraphs = response.split("\n")
 

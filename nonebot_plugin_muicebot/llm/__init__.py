@@ -1,1 +1,1 @@
-from .types import BasicModel  # noqa: F401
+from ._types import BasicModel, ModelConfig  # noqa: F401

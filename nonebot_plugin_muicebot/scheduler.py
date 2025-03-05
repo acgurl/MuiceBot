@@ -47,7 +47,7 @@ async def model_ask(muice_app: Muice, bot: Bot, prompt: str, **kwargs):
     self_id = self_info["user_id"]
 
     if muice_app.model and muice_app.model.is_running:
-        message = muice_app.ask(
+        message = await muice_app.ask(
             prompt,
             self_id,
             enable_history=False,

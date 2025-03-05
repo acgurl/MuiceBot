@@ -1,6 +1,9 @@
+import asyncio
+from functools import partial
+
 from llmtuner.chat import ChatModel
 
-from .types import BasicModel
+from ._types import BasicModel, ModelConfig
 from .utils.auto_system_prompt import auto_system_prompt
 
 
@@ -9,15 +12,19 @@ class LLmtuner(BasicModel):
     使用LLaMA-Factory方案加载, 适合通过其他微调方案微调的模型加载
     """
 
-    def load(self, model_config: dict) -> bool:
-        model_name_or_path = model_config.get("model_path", None)
-        adapter_name_or_path = model_config.get("adapter_path", None)
-        template = model_config.get("template", "qwen")
-        self.system_prompt = model_config.get("system_prompt", None)
-        self.auto_system_prompt = model_config.get("auto_system_prompt", False)
-        self.max_tokens = model_config.get("max_tokens", 1024)
-        self.temperature = model_config.get("temperature", 0.7)
-        self.top_p = model_config.get("top_p", 0.9)
+    def __init__(self, model_config: ModelConfig) -> None:
+        super().__init__(model_config)
+        self._require("model_path", "adapter_path", "template")
+
+    def load(self) -> bool:
+        model_name_or_path = self.config.model_path
+        adapter_name_or_path = self.config.adapter_path
+        template = self.config.template
+        self.system_prompt = self.config.system_prompt
+        self.auto_system_prompt = self.config.auto_system_prompt
+        self.max_tokens = self.config.max_tokens
+        self.temperature = self.config.temperature
+        self.top_p = self.config.top_p
         self.model = ChatModel(
             dict(
                 model_name_or_path=model_name_or_path,
@@ -28,15 +35,15 @@ class LLmtuner(BasicModel):
         self.is_running = True
         return self.is_running
 
-    def ask(self, user_text: str, history: list):
+    def __ask(self, prompt: str, history: list):
         messages = []
         if self.auto_system_prompt:
-            self.system_prompt = auto_system_prompt(user_text)
+            self.system_prompt = auto_system_prompt(prompt)
         if history:
             for chat in history:
                 messages.append({"role": "user", "content": chat[0]})
                 messages.append({"role": "assistant", "content": chat[1]})
-        messages.append({"role": "user", "content": user_text})
+        messages.append({"role": "user", "content": prompt})
         response = self.model.chat(
             messages,
             system=self.system_prompt,
@@ -45,3 +52,9 @@ class LLmtuner(BasicModel):
             top_p=self.top_p,
         )
         return response[0].response_text
+
+    async def ask(self, prompt, history=None) -> str:
+        loop = asyncio.get_event_loop()
+        return await loop.run_in_executor(
+            None, partial(self.__ask, prompt=prompt, history=history)
+        )

@@ -4,7 +4,9 @@ import os
 import torch
 from transformers import AutoConfig, AutoModel, AutoTokenizer
 
-from .types import BasicModel
+from nonebot_plugin_muicebot.llm._types import ModelConfig
+
+from ._types import BasicModel
 
 
 class Transformers(BasicModel):
@@ -12,9 +14,13 @@ class Transformers(BasicModel):
     使用 transformers方案加载, 适合通过 P-tuning V2 方式微调的模型
     """
 
-    def load(self, model_config: dict) -> bool:
-        model_path = model_config.get("model_path", None)
-        pt_model_path = model_config.get("adapter_path", None)
+    def __init__(self, model_config: ModelConfig) -> None:
+        super().__init__(model_config)
+        self._require("model_path")
+
+    def load(self) -> bool:
+        model_path = self.config.model_path
+        pt_model_path = self.config.adapter_path
         config = AutoConfig.from_pretrained(
             model_path, trust_remote_code=True, pre_seq_len=128
         )
@@ -44,6 +50,6 @@ class Transformers(BasicModel):
         self.is_running = True
         return self.is_running
 
-    def ask(self, user_text: str, history: list):
+    def __ask(self, user_text: str, history: list):
         response, _ = self.model.chat(self.tokenizer, user_text, history=history)
         return response

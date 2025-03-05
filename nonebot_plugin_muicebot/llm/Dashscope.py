@@ -1,4 +1,6 @@
+import asyncio
 import pathlib
+from functools import partial
 from typing import Generator
 
 import dashscope
@@ -8,24 +10,28 @@ from dashscope.api_entities.dashscope_response import (
 )
 from nonebot import logger
 
-from .types import BasicModel
+from ._types import BasicModel, ModelConfig
 from .utils.auto_system_prompt import auto_system_prompt
 
 
 class Dashscope(BasicModel):
-    def load(self, config: dict) -> bool:
-        self.api_key = config.get("api_key", "")
-        self.model = config.get("model_name", "")
-        self.max_tokens = config.get("max_tokens", 1024)
-        self.temperature = config.get("temperature", 0.75)
-        self.top_p = config.get("top_p", 0.95)
-        self.repetition_penalty = config.get("repetition_penalty", 1.0)
-        self.system_prompt = config.get("system_prompt", "")
-        self.auto_system_prompt = config.get("auto_system_prompt", False)
+    def __init__(self, model_config: ModelConfig) -> None:
+        super().__init__(model_config)
+        self._require("api_key", "model_name")
+
+    def load(self) -> bool:
+        self.api_key = self.config.api_key
+        self.model = self.config.model_name
+        self.max_tokens = self.config.max_tokens
+        self.temperature = self.config.temperature
+        self.top_p = self.config.top_p
+        self.repetition_penalty = self.config.repetition_penalty
+        self.system_prompt = self.config.system_prompt
+        self.auto_system_prompt = self.config.auto_system_prompt
         self.is_running = True
         return self.is_running
 
-    def ask(self, prompt, history=None) -> str:
+    def __ask(self, prompt, history=None) -> str:
         messages = []
 
         if self.auto_system_prompt:
@@ -59,7 +65,13 @@ class Dashscope(BasicModel):
 
         return "（模型内部错误）"
 
-    def ask_vision(self, prompt, image_paths: list, history=None) -> str:
+    async def ask(self, prompt, history=None) -> str:
+        loop = asyncio.get_event_loop()
+        return await loop.run_in_executor(
+            None, partial(self.__ask, prompt=prompt, history=history)
+        )
+
+    def __ask_vision(self, prompt, image_paths: list, history=None) -> str:
         """
         多模态：图像识别
 
@@ -122,3 +134,16 @@ class Dashscope(BasicModel):
 
         logger.error(f"DashScope failed to generate response: {response}")
         return "（模型内部错误）"
+
+    async def ask_vision(self, prompt, image_paths: list, history=None) -> str:
+        """异步版本的 ask_vision 方法"""
+        loop = asyncio.get_event_loop()
+        return await loop.run_in_executor(
+            None,
+            partial(
+                self.__ask_vision,
+                prompt=prompt,
+                image_paths=image_paths,
+                history=history,
+            ),
+        )

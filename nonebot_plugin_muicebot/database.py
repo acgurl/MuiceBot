@@ -1,8 +1,8 @@
 import json
 import os
-import sqlite3
 import time
 
+import aiosqlite
 import nonebot_plugin_localstore as store
 from nonebot import logger
 
@@ -11,37 +11,40 @@ class Database:
     def __init__(self) -> None:
         self.DB_PATH = store.get_plugin_data_dir().joinpath("ChatHistory.db").resolve()
         logger.info(f"数据库路径: {self.DB_PATH}")
+
+    async def init_db(self) -> None:
+        """初始化数据库，检查数据库是否存在，不存在则创建"""
         if not os.path.isfile(self.DB_PATH):
             logger.info("数据库不存在，正在创建...")
-            self.__create_database()
+            await self.__create_database()
 
-    def __connect(self) -> sqlite3.Connection:
-        return sqlite3.connect(self.DB_PATH)
+    def __connect(self) -> aiosqlite.Connection:
+        return aiosqlite.connect(self.DB_PATH)
 
-    def __execute(
+    async def __execute(
         self, query: str, params=(), fetchone=False, fetchall=False
     ) -> list | None:
         """
-        Executes a given SQL query with optional parameters.
+        异步执行SQL查询，支持可选参数。
 
-        :param query: The SQL query to execute.
-        :param params: The parameters to pass to the query.
-        :param fetchone: Whether to fetch a single result.
-        :param fetchall: Whether to fetch all results.
+        :param query: 要执行的SQL查询语句
+        :param params: 传递给查询的参数
+        :param fetchone: 是否获取单个结果
+        :param fetchall: 是否获取所有结果
         """
-        with self.__connect() as conn:
-            cursor = conn.cursor()
-            cursor.execute(query, params)
+        async with self.__connect() as conn:
+            cursor = await conn.cursor()
+            await cursor.execute(query, params)
             if fetchone:
-                return cursor.fetchone()
+                return await cursor.fetchone()  # type: ignore
             if fetchall:
-                return cursor.fetchall()
-            conn.commit()
+                return await cursor.fetchall()  # type: ignore
+            await conn.commit()
 
         return None
 
-    def __create_database(self) -> None:
-        self.__execute(
+    async def __create_database(self) -> None:
+        await self.__execute(
             """CREATE TABLE MSG(
             ID INTEGER PRIMARY KEY AUTOINCREMENT,
             TIME TEXT NOT NULL,
@@ -52,7 +55,7 @@ class Database:
             IMAGES TEXT NOT NULL DEFAULT "[]");"""
         )
 
-    def add_item(
+    async def add_item(
         self,
         userid: str,
         message: str,
@@ -62,7 +65,7 @@ class Database:
         current_time = time.strftime("%Y.%m.%d %H:%M:%S")
         query = """INSERT INTO MSG (TIME, USERID, MESSAGE, RESPOND, IMAGES)
                    VALUES (?, ?, ?, ?, ?)"""
-        self.__execute(
+        await self.__execute(
             query,
             (
                 current_time,
@@ -73,18 +76,18 @@ class Database:
             ),
         )
 
-    def mark_history_as_unavailable(self, userid: str):
+    async def mark_history_as_unavailable(self, userid: str):
         query = "UPDATE MSG SET HISTORY = 0 WHERE USERID = ?"
-        self.__execute(query, (userid,))
+        await self.__execute(query, (userid,))
 
-    def get_history(self, userid: str) -> list | None:
+    async def get_history(self, userid: str) -> list | None:
         query = "SELECT * FROM MSG WHERE HISTORY = 1 AND USERID = ?"
-        return self.__execute(query, (userid,), fetchall=True)
+        return await self.__execute(query, (userid,), fetchall=True)
 
-    def get_last_item(self, userid: str) -> list | None:
+    async def get_last_item(self, userid: str) -> list | None:
         query = "SELECT * FROM MSG WHERE HISTORY = 1 AND USERID = ? ORDER BY ID DESC LIMIT 1"
-        return self.__execute(query, (userid,), fetchall=True)
+        return await self.__execute(query, (userid,), fetchall=True)
 
-    def remove_last_item(self, userid: str):
+    async def remove_last_item(self, userid: str):
         query = "DELETE FROM MSG WHERE ID = (SELECT ID FROM MSG WHERE USERID = ? ORDER BY ID DESC LIMIT 1)"
-        self.__execute(query, (userid,))
+        await self.__execute(query, (userid,))

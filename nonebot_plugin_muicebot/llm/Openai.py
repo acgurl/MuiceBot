@@ -2,29 +2,37 @@ import openai
 import requests
 from nonebot import logger
 
-from .types import BasicModel
+from nonebot_plugin_muicebot.llm._types import ModelConfig
+
+from ._types import BasicModel
 from .utils.auto_system_prompt import auto_system_prompt
 
 
 class Openai(BasicModel):
-    def load(self, config: dict) -> bool:
-        self.api_key = config.get("api_key")
-        self.api_base = config.get(
-            "api_base", "https://api.openai.com/v1"
-        )  # 默认的 OpenAI API 基地址
-        self.model = config.get("model_name", "text-davinci-003")
-        self.max_tokens = config.get("max_tokens", 1024)
-        self.temperature = config.get("temperature", 0.7)
-        self.system_prompt = config.get("system_prompt", None)
-        self.auto_system_prompt = config.get("auto_system_prompt", False)
-        self.user_instructions = config.get("user_instructions", None)
-        self.auto_user_instructions = config.get("auto_user_instructions", False)
+    def __init__(self, model_config: ModelConfig) -> None:
+        super().__init__(model_config)
+        self._require("api_key", "model_name")
 
-        self.client = openai.OpenAI(api_key=self.api_key, base_url=self.api_base)
+    def load(self) -> bool:
+        self.api_key = self.config.api_key
+        self.model = self.config.model_name
+        self.api_base = (
+            self.config.api_host
+            if self.config.api_host
+            else "https://api.openai.com/v1"
+        )
+        self.max_tokens = self.config.max_tokens
+        self.temperature = self.config.temperature
+        self.system_prompt = self.config.system_prompt
+        self.auto_system_prompt = self.config.auto_system_prompt
+        self.user_instructions = self.config.user_instructions
+        self.auto_user_instructions = self.config.auto_user_instructions
+
+        self.client = openai.AsyncOpenAI(api_key=self.api_key, base_url=self.api_base)
         self.is_running = True
         return self.is_running
 
-    def ask(self, prompt, history=None) -> str:
+    async def ask(self, prompt, history=None) -> str:
         """
         向 OpenAI 模型发送请求，并获取模型的推理结果
 
@@ -63,7 +71,7 @@ class Openai(BasicModel):
             else:
                 messages.append({"role": "user", "content": prompt})
 
-            response = self.client.chat.completions.create(
+            response = await self.client.chat.completions.create(
                 model=self.model,
                 messages=messages,
                 max_tokens=self.max_tokens,
