@@ -77,9 +77,7 @@ class Muice:
     def ask(
         self,
         message: str,
-        username: str,
         userid: str,
-        groupid: str = "-1",
         image_paths: list = [],
         enable_history: bool = True,
     ) -> str:
@@ -89,7 +87,6 @@ class Muice:
         :param message: 消息内容
         :param image_paths: 图片URL列表（仅在多模态启用时生效）
         :param user_id: 用户ID
-        :param group_id: 群组ID
         :param enable_history: 启用历史记录
         :return: 模型回复
         """
@@ -113,7 +110,7 @@ class Muice:
         thought, result = process_thoughts(reply, self.think)
         reply = "".join([thought, result])
 
-        self.database.add_item(username, userid, message, result, groupid, image_paths)
+        self.database.add_item(userid, message, result, image_paths)
 
         return reply
 
@@ -125,7 +122,7 @@ class Muice:
         if not history:
             return []
 
-        history = [[item[5], item[6]] for item in history]
+        history = [[item[3], item[4]] for item in history]
         return history
 
     def refresh(self, userid: str) -> str:
@@ -143,13 +140,8 @@ class Muice:
             logger.error("模型未加载")
             return "(模型未加载)"
 
-        (
-            username,
-            userid,
-            groupid,
-            message,
-        ) = set(last_item[0][2:6])
-        image_paths = last_item[0][8]
+        userid, message = set(last_item[0][3:5])
+        image_paths = last_item[0][-1]
         self.database.remove_last_item(userid)
         history = self.get_chat_memory(userid)
 
@@ -166,7 +158,7 @@ class Muice:
         thought, result = process_thoughts(reply, self.think)
         reply = "".join([thought, result])
 
-        self.database.add_item(username, userid, message, result, groupid, image_paths)
+        self.database.add_item(userid, message, result, image_paths)
 
         return reply
 

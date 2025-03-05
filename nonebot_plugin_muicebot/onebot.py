@@ -3,16 +3,6 @@ import re
 from arclet.alconna import Alconna, AllParam, Args
 from nonebot import get_adapters, get_bot, get_driver, logger, on_message
 from nonebot.adapters import Event
-from nonebot.adapters.onebot.v11 import Bot as Onebotv11Bot
-from nonebot.adapters.onebot.v11 import MessageEvent as Onebotv11MessageEvent
-from nonebot.adapters.onebot.v12 import Bot as Onebotv12Bot
-from nonebot.adapters.onebot.v12 import MessageEvent as Onebotv12MessageEvent
-from nonebot.adapters.qq import Bot as QQBot
-from nonebot.adapters.qq import Event as QQEvent
-from nonebot.adapters.qq import Message as QQMessage
-from nonebot.adapters.telegram import Bot as TelegramBot
-from nonebot.adapters.telegram import Event as TelegramEvent
-from nonebot.adapters.telegram.message import File as TelegramFile
 from nonebot.permission import SUPERUSER
 from nonebot.rule import to_me
 from nonebot_plugin_alconna import (
@@ -22,11 +12,12 @@ from nonebot_plugin_alconna import (
     UniMessage,
     on_alconna,
 )
+from nonebot_plugin_alconna.uniseg import Image, UniMsg
 
 from .config import plugin_config
 from .muice import Muice
 from .scheduler import setup_scheduler
-from .utils import save_image
+from .utils import legacy_get_images, save_image_as_file
 
 muice = Muice()
 scheduler = None
@@ -206,93 +197,44 @@ async def handle_command_load(config: Match[str] = AlconnaMatch("config_name")):
 
 @command_whoami.handle()
 async def handle_command_handle(event: Event):
-    await command_whoami.finish(event.get_session_id())
+    await command_whoami.finish(
+        f"用户 ID: {event.get_user_id()}\n" f"当前会话信息：{event.get_session_id()}"
+    )
 
 
 @at_event.handle()
 @nickname_event.handle()
-async def handle_supported_adapters(
-    bot: Onebotv11Bot | Onebotv12Bot | TelegramBot | QQBot,
-    event: Onebotv11MessageEvent | Onebotv12MessageEvent | TelegramEvent | QQEvent,
-):
-    message = event.get_message()
+async def handle_supported_adapters(message: UniMsg, event: Event):
     message_text = message.extract_plain_text()
+    message_images = message.get(Image)
+    userid = event.get_user_id()
+
     image_paths = []
-    userinfo = {}
 
-    session = event.get_session_id()
+    if muice.multimodal:
+        for img in message_images:
 
-    if session.startswith("group_"):
-        _, groupid, userid = session.split("_")
-    elif session.startswith("private_"):
-        _, userid, groupid = session.split("_") + ["-1"]
-    else:
-        groupid, userid = "-1", session
+            if not img.url:
+                # 部分 Onebot 适配器实现无法直接获取url，尝试回退至传统获取方式
+                logger.warning("无法通过通用方式获取图片URL，回退至传统方式...")
+                image_paths = list(
+                    set(
+                        [
+                            await legacy_get_images(img.origin, event)
+                            for img in message_images
+                        ]
+                    )
+                )
+                break
 
-    if isinstance(bot, Onebotv12Bot):
-        if muice.multimodal:
-            image_file_ids = [m.data["file_id"] for m in message if m.type == "image"]
-            for file_id in image_file_ids:
-                image_path = await bot.get_file(
-                    type="url", file_id=file_id
-                )  # Onebot V12
-                image_paths.append(image_path)
-
-        userinfo = await bot.get_user_info(user_id=userid)
-        username = userinfo.get("user_displayname", userid)
-
-    elif isinstance(bot, Onebotv11Bot):
-        if muice.multimodal:
-            image_paths = [
-                save_image(m.data["url"], m.data["file"])
-                for m in message
-                if m.type == "image" and "url" in m.data and "file" in m.data
-            ]
-
-        userinfo = await bot.get_stranger_info(user_id=int(userid))
-        username = userinfo.get("user_displayname", userid)
-
-    elif isinstance(event, TelegramEvent):
-        if muice.multimodal:
-            image_file_ids = [
-                m.data["file"] for m in message if isinstance(m, TelegramFile)
-            ]
-            for file_id in image_file_ids:
-                file = await bot.get_file(file_id=file_id)
-                if not file.file_path:
-                    continue
-                url = f"https://api.telegram.org/file/bot{bot.bot_config.token}/{file.file_path}"
-                filename = file.file_path.split("/")[1]
-                image_paths.append(save_image(url, filename))
-
-        username = event.chat.username  # type: ignore
-        # first_name = event.from_.first_name # type: ignore
-        # last_name = event.from_.last_name # type: ignore
-        # username = f"{first_name if first_name else ''} {last_name if last_name else ''}".strip()
-        if not username:  # tg特色，姓和名都可能不存在且为 Unknown 类型
-            username = userid
-
-    elif isinstance(event, QQEvent):
-        if muice.multimodal and isinstance(message, QQMessage):
-            image_paths = [
-                save_image(m.data["url"], m.data["url"].split("/")[-1] + ".jpg")
-                for m in message
-                if m.type == "image" and "url" in m.data
-            ]
-
-        username = event.member.nick  # type: ignore
-
-    else:
-        username = userid
+            image_paths.append(save_image_as_file(img.url, img.name))
 
     logger.info(f"Received a message: {message_text}")
 
     if not (message_text or image_paths):
         return
 
-    response = muice.ask(
-        message_text, username, userid, groupid=groupid, image_paths=image_paths
-    ).strip()
+    response = muice.ask(message_text, userid, image_paths=image_paths).strip()
 
     paragraphs = response.split("\n")
 
@@ -312,7 +254,7 @@ async def handle_universal_adapters(event: Event):
     if not message:
         return
 
-    response = muice.ask(message, user_id, user_id, groupid="-1").strip()
+    response = muice.ask(message, user_id).strip()
 
     paragraphs = response.split("\n")
 

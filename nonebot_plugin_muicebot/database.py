@@ -45,9 +45,7 @@ class Database:
             """CREATE TABLE MSG(
             ID INTEGER PRIMARY KEY AUTOINCREMENT,
             TIME TEXT NOT NULL,
-            USERNAME TEXT NOT NULL,
             USERID TEXT NOT NULL,
-            GROUPID TEXT NOT NULL,
             MESSAGE TEXT NOT NULL,
             RESPOND TEXT NOT NULL,
             HISTORY INTEGER NOT NULL DEFAULT (1),
@@ -56,25 +54,21 @@ class Database:
 
     def add_item(
         self,
-        username: str,
         userid: str,
         message: str,
         respond: str,
-        group_id: str = "-1",
         image_paths: list = [],
     ):
         current_time = time.strftime("%Y.%m.%d %H:%M:%S")
-        query = """INSERT INTO MSG (TIME, USERNAME, USERID, MESSAGE, RESPOND, GROUPID, IMAGES)
-                   VALUES (?, ?, ?, ?, ?, ?, ?)"""
+        query = """INSERT INTO MSG (TIME, USERID, MESSAGE, RESPOND, IMAGES)
+                   VALUES (?, ?, ?, ?, ?)"""
         self.__execute(
             query,
             (
                 current_time,
-                username,
                 userid,
                 message,
                 respond,
-                group_id,
                 json.dumps(image_paths),
             ),
         )

@@ -45,14 +45,11 @@ async def model_ask(muice_app: Muice, bot: Bot, prompt: str, **kwargs):
     logger.info(f"定时任务: model_ask: {prompt}")
     self_info = await bot.call_api("get_self_info")
     self_id = self_info["user_id"]
-    self_name = self_info["user_name"]
 
     if muice_app.model and muice_app.model.is_running:
         message = muice_app.ask(
             prompt,
-            self_name,
             self_id,
-            kwargs.get("group_id", "-1"),
             enable_history=False,
         )
 
