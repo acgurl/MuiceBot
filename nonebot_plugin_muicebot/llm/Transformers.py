@@ -4,9 +4,7 @@ import os
 import torch
 from transformers import AutoConfig, AutoModel, AutoTokenizer
 
-from nonebot_plugin_muicebot.llm._types import ModelConfig
-
-from ._types import BasicModel
+from ._types import BasicModel, ModelConfig
 
 
 class Transformers(BasicModel):

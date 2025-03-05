@@ -13,9 +13,7 @@ from wsgiref.handlers import format_date_time
 import websocket
 from nonebot import logger
 
-from nonebot_plugin_muicebot.llm._types import ModelConfig
-
-from ._types import BasicModel
+from ._types import BasicModel, ModelConfig
 from .utils.auto_system_prompt import auto_system_prompt
 
 
