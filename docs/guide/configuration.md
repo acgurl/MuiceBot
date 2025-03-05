@@ -80,7 +80,7 @@ user_instructions: '我们来玩一个角色扮演的小游戏吧，现在开始
 auto_user_instructions: true # 自动配置沐雪的用户提示（默认为 false）
 ```
 
-这里主要想补充沐雪的系统提示词，如果你不知道的话可以参考：[auto_system_prompt.py](nonebot_plugin_muicebot/llm/utils/auto_system_prompt.py)
+这里主要想补充沐雪的系统提示词，如果你不知道的话可以参考：[auto_system_prompt.py](Muice/llm/utils/auto_system_prompt.py)
 
 
 如果一切顺利，以 QQ 适配器为例，在运行 `nb run` 后，你将会看到以下输出，这表明 Bot 已经开始工作：
@@ -94,8 +94,8 @@ auto_user_instructions: true # 自动配置沐雪的用户提示（默认为 fal
 [SUCCESS] load_plugin: Succeeded to load plugin "nonebot_plugin_alconna"
 [SUCCESS] load_plugin: Succeeded to load plugin "nonebot_plugin_localstore"
 [SUCCESS] load_plugin: Succeeded to load plugin "nonebot_plugin_apscheduler"
-[INFO] __init__: 数据库路径: C:\Users\Muika\AppData\Local\nonebot2\nonebot_plugin_muicebot\ChatHistory.db
-[SUCCESS] load_plugin: Succeeded to load plugin "nonebot_plugin_muicebot"
+[INFO] __init__: 数据库路径: C:\Users\Muika\AppData\Local\nonebot2\Muice\ChatHistory.db
+[SUCCESS] load_plugin: Succeeded to load plugin "Muice"
 [SUCCESS] run: Running NoneBot...
 [SUCCESS] run: Loaded adapters: OneBot V12, OneBot V11, Telegram, QQ
 [INFO] _serve: Started server process [40776]

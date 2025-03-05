@@ -69,7 +69,7 @@ class ModelConfig(BasicConfigModel):
             raise ValueError("loader is required")
 
         # Check if the specified loader exists
-        module_path = f"nonebot_plugin_muicebot.llm.{loader}"
+        module_path = f"Muice.llm.{loader}"
 
         # 使用 find_spec 仅检测模块是否存在，不实际导入
         if find_spec(module_path) is None:

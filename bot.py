@@ -16,6 +16,6 @@ driver.register_adapter(Adapterv11)
 driver.register_adapter(TelegramAdapter)
 driver.register_adapter(QQAdapter)
 
-nonebot.load_plugin("nonebot_plugin_muicebot")
+nonebot.load_plugin("Muice")
 
 nonebot.run()

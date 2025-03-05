@@ -27,7 +27,7 @@ class Muice:
         """
         初始化模型类
         """
-        module_name = f"nonebot_plugin_muicebot.llm.{self.model_loader}"
+        module_name = f"Muice.llm.{self.model_loader}"
         module = importlib.import_module(module_name)
         ModelClass = getattr(module, self.model_loader, None)
         self.model: Optional[BasicModel] = (
