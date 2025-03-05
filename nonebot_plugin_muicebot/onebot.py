@@ -13,6 +13,7 @@ from nonebot.adapters.qq import Message as QQMessage
 from nonebot.adapters.telegram import Bot as TelegramBot
 from nonebot.adapters.telegram import Event as TelegramEvent
 from nonebot.adapters.telegram.message import File as TelegramFile
+from nonebot.permission import SUPERUSER
 from nonebot.rule import to_me
 from nonebot_plugin_alconna import (
     AlconnaMatch,
@@ -87,12 +88,14 @@ command_load = on_alconna(
     ),
     priority=10,
     block=True,
+    permission=SUPERUSER,
 )
 
 command_schedule = on_alconna(
     Alconna([".", "/"], "schedule", meta=CommandMeta("加载定时任务")),
     priority=10,
     block=True,
+    permission=SUPERUSER,
 )
 
 command_whoami = on_alconna(

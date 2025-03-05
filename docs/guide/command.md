@@ -20,7 +20,7 @@ MuiceBot 内嵌了多种指令方便开发者开发和日常聊天，只需使�
 > 模型加载器状态：运行中
 > 多模态模型: 否
 
-调用 `.load <config_name>` 将加载新的模型加载器配置文件，比如 `.load model.dashscope`
+调用 `.load <config_name>` 将加载新的模型加载器配置文件，比如 `.load model.dashscope`。此指令仅限超级用户操作。
 
 > 已成功加载 model.dashscope
 
