@@ -18,5 +18,10 @@
         "type": "file",
         "name": "command",
         "label": "指令说明"
+    },
+    {
+        "type": "file",
+        "name": "QA",
+        "label": "疑难解答"
     }
 ]
