@@ -1,5 +1,5 @@
+import httpx
 import openai
-import requests
 from nonebot import logger
 
 from ._types import BasicModel, ModelConfig
@@ -88,7 +88,7 @@ class Openai(BasicModel):
 
         except openai.OpenAIError as e:
             logger.error(f"OpenAI API 错误: {e}", exc_info=True)
-        except requests.exceptions.RequestException as e:
+        except httpx.RequestError as e:
             logger.error(f"请求失败: {e}", exc_info=True)
 
         return "（模型内部错误）"
