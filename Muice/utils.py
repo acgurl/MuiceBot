@@ -1,8 +1,8 @@
 import base64
 from typing import Optional
 
+import httpx
 import nonebot_plugin_localstore as store
-import requests
 from nonebot import get_bot, logger
 from nonebot.adapters import Event, MessageSegment
 from nonebot.adapters.onebot.v11 import Bot as Onebotv11Bot
@@ -21,7 +21,7 @@ User_Agent = (
 )
 
 
-def save_image_as_file(image_url: str, file_name: str = "image.png") -> str:
+async def save_image_as_file(image_url: str, file_name: str = "image.png") -> str:
     """
     保存图片至本地目录
 
@@ -29,21 +29,22 @@ def save_image_as_file(image_url: str, file_name: str = "image.png") -> str:
     :file_name: 要保存的文件名
     :return: 保存后的本地目录
     """
-    r = requests.get(image_url, headers={"User-Agent": User_Agent})
-    local_path = (IMG_DIR / file_name).resolve()
-    with open(local_path, "wb") as file:
-        file.write(r.content)
-    r.close()
-    return str(local_path)
+    async with httpx.AsyncClient() as client:
+        r = await client.get(image_url, headers={"User-Agent": User_Agent})
+        local_path = (IMG_DIR / file_name).resolve()
+        with open(local_path, "wb") as file:
+            file.write(r.content)
+        return str(local_path)
 
 
-def save_image_as_base64(
+async def save_image_as_base64(
     image_url: Optional[str], image_bytes: Optional[bytes]
 ) -> bytes:
     if image_url:
-        r = requests.get(image_url, headers={"User-Agent": User_Agent})
-        image_base64 = base64.b64encode(r.content)
-        return image_base64
+        async with httpx.AsyncClient() as client:
+            r = await client.get(image_url, headers={"User-Agent": User_Agent})
+            image_base64 = base64.b64encode(r.content)
+            return image_base64
     if image_bytes:
         image_base64 = base64.b64encode(image_bytes)
         return image_bytes
@@ -72,7 +73,7 @@ async def legacy_get_images(message: MessageSegment, event: Event) -> str:
 
     elif isinstance(bot, Onebotv11Bot):
         if message.type == "image" and "url" in message.data and "file" in message.data:
-            return save_image_as_file(message.data["url"], message.data["file"])
+            return await save_image_as_file(message.data["url"], message.data["file"])
 
     elif isinstance(event, TelegramEvent):
         if isinstance(message, TelegramFile):
@@ -82,6 +83,6 @@ async def legacy_get_images(message: MessageSegment, event: Event) -> str:
                 return ""
             url = f"https://api.telegram.org/file/bot{bot.bot_config.token}/{file.file_path}"  # type: ignore
             filename = file.file_path.split("/")[1]
-            return save_image_as_file(url, filename)
+            return await save_image_as_file(url, filename)
 
     return ""

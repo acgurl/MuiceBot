@@ -227,7 +227,7 @@ async def handle_supported_adapters(message: UniMsg, event: Event):
                 )
                 break
 
-            image_paths.append(save_image_as_file(img.url, img.name))
+            image_paths.append(await save_image_as_file(img.url, img.name))
 
     logger.info(f"Received a message: {message_text}")
 

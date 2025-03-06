@@ -18,7 +18,7 @@ features:
     details: 基于 NoneBot2 和多种适配器实现，提供了稳健的机器人运行服务
     icon: 🎖️
   - title: '提供多种模型加载器'
-    details: 轻松运行本地模型和在线服务，比如 DeekSeek-R1
+    details: 轻松运行本地模型和在线服务，比如 DeepSeek-R1
     icon: 🚀
   - title: '你说得对'
     details: 我也不知道有什么能吹的了
