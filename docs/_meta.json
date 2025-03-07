@@ -10,6 +10,11 @@
     "activeMatch": "/guide/"
   },
   {
+    "text": "模型",
+    "link": "/model/configuration",
+    "activeMatch": "/model/"
+  },
+  {
     "text": "关于",
     "link": "/about/",
     "activeMatch": "/about/"

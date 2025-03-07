@@ -6,13 +6,13 @@
 
 ## 模型配置
 
-这是 Azure 模型加载器的一个示例配置文件，您可以在 [模型加载器配置](https://github.com/Moemu/Muice-Chatbot/blob/main/docs/model.md#模型加载器配置) 一节中获取这些模型加载器的配置项。
+这是 Azure 模型加载器的一个示例配置文件，您可以在 [模型加载器配置](/model/configuration) 一节中获取这些模型加载器的配置项。
 
 ```yaml
 model.azure:
   loader: Azure # 使用 azure 加载器
   model_name: DeepSeek-R1 # 模型名称（可选，默认为 DeepSeek-R1）
-  token: ghp_xxxxxxxxxxxxxxxxx # GitHub Token（若配置了环境变量，此项不填）
+  api_key: ghp_xxxxxxxxxxxxxxxxx # GitHub Token（若配置了环境变量，此项不填）
   system_prompt: '我们来玩一个角色扮演的小游戏吧，现在开始你是一个名为的“沐雪”的AI女孩子，用猫娘的语气和我说话。' # 系统提示（可选）
   auto_system_prompt: true # 自动配置沐雪的系统提示（默认为 false）
   think: 1 # DeepSeek-R1 思考过程优化（0不做任何处理；1提取并同时输出思考过程和结果；2仅输出思考结果）
@@ -37,8 +37,8 @@ model:
 
 model.dashscope:
   loader: Dashscope # 使用 dashscope 加载器
-  multimodal: true
-  model_name: qwen2.5-vl-7b-instruct # 多模态模型名称
+  multimodal: true # 是否启用多模态（可选，注意：使用的模型必须是多模态的）
+  model_name: qwen2.5-vl-7b-instruct # 模型名称
   api_key: sk-xxxxxxxxxxxxxxxxxxxxxxx # API 密钥（必须）
   max_tokens: 1024 # 模型生成的最大 token 数（可选，默认为 1024）
   temperature: 0.7 #  模型生成的温度参数（可选，默认为 0.7）
