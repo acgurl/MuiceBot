@@ -73,9 +73,7 @@ command_load = on_alconna(
         [".", "/"],
         "load",
         Args["config_name", str, "model"],
-        meta=CommandMeta(
-            "加载模型", usage="load <config_name>", example="load model.deepseek"
-        ),
+        meta=CommandMeta("加载模型", usage="load <config_name>", example="load model.deepseek"),
     ),
     priority=10,
     block=True,
@@ -197,9 +195,7 @@ async def handle_command_load(config: Match[str] = AlconnaMatch("config_name")):
 
 @command_whoami.handle()
 async def handle_command_handle(event: Event):
-    await command_whoami.finish(
-        f"用户 ID: {event.get_user_id()}\n" f"当前会话信息：{event.get_session_id()}"
-    )
+    await command_whoami.finish(f"用户 ID: {event.get_user_id()}\n" f"当前会话信息：{event.get_session_id()}")
 
 
 @at_event.handle()
@@ -217,14 +213,7 @@ async def handle_supported_adapters(message: UniMsg, event: Event):
             if not img.url:
                 # 部分 Onebot 适配器实现无法直接获取url，尝试回退至传统获取方式
                 logger.warning("无法通过通用方式获取图片URL，回退至传统方式...")
-                image_paths = list(
-                    set(
-                        [
-                            await legacy_get_images(img.origin, event)
-                            for img in message_images
-                        ]
-                    )
-                )
+                image_paths = list(set([await legacy_get_images(img.origin, event) for img in message_images]))
                 break
 
             image_paths.append(await save_image_as_file(img.url, img.name))
@@ -236,9 +225,7 @@ async def handle_supported_adapters(message: UniMsg, event: Event):
 
     if muice.model_config.stream:
         current_paragraphs = ""
-        async for chunk in muice.ask_stream(
-            message_text, userid, image_paths=image_paths
-        ):
+        async for chunk in muice.ask_stream(message_text, userid, image_paths=image_paths):
             current_paragraphs += chunk
             logger.debug(f"Stream response: {chunk}")
             if current_paragraphs.endswith("\n\n") or current_paragraphs.endswith("。"):

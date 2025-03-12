@@ -66,28 +66,18 @@ class Dashscope(BasicModel):
                     continue
 
                 if reasoning_content != "" and answer_content == "":
-                    yield (
-                        reasoning_content
-                        if is_insert_think_label
-                        else "<think>" + reasoning_content
-                    )
+                    yield (reasoning_content if is_insert_think_label else "<think>" + reasoning_content)
                     is_insert_think_label = True
 
                 elif answer_content != "":
                     if isinstance(answer_content, list):
                         answer_content = "".join(answer_content)  # 不知道为什么会是list
-                    yield (
-                        answer_content
-                        if not is_insert_think_label
-                        else "</think>" + answer_content
-                    )
+                    yield (answer_content if not is_insert_think_label else "</think>" + answer_content)
                     is_insert_think_label = False
             return
 
         if isinstance(response, GenerationResponse):
-            logger.info(
-                f"Return: {response.output.text}, type:{type(response.output.text)}"
-            )
+            logger.info(f"Return: {response.output.text}, type:{type(response.output.text)}")
             yield response.output.text
 
     async def ask(self, prompt, history=None) -> Union[AsyncGenerator[str, None], str]:
@@ -100,9 +90,7 @@ class Dashscope(BasicModel):
             return sync_to_async_generator()
         else:
             loop = asyncio.get_event_loop()
-            result = await loop.run_in_executor(
-                None, partial(self.__ask, prompt=prompt, history=history)
-            )
+            result = await loop.run_in_executor(None, partial(self.__ask, prompt=prompt, history=history))
             return "".join(result)
 
     def __ask_vision(self, prompt, image_paths: list, history=None) -> str:
@@ -126,12 +114,8 @@ class Dashscope(BasicModel):
 
         if history:
             for h in history:
-                messages.append(
-                    {"role": "user", "content": [{"type": "text", "text": h[0]}]}
-                )
-                messages.append(
-                    {"role": "assistant", "content": [{"type": "text", "text": h[1]}]}
-                )
+                messages.append({"role": "user", "content": [{"type": "text", "text": h[0]}]})
+                messages.append({"role": "assistant", "content": [{"type": "text", "text": h[1]}]})
 
         image_contents = []
         for image_path in image_paths:

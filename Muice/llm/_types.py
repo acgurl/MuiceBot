@@ -91,13 +91,9 @@ class BasicModel(metaclass=ABCMeta):
 
         :param require_fields: 需要检查的字段名称（字符串）
         """
-        missing_fields = [
-            field for field in require_fields if not getattr(self.config, field, None)
-        ]
+        missing_fields = [field for field in require_fields if not getattr(self.config, field, None)]
         if missing_fields:
-            raise ValueError(
-                f"对于 {self.config.loader} 以下配置是必需的: {', '.join(missing_fields)}"
-            )
+            raise ValueError(f"对于 {self.config.loader} 以下配置是必需的: {', '.join(missing_fields)}")
 
     @abstractmethod
     def load(self) -> bool:
@@ -109,9 +105,7 @@ class BasicModel(metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    async def ask(
-        self, prompt: str, history: list
-    ) -> Union[AsyncGenerator[str, None], str]:
+    async def ask(self, prompt: str, history: list) -> Union[AsyncGenerator[str, None], str]:
         """
         模型交互询问
 
@@ -121,9 +115,7 @@ class BasicModel(metaclass=ABCMeta):
         """
         pass
 
-    async def ask_vision(
-        self, prompt, image_paths: list, history=None
-    ) -> Union[AsyncGenerator[str, None], str]:
+    async def ask_vision(self, prompt, image_paths: list, history=None) -> Union[AsyncGenerator[str, None], str]:
         """
         多模态：图像识别
 

@@ -21,9 +21,7 @@ class Database:
     def __connect(self) -> aiosqlite.Connection:
         return aiosqlite.connect(self.DB_PATH)
 
-    async def __execute(
-        self, query: str, params=(), fetchone=False, fetchall=False
-    ) -> list | None:
+    async def __execute(self, query: str, params=(), fetchone=False, fetchall=False) -> list | None:
         """
         异步执行SQL查询，支持可选参数。
 

@@ -37,11 +37,7 @@ class Xfyun(BasicModel):
         self.temperature = self.config.temperature
         self.top_k = self.config.top_k
         self.max_tokens = self.config.max_tokens
-        self.url = (
-            self.config.api_host
-            if self.config.api_host
-            else "wss://maas-api.cn-huabei-1.xf-yun.com/v1.1/chat"
-        )
+        self.url = self.config.api_host if self.config.api_host else "wss://maas-api.cn-huabei-1.xf-yun.com/v1.1/chat"
         self.host = urlparse(self.url).netloc
         self.path = urlparse(self.url).path
         self.response = ""
@@ -76,9 +72,7 @@ class Xfyun(BasicModel):
             f'signature="{signature_sha_base64}"'
         )
 
-        authorization = base64.b64encode(authorization_origin.encode("utf-8")).decode(
-            encoding="utf-8"
-        )
+        authorization = base64.b64encode(authorization_origin.encode("utf-8")).decode(encoding="utf-8")
 
         # 将请求的鉴权参数组合为字典
         v = {"authorization": authorization, "date": date, "host": self.host}
@@ -91,15 +85,10 @@ class Xfyun(BasicModel):
         response = json.loads(message)
         logger.debug(f"Spark返回数据: {response}")
         if response["header"]["code"] != 0:  # 不合规时该值为10013
-            logger.warning(
-                f"调用Spark在线模型时发生错误: {response['header']['message']}"
-            )
+            logger.warning(f"调用Spark在线模型时发生错误: {response['header']['message']}")
             self.response = "（已被过滤）"
             ws.close()
-        elif (
-            response["header"]["status"] in [0, 1, 2]
-            and response["payload"]["choices"]["text"][0]["content"] != " "
-        ):
+        elif response["header"]["status"] in [0, 1, 2] and response["payload"]["choices"]["text"][0]["content"] != " ":
             self.response += response["payload"]["choices"]["text"][0]["content"]
         if response["header"]["status"] == 2:
             ws.close()
@@ -173,6 +162,4 @@ class Xfyun(BasicModel):
 
     async def ask(self, prompt, history=None) -> str:
         loop = asyncio.get_event_loop()
-        return await loop.run_in_executor(
-            None, partial(self.__ask, prompt=prompt, history=history)
-        )
+        return await loop.run_in_executor(None, partial(self.__ask, prompt=prompt, history=history))

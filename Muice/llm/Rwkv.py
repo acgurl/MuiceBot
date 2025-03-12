@@ -14,9 +14,7 @@ class RWKV(BasicModel):
 
     def load(self) -> bool:
         self.model = self.config.model_name
-        self.host = (
-            self.config.api_host if self.config.api_host else "http://localhost:8000"
-        )
+        self.host = self.config.api_host if self.config.api_host else "http://localhost:8000"
         self.temperature = self.config.temperature
         self.top_p = self.config.top_p
         self.max_tokens = self.config.max_tokens

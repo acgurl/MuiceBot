@@ -14,9 +14,7 @@ class Ollama(BasicModel):
 
     def load(self) -> bool:
         self.model = self.config.model_name
-        host = (
-            self.config.api_host if self.config.api_host else "http://localhost:11434"
-        )
+        host = self.config.api_host if self.config.api_host else "http://localhost:11434"
         self.client = ollama.AsyncClient(host=host)
         self.is_running = True
         return self.is_running

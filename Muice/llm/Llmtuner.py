@@ -55,6 +55,4 @@ class LLmtuner(BasicModel):
 
     async def ask(self, prompt, history=None) -> str:
         loop = asyncio.get_event_loop()
-        return await loop.run_in_executor(
-            None, partial(self.__ask, prompt=prompt, history=history)
-        )
+        return await loop.run_in_executor(None, partial(self.__ask, prompt=prompt, history=history))

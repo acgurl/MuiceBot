@@ -36,17 +36,11 @@ class Azure(BasicModel):
             self.token = os.environ["GITHUB_TOKEN"]
         except KeyError:
             self.token = self.config.api_key
-        self.endpoint = (
-            self.config.api_host
-            if self.config.api_host
-            else "https://models.inference.ai.azure.com"
-        )
+        self.endpoint = self.config.api_host if self.config.api_host else "https://models.inference.ai.azure.com"
         self.is_running = True
         return self.is_running
 
-    async def ask(
-        self, prompt: str, history: list
-    ) -> Union[AsyncGenerator[str, None], str]:
+    async def ask(self, prompt: str, history: list) -> Union[AsyncGenerator[str, None], str]:
         if self.auto_system_prompt:
             self.system_prompt = auto_system_prompt(prompt)
 
@@ -64,9 +58,7 @@ class Azure(BasicModel):
         else:
             messages.append(UserMessage(prompt))
 
-        client = ChatCompletionsClient(
-            endpoint=self.endpoint, credential=AzureKeyCredential(self.token)
-        )
+        client = ChatCompletionsClient(endpoint=self.endpoint, credential=AzureKeyCredential(self.token))
 
         response = await client.complete(
             messages=messages,

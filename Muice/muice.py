@@ -30,9 +30,7 @@ class Muice:
         module_name = f"Muice.llm.{self.model_loader}"
         module = importlib.import_module(module_name)
         ModelClass = getattr(module, self.model_loader, None)
-        self.model: Optional[BasicModel] = (
-            ModelClass(self.model_config) if ModelClass else None
-        )
+        self.model: Optional[BasicModel] = ModelClass(self.model_config) if ModelClass else None
 
     def load_model(self) -> bool:
         """
@@ -142,11 +140,7 @@ class Muice:
             reply = response
         else:
             async for chunk in response:
-                yield (
-                    chunk
-                    if not self.think
-                    else chunk.replace("<think>", "思考过程：").replace("</think>", "")
-                )
+                yield (chunk if not self.think else chunk.replace("<think>", "思考过程：").replace("</think>", ""))
                 reply += chunk
 
         end_time = time.time()

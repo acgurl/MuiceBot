@@ -17,11 +17,7 @@ class Openai(BasicModel):
     def load(self) -> bool:
         self.api_key = self.config.api_key
         self.model = self.config.model_name
-        self.api_base = (
-            self.config.api_host
-            if self.config.api_host
-            else "https://api.openai.com/v1"
-        )
+        self.api_base = self.config.api_host if self.config.api_host else "https://api.openai.com/v1"
         self.max_tokens = self.config.max_tokens
         self.temperature = self.config.temperature
         self.system_prompt = self.config.system_prompt
@@ -34,9 +30,7 @@ class Openai(BasicModel):
         self.is_running = True
         return self.is_running
 
-    async def ask(
-        self, prompt: str, history: list
-    ) -> Union[AsyncGenerator[str, None], str]:
+    async def ask(self, prompt: str, history: list) -> Union[AsyncGenerator[str, None], str]:
         """
         向 OpenAI 模型发送请求，并获取模型的推理结果
 
@@ -68,9 +62,7 @@ class Openai(BasicModel):
                 messages.append({"role": "assistant", "content": item[1]})
 
         if not history and self.user_instructions:
-            messages.append(
-                {"role": "user", "content": self.user_instructions + "\n" + prompt}
-            )
+            messages.append({"role": "user", "content": self.user_instructions + "\n" + prompt})
         else:
             messages.append({"role": "user", "content": prompt})
 
@@ -93,25 +85,14 @@ class Openai(BasicModel):
                         answer_content = delta.content
 
                         if (
-                            hasattr(delta, "reasoning_content")
-                            and delta.reasoning_content  # type:ignore
+                            hasattr(delta, "reasoning_content") and delta.reasoning_content  # type:ignore
                         ):
-                            reasoning_content = chunk.choices[
-                                0
-                            ].delta.reasoning_content  # type:ignore
-                            yield (
-                                reasoning_content
-                                if is_insert_think_label
-                                else "<think>" + reasoning_content
-                            )
+                            reasoning_content = chunk.choices[0].delta.reasoning_content  # type:ignore
+                            yield (reasoning_content if is_insert_think_label else "<think>" + reasoning_content)
                             is_insert_think_label = True
 
                         elif answer_content:
-                            yield (
-                                answer_content
-                                if not is_insert_think_label
-                                else "</think>" + answer_content
-                            )
+                            yield (answer_content if not is_insert_think_label else "</think>" + answer_content)
                             is_insert_think_label = False
 
                 return content_generator()

@@ -19,25 +19,15 @@ class Transformers(BasicModel):
     def load(self) -> bool:
         model_path = self.config.model_path
         pt_model_path = self.config.adapter_path
-        config = AutoConfig.from_pretrained(
-            model_path, trust_remote_code=True, pre_seq_len=128
-        )
-        self.tokenizer = AutoTokenizer.from_pretrained(
-            model_path, trust_remote_code=True
-        )
+        config = AutoConfig.from_pretrained(model_path, trust_remote_code=True, pre_seq_len=128)
+        self.tokenizer = AutoTokenizer.from_pretrained(model_path, trust_remote_code=True)
         if torch.cuda.is_available():
-            model = AutoModel.from_pretrained(
-                model_path, config=config, trust_remote_code=True
-            ).cuda()
+            model = AutoModel.from_pretrained(model_path, config=config, trust_remote_code=True).cuda()
         else:
             logging.warning("未检测到GPU,将使用CPU进行推理")
-            model = AutoModel.from_pretrained(
-                model_path, config=config, trust_remote_code=True
-            ).float()
+            model = AutoModel.from_pretrained(model_path, config=config, trust_remote_code=True).float()
         if pt_model_path:
-            prefix_state_dict = torch.load(
-                os.path.join(pt_model_path, "pytorch_model.bin"), map_location="cpu"
-            )
+            prefix_state_dict = torch.load(os.path.join(pt_model_path, "pytorch_model.bin"), map_location="cpu")
             new_prefix_state_dict = {}
             for k, v in prefix_state_dict.items():
                 if k.startswith("transformer.prefix_encoder."):
