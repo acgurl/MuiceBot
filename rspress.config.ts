@@ -9,6 +9,9 @@ export default defineConfig({
     'light': '/Muice-light-logo.png',
     'dark': '/Muice-dark-logo.png'
   },
+  route: {
+    cleanUrls: true,
+  },
   themeConfig: {
     socialLinks: [
       {

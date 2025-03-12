@@ -66,7 +66,7 @@ api_host: http://localhost:11434 # ollama 客户端端口（可选）
 loader: Openai # 使用 openai 加载器（必填）
 model_name: text-davinci-003 # 模型名称（必填）
 api_key: xxxxxx # API 密钥（必须）
-api_base: https://api.openai.com/v1 # 服务器 API 接口地址 （可选，默认 OpenAI 服务）
+api_host: https://api.openai.com/v1 # 服务器 API 接口地址 （可选，默认 OpenAI 服务）
 max_tokens: 1024 # 模型生成的最大 token 数（可选，默认为 1024）
 temperature: 0.7 #  模型生成的温度参数（可选，默认为 0.7，对R1使用无效）
 system_prompt: '现在开始你是一个名为的“沐雪”的AI女孩子' # 系统提示（可选）
