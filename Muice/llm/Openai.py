@@ -89,11 +89,12 @@ class Openai(BasicModel):
                     is_insert_think_label = False
 
                     async for chunk in response:
-                        answer_content = chunk.choices[0].delta.content
+                        delta = chunk.choices[0].delta
+                        answer_content = delta.content
 
                         if (
-                            hasattr(chunk.choices[0].delta, "reasoning_content")
-                            and chunk.choices[0].delta.reasoning_content  # type:ignore
+                            hasattr(delta, "reasoning_content")
+                            and delta.reasoning_content  # type:ignore
                         ):
                             reasoning_content = chunk.choices[
                                 0
@@ -116,17 +117,16 @@ class Openai(BasicModel):
                 return content_generator()
 
             result = ""
+            message = response.choices[0].message  # type:ignore
 
             if (
-                hasattr(response.choices[0].message, "reasoning_content")  # type:ignore
-                and response.choices[0].message.reasoning_content  # type:ignore
+                hasattr(message, "reasoning_content")  # type:ignore
+                and message.reasoning_content  # type:ignore
             ):
-                result += (
-                    f"<think>{response.choices[0].message.reasoning_content}</think>"
-                )  # type:ignore
+                result += f"<think>{message.reasoning_content}</think>"  # type:ignore
 
-            if response.choices[0].message.content:  # type:ignore
-                result += response.choices[0].message.content  # type:ignore
+            if message.content:  # type:ignore
+                result += message.content  # type:ignore
             return result if result else "（警告：模型无输出！）"
 
         except openai.OpenAIError as e:
