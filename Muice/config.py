@@ -10,6 +10,8 @@ from .llm import ModelConfig
 
 
 class PluginConfig(BaseModel):
+    log_level: str = "INFO"
+    """日志等级"""
     muice_nicknames: list = []
     """沐雪的自定义昵称，作为消息前缀条件响应信息事件"""
 
@@ -62,9 +64,7 @@ def get_config(model_config_name: str = "model") -> Config:
         raise ValueError(f"{model_config_name} 模型配置项不存在！")
 
     model_config = ModelConfig(**model_config)
-    schedule_configs = [
-        Schedule(**schedule_config) for schedule_config in schedule_configs
-    ]
+    schedule_configs = [Schedule(**schedule_config) for schedule_config in schedule_configs]
 
     configs.update({"model": model_config})
     configs.update({"schedule": schedule_configs})

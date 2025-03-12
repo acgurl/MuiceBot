@@ -8,6 +8,9 @@ from nonebot.plugin import PluginMetadata, inherit_supported_adapters  # noqa: E
 
 from .config import Config  # noqa: E402
 from .onebot import *  # noqa: E402, F403, F401
+from .utils import init_logger  # noqa: E402
+
+init_logger()
 
 __plugin_meta__ = PluginMetadata(
     name="MuiceBot",

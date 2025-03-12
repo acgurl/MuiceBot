@@ -1,4 +1,7 @@
 import base64
+import os
+import sys
+import time
 from typing import Optional
 
 import httpx
@@ -10,6 +13,9 @@ from nonebot.adapters.onebot.v12 import Bot as Onebotv12Bot
 from nonebot.adapters.onebot.v12.exception import UnsupportedParam
 from nonebot.adapters.telegram import Event as TelegramEvent
 from nonebot.adapters.telegram.message import File as TelegramFile
+from nonebot.log import default_filter, logger_id
+
+from .config import plugin_config
 
 IMG_DIR = store.get_plugin_data_dir() / ".cache" / "images"
 IMG_DIR.mkdir(parents=True, exist_ok=True)
@@ -37,9 +43,7 @@ async def save_image_as_file(image_url: str, file_name: str = "image.png") -> st
         return str(local_path)
 
 
-async def save_image_as_base64(
-    image_url: Optional[str], image_bytes: Optional[bytes]
-) -> bytes:
+async def save_image_as_base64(image_url: Optional[str], image_bytes: Optional[bytes]) -> bytes:
     if image_url:
         async with httpx.AsyncClient() as client:
             r = await client.get(image_url, headers={"User-Agent": User_Agent})
@@ -62,9 +66,7 @@ async def legacy_get_images(message: MessageSegment, event: Event) -> str:
     if isinstance(bot, Onebotv12Bot):
         if message.type == "image":
             try:
-                image_path = await bot.get_file(
-                    type="url", file_id=message.data["file_id"]
-                )
+                image_path = await bot.get_file(type="url", file_id=message.data["file_id"])
             except UnsupportedParam as e:
                 logger.error(f"Onebot 实现不支持获取文件 URL，图片获取操作失败：{e}")
                 return ""
@@ -86,3 +88,34 @@ async def legacy_get_images(message: MessageSegment, event: Event) -> str:
             return await save_image_as_file(url, filename)
 
     return ""
+
+
+def init_logger():
+    console_handler_level = plugin_config.log_level
+
+    log_dir = "logs"
+    if not os.path.exists(log_dir):
+        os.mkdir(log_dir)
+
+    log_file_path = f"{log_dir}/{time.strftime('%Y-%m-%d')}.log"
+
+    # 移除 NoneBot 默认的日志处理器
+    logger.remove(logger_id)
+    # 添加新的日志处理器
+    logger.add(
+        sys.stdout,
+        level=console_handler_level,
+        diagnose=True,
+        format="<lvl>[{level}] {function}: {message}</lvl>",
+        filter=default_filter,
+        colorize=True,
+    )
+
+    logger.add(
+        log_file_path,
+        level="DEBUG",
+        format="[{time:YYYY-MM-DD HH:mm:ss}] [{level}] {function}: {message}",
+        encoding="utf-8",
+        rotation="1 day",
+        retention="7 days",
+    )
