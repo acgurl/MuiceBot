@@ -17,9 +17,9 @@
 
 ✅ 内嵌多种模型加载器，比如 [Llmtuner](https://github.com/hiyouga/LLaMA-Factory) 和 [OpenAI](https://platform.openai.com/docs/overview) ，可加载市面上大多数的模型服务或本地模型，部分支持多模态（图片识别）。另外还附送只会计算 3.9 > 3.11 的沐雪 Roleplay 微调模型一枚~
 
-✅ 支持 `nonebot.adapters.onebot.v11&v12` 、`nonebot.adapters.qq`  、`nonebot.adapters.telegram` 适配器，其中部分特定适配器可为对应的平台提供较好的支持 ~~（大概吧）~~
+✅ 使用 `nonebot_plugin_alconna` 作为通用信息接口，支持市面上的大多数适配器，当然也对一些常见的适配器做了优化
 
-✅ 支持基于 `nonebot_plugin_apscheduler` 的定时任务，可定时向大语言模型交互或直接发送信息。
+✅ 支持基于 `nonebot_plugin_apscheduler` 的定时任务，可定时向大语言模型交互或直接发送信息
 
 ✅ 支持基于 `nonebot_plugin_alconna` 的几条常见指令。什么，没有群管理指令？下次再说吧（bushi）
 
@@ -43,3 +43,5 @@
 
 - [ ] 发布。我知道你很急，但是你先别急。
 
+
+近期更新路线：[MuiceBot 更新计划](https://github.com/users/Moemu/projects/2)

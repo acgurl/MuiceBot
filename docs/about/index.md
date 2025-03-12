@@ -16,9 +16,9 @@
 
 感谢各位开发者的协助，这里就不一一列举出名字了：
 
-<!-- <a href="https://github.com/eryajf/Moemu/MuiceBot/contributors">
+<a href="https://github.com/eryajf/Moemu/MuiceBot/contributors">
   <img src="https://contrib.rocks/image?repo=Moemu/MuiceBot"  alt="图片加载中..."/>
-</a> -->
+</a>
 
 友情链接：[LiteyukiStudio/nonebot-plugin-marshoai](https://github.com/LiteyukiStudio/nonebot-plugin-marshoai)
 
@@ -31,6 +31,6 @@
 <a href="https://www.afdian.com/a/Moemu" target="_blank"><img src="https://pic1.afdiancdn.com/static/img/welcome/button-sponsorme.png" alt="afadian" style="height: 45px !important;width: 163px !important;"></a>
 <a href="https://www.buymeacoffee.com/Moemu" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" style="height: 45px !important;width: 163px !important;" ></a>
 
-<!-- Star History： -->
+Star History：
 
-<!-- [![Star History Chart](https://api.star-history.com/svg?repos=Moemu/Muice-Chatbot&type=Date)](https://star-history.com/#Moemu/Muice-Chatbot&Date) -->
+[![Star History Chart](https://api.star-history.com/svg?repos=Moemu/MuiceBot&type=Date)](https://star-history.com/#Moemu/MuiceBot&Date)
