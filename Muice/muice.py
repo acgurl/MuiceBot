@@ -1,6 +1,6 @@
 import importlib
 import time
-from typing import Optional
+from typing import AsyncGenerator, Optional
 
 from nonebot import logger
 
@@ -94,9 +94,9 @@ class Muice:
         logger.debug(f"模型调用参数：Prompt: {message}, History: {history}")
         if self.multimodal:
             reply = await self.model.ask_vision(message, image_paths, history)
-            reply.strip()
         else:
             reply = await self.model.ask(message, history)
+        if isinstance(reply, str):
             reply.strip()
         end_time = time.time()
         logger.info(f"模型调用时长: {end_time - start_time} s")
@@ -107,6 +107,54 @@ class Muice:
         await self.database.add_item(userid, message, result, image_paths)
 
         return reply
+
+    async def ask_stream(
+        self,
+        message: str,
+        userid: str,
+        image_paths: list = [],
+        enable_history: bool = True,
+    ) -> AsyncGenerator[str, None]:
+        """
+        以流式方式调用模型并逐步返回输出
+        """
+        if not (self.model and self.model.is_running):
+            logger.error("模型未加载")
+            yield "(模型未加载)"
+            return
+
+        logger.info("正在调用模型...")
+
+        history = await self.get_chat_memory(userid) if enable_history else []
+
+        start_time = time.time()
+        logger.debug(f"模型调用参数：Prompt: {message}, History: {history}")
+
+        if self.multimodal:
+            response = await self.model.ask_vision(message, image_paths, history)
+        else:
+            response = await self.model.ask(message, history)  # 改成流式
+
+        reply = ""
+
+        if isinstance(response, str):
+            yield response.strip()
+            reply = response
+        else:
+            async for chunk in response:
+                yield (
+                    chunk
+                    if not self.think
+                    else chunk.replace("<think>", "思考过程：").replace("</think>", "")
+                )
+                reply += chunk
+
+        end_time = time.time()
+        logger.info(f"模型调用时长: {end_time - start_time} s")
+
+        _, result = process_thoughts(reply, self.think)  # type: ignore
+
+        await self.database.add_item(userid, message, result, image_paths)
 
     async def get_chat_memory(self, userid: str) -> list:
         """
@@ -143,9 +191,9 @@ class Muice:
         logger.debug(f"模型调用参数：Prompt: {message}, History: {history}")
         if self.multimodal and image_paths:
             reply = await self.model.ask_vision(message, image_paths, history)
-            reply.strip()
         else:
             reply = await self.model.ask(message, history)
+        if isinstance(reply, str):
             reply.strip()
         end_time = time.time()
         logger.info(f"模型调用时长: {end_time - start_time} s")

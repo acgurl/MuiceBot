@@ -234,35 +234,51 @@ async def handle_supported_adapters(message: UniMsg, event: Event):
     if not (message_text or image_paths):
         return
 
+    if muice.model_config.stream:
+        current_paragraphs = ""
+        async for chunk in muice.ask_stream(
+            message_text, userid, image_paths=image_paths
+        ):
+            current_paragraphs += chunk
+            logger.debug(f"Stream response: {chunk}")
+            if current_paragraphs.endswith("\n\n") or current_paragraphs.endswith("。"):
+                await UniMessage(current_paragraphs).send()
+                current_paragraphs = ""
+        if current_paragraphs:
+            await UniMessage(current_paragraphs).finish()
+        return
+
     response = await muice.ask(message_text, userid, image_paths=image_paths)
-    response.strip()
+    response = response.strip()
 
     logger.info(f"Response: {message_text}")
 
-    paragraphs = response.split("\n")
+    paragraphs = response.split("\n\n")
 
     for index, paragraph in enumerate(paragraphs):
+        if not paragraph.strip():
+            continue  # 跳过空白文段
         if index == len(paragraphs) - 1:
             await UniMessage(paragraph).finish()
         await UniMessage(paragraph).send()
 
 
-@at_event.handle()
-@nickname_event.handle()
-async def handle_universal_adapters(event: Event):
-    message = event.get_plaintext()
-    user_id = event.get_user_id()
-    logger.info(f"Received a message: {message}")
+# @at_event.handle()
+# @nickname_event.handle()
+# async def handle_universal_adapters(event: Event):
+#     message = event.get_plaintext()
+#     user_id = event.get_user_id()
+#     logger.info(f"Received a message: {message}")
 
-    if not message:
-        return
+#     if not message:
+#         return
 
-    response = await muice.ask(message, user_id)
-    response.strip()
+#     response = await muice.ask(message, user_id)
+#     response.strip()
 
-    paragraphs = response.split("\n")
+#     paragraphs = response.split("\n")
 
-    for index, paragraph in enumerate(paragraphs):
-        if index == len(paragraphs) - 1:
-            await UniMessage(paragraph).finish()
-        await UniMessage(paragraph).send()
+#     for index, paragraph in enumerate(paragraphs):
+#         if index == len(paragraphs) - 1:
+#             await UniMessage(paragraph).finish()
+#         await UniMessage(paragraph).send()

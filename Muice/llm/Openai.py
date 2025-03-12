@@ -1,6 +1,9 @@
+from typing import AsyncGenerator, Union
+
 import httpx
 import openai
 from nonebot import logger
+from openai import AsyncStream
 
 from ._types import BasicModel, ModelConfig
 from .utils.auto_system_prompt import auto_system_prompt
@@ -25,12 +28,15 @@ class Openai(BasicModel):
         self.auto_system_prompt = self.config.auto_system_prompt
         self.user_instructions = self.config.user_instructions
         self.auto_user_instructions = self.config.auto_user_instructions
+        self.stream = self.config.stream
 
         self.client = openai.AsyncOpenAI(api_key=self.api_key, base_url=self.api_base)
         self.is_running = True
         return self.is_running
 
-    async def ask(self, prompt, history=None) -> str:
+    async def ask(
+        self, prompt: str, history: list
+    ) -> Union[AsyncGenerator[str, None], str]:
         """
         向 OpenAI 模型发送请求，并获取模型的推理结果
 
@@ -38,53 +44,90 @@ class Openai(BasicModel):
         :param history: 之前的对话历史（可选）
         :return: 模型生成的文本
         """
+        messages = []
+
+        if self.auto_system_prompt:
+            self.system_prompt = auto_system_prompt(prompt)
+        if self.system_prompt:
+            messages.append({"role": "system", "content": self.system_prompt})
+
+        if self.auto_user_instructions:
+            self.user_instructions = auto_system_prompt(prompt)
+
+        if history:
+            for index, item in enumerate(history):
+                if index == 0:
+                    messages.append(
+                        {
+                            "role": "user",
+                            "content": self.user_instructions + "\n" + item[0],
+                        }
+                    )
+                else:
+                    messages.append({"role": "user", "content": item[0]})
+                messages.append({"role": "assistant", "content": item[1]})
+
+        if not history and self.user_instructions:
+            messages.append(
+                {"role": "user", "content": self.user_instructions + "\n" + prompt}
+            )
+        else:
+            messages.append({"role": "user", "content": prompt})
+
         try:
-            messages = []
-
-            if self.auto_system_prompt:
-                self.system_prompt = auto_system_prompt(prompt)
-            if self.system_prompt:
-                messages.append({"role": "system", "content": self.system_prompt})
-
-            if self.auto_user_instructions:
-                self.user_instructions = auto_system_prompt(prompt)
-
-            if history:
-                for index, item in enumerate(history):
-                    if index == 0:
-                        messages.append(
-                            {
-                                "role": "user",
-                                "content": self.user_instructions + "\n" + item[0],
-                            }
-                        )
-                    else:
-                        messages.append({"role": "user", "content": item[0]})
-                    messages.append({"role": "assistant", "content": item[1]})
-
-            if not history and self.user_instructions:
-                messages.append(
-                    {"role": "user", "content": self.user_instructions + "\n" + prompt}
-                )
-            else:
-                messages.append({"role": "user", "content": prompt})
-
             response = await self.client.chat.completions.create(
                 model=self.model,
                 messages=messages,
                 max_tokens=self.max_tokens,
                 temperature=self.temperature,
+                stream=self.stream,
             )
 
-            # 获取并返回模型生成的文本
-            if self.model in ["deepseek-reasoner"]:
-                return (
-                    f"<think>{response.choices[0].message.reasoning_content}</think>"  # type: ignore
-                    f"{response.choices[0].message.content}"
-                )
+            if isinstance(response, AsyncStream) and self.stream:
 
-            if response.choices[0].message.content:
-                return response.choices[0].message.content
+                async def content_generator():
+                    is_insert_think_label = False
+
+                    async for chunk in response:
+                        answer_content = chunk.choices[0].delta.content
+
+                        if (
+                            hasattr(chunk.choices[0].delta, "reasoning_content")
+                            and chunk.choices[0].delta.reasoning_content  # type:ignore
+                        ):
+                            reasoning_content = chunk.choices[
+                                0
+                            ].delta.reasoning_content  # type:ignore
+                            yield (
+                                reasoning_content
+                                if is_insert_think_label
+                                else "<think>" + reasoning_content
+                            )
+                            is_insert_think_label = True
+
+                        elif answer_content:
+                            yield (
+                                answer_content
+                                if not is_insert_think_label
+                                else "</think>" + answer_content
+                            )
+                            is_insert_think_label = False
+
+                return content_generator()
+
+            result = ""
+
+            if (
+                hasattr(response.choices[0].message, "reasoning_content")  # type:ignore
+                and response.choices[0].message.reasoning_content  # type:ignore
+            ):
+                result += (
+                    f"<think>{response.choices[0].message.reasoning_content}</think>"
+                )  # type:ignore
+
+            if response.choices[0].message.content:  # type:ignore
+                result += response.choices[0].message.content  # type:ignore
+            return result if result else "（警告：模型无输出！）"
 
         except openai.OpenAIError as e:
             logger.error(f"OpenAI API 错误: {e}", exc_info=True)

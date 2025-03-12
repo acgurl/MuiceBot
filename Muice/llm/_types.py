@@ -1,6 +1,6 @@
 from abc import ABCMeta, abstractmethod
 from importlib.util import find_spec
-from typing import Literal
+from typing import AsyncGenerator, Literal, Union
 
 from nonebot import logger
 from pydantic import BaseModel as BasicConfigModel
@@ -33,8 +33,10 @@ class ModelConfig(BasicConfigModel):
     """模型的存在惩罚"""
     repetition_penalty: float = 1.0
     """模型的重复惩罚"""
-    think: Literal[0, 1, 2] = 0
+    think: Literal[0, 1, 2] = 1
     """针对 Deepseek-R1 等思考模型的思考过程提取模式"""
+    stream: bool = False
+    """是否使用流式输出"""
 
     model_path: str = ""
     """本地模型路径"""
@@ -107,7 +109,9 @@ class BasicModel(metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    async def ask(self, prompt: str, history: list) -> str:
+    async def ask(
+        self, prompt: str, history: list
+    ) -> Union[AsyncGenerator[str, None], str]:
         """
         模型交互询问
 
@@ -117,7 +121,9 @@ class BasicModel(metaclass=ABCMeta):
         """
         pass
 
-    async def ask_vision(self, prompt, image_paths: list, history=None) -> str:
+    async def ask_vision(
+        self, prompt, image_paths: list, history=None
+    ) -> Union[AsyncGenerator[str, None], str]:
         """
         多模态：图像识别
 

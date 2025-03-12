@@ -1,7 +1,7 @@
 import asyncio
 import pathlib
 from functools import partial
-from typing import Generator
+from typing import AsyncGenerator, Generator, Union
 
 import dashscope
 from dashscope.api_entities.dashscope_response import (
@@ -28,10 +28,11 @@ class Dashscope(BasicModel):
         self.repetition_penalty = self.config.repetition_penalty
         self.system_prompt = self.config.system_prompt
         self.auto_system_prompt = self.config.auto_system_prompt
+        self.stream = self.config.stream
         self.is_running = True
         return self.is_running
 
-    def __ask(self, prompt, history=None) -> str:
+    def __ask(self, prompt, history=None) -> Generator[str, None, None]:
         messages = []
 
         if self.auto_system_prompt:
@@ -53,23 +54,56 @@ class Dashscope(BasicModel):
             temperature=self.temperature,
             top_p=self.top_p,
             repetition_penalty=self.repetition_penalty,
+            stream=self.stream,
         )
 
-        if isinstance(response, Generator):
-            response = next(response)
+        if isinstance(response, Generator) and self.stream:
+            is_insert_think_label = False
+            for chunk in response:
+                answer_content = chunk.output.choices[0].message.content
+                reasoning_content = chunk.output.choices[0].message.reasoning_content
+                if answer_content == "" and reasoning_content == "":
+                    continue
+
+                if reasoning_content != "" and answer_content == "":
+                    yield (
+                        reasoning_content
+                        if is_insert_think_label
+                        else "<think>" + reasoning_content
+                    )
+                    is_insert_think_label = True
+
+                elif answer_content != "":
+                    if isinstance(answer_content, list):
+                        answer_content = "".join(answer_content)  # 不知道为什么会是list
+                    yield (
+                        answer_content
+                        if not is_insert_think_label
+                        else "</think>" + answer_content
+                    )
+                    is_insert_think_label = False
+            return
 
         if isinstance(response, GenerationResponse):
-            return response.output.text
+            logger.info(
+                f"Return: {response.output.text}, type:{type(response.output.text)}"
+            )
+            yield response.output.text
 
-        logger.error(f"DashScope failed to generate response: {response}")
+    async def ask(self, prompt, history=None) -> Union[AsyncGenerator[str, None], str]:
+        if self.stream:
 
-        return "（模型内部错误）"
+            async def sync_to_async_generator():
+                for chunk in self.__ask(prompt, history):
+                    yield chunk
 
-    async def ask(self, prompt, history=None) -> str:
-        loop = asyncio.get_event_loop()
-        return await loop.run_in_executor(
-            None, partial(self.__ask, prompt=prompt, history=history)
-        )
+            return sync_to_async_generator()
+        else:
+            loop = asyncio.get_event_loop()
+            result = await loop.run_in_executor(
+                None, partial(self.__ask, prompt=prompt, history=history)
+            )
+            return "".join(result)
 
     def __ask_vision(self, prompt, image_paths: list, history=None) -> str:
         """
