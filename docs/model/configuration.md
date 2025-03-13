@@ -56,7 +56,7 @@ top_k: 0.95 # 模型生成的 Top_k 参数（可选）
 
 ```yaml
 loader: Ollama # 使用 Ollama 加载器（必填）
-model_path: deepseek-r1 # ollama 模型名称（必填）
+model_name: deepseek-r1 # ollama 模型名称（必填）
 api_host: http://localhost:11434 # ollama 客户端端口（可选）
 ```
 
