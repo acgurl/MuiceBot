@@ -7,6 +7,7 @@ import ssl
 from datetime import datetime
 from functools import partial
 from time import mktime
+from typing import AsyncGenerator, Generator, Union
 from urllib.parse import urlencode, urlparse
 from wsgiref.handlers import format_date_time
 
@@ -37,29 +38,55 @@ class Xfyun(BasicModel):
         self.temperature = self.config.temperature
         self.top_k = self.config.top_k
         self.max_tokens = self.config.max_tokens
+        self.stream = self.config.stream
+
         self.url = self.config.api_host if self.config.api_host else "wss://maas-api.cn-huabei-1.xf-yun.com/v1.1/chat"
         self.host = urlparse(self.url).netloc
         self.path = urlparse(self.url).path
+
+        self.stream_queue: asyncio.Queue = asyncio.Queue()
         self.response = ""
         self.is_history = False
         self.is_running = True
+        self.is_insert_think_label = False
+
         return self.is_running
 
-    # 生成url
-    def __create_url(self):
-        # 生成RFC1123格式的时间戳
+    def __add_think_tag(self, text_body: dict) -> str:
+        """
+        添加思考过程标签
+        """
+        answer_content = text_body["content"]
+        reasoning_content = text_body.get("reasoning_content", "")
+
+        if reasoning_content and answer_content and not self.stream:
+            return f"<think>{reasoning_content}</think>{answer_content}"
+
+        elif reasoning_content != "" and answer_content == "":
+            if not self.is_insert_think_label:
+                self.is_insert_think_label = True
+                reasoning_content = "<think>" + reasoning_content
+            return reasoning_content
+
+        elif answer_content != "":
+            if self.is_insert_think_label:
+                self.is_insert_think_label = False
+                answer_content = "</think>" + answer_content
+            return answer_content
+
+        return ""
+
+    def __create_url(self) -> str:
         now = datetime.now()
         date = format_date_time(mktime(now.timetuple()))
 
-        # 拼接字符串
         signature_origin = "host: " + self.host + "\n"
         signature_origin += "date: " + date + "\n"
         signature_origin += "GET " + self.path + " HTTP/1.1"
 
-        # 进行hmac-sha256进行加密
         signature_sha = hmac.new(
-            self.api_secret.encode("utf-8"),  # type: ignore
-            signature_origin.encode("utf-8"),  # type: ignore
+            self.api_secret.encode("utf-8"),
+            signature_origin.encode("utf-8"),
             digestmod=hashlib.sha256,
         ).digest()
 
@@ -74,23 +101,34 @@ class Xfyun(BasicModel):
 
         authorization = base64.b64encode(authorization_origin.encode("utf-8")).decode(encoding="utf-8")
 
-        # 将请求的鉴权参数组合为字典
         v = {"authorization": authorization, "date": date, "host": self.host}
-        # 拼接鉴权参数，生成url
         url = self.url + "?" + urlencode(v)
-        # 此处打印出建立连接时候的url,参考本demo的时候可取消上方打印的注释，比对相同参数时生成的url与自己代码生成的url是否一致
         return url
 
     def __on_message(self, ws, message):
         response = json.loads(message)
-        logger.debug(f"Spark返回数据: {response}")
+        # logger.debug(f"Spark返回数据: {response}")
+
         if response["header"]["code"] != 0:  # 不合规时该值为10013
             logger.warning(f"调用Spark在线模型时发生错误: {response['header']['message']}")
             self.response = "（已被过滤）"
+            if self.stream:
+                self.stream_queue.put_nowait("（已被过滤）")
+                self.stream_queue.put_nowait(None)  # 表示流结束
             ws.close()
-        elif response["header"]["status"] in [0, 1, 2] and response["payload"]["choices"]["text"][0]["content"] != " ":
-            self.response += response["payload"]["choices"]["text"][0]["content"]
+            return
+
+        text_body = response["payload"]["choices"]["text"][0]
+
+        if response["header"]["status"] in [0, 1, 2]:
+            content = self.__add_think_tag(text_body)
+            self.response += content
+            if self.stream:
+                self.stream_queue.put_nowait(content)
+
         if response["header"]["status"] == 2:
+            if self.stream:
+                self.stream_queue.put_nowait(None)  # 表示流结束
             ws.close()
 
     def __on_error(self, ws, error):
@@ -135,8 +173,9 @@ class Xfyun(BasicModel):
             self.history.append({"role": "user", "content": item[0]})
             self.history.append({"role": "assistant", "content": item[1]})
 
-    def __ask(self, prompt: str, history: list) -> str:
+    def __ask(self, prompt: str, history: list) -> Generator[str, None, None]:
         self.response = ""
+        self.stream_queue = asyncio.Queue()
         self.__generate_history(history)
         if not self.is_history:
             self.history.append(
@@ -156,10 +195,41 @@ class Xfyun(BasicModel):
             on_close=self.__on_close,
         )
         ws.on_open = self.__on_open
-        ws.run_forever(sslopt={"cert_reqs": ssl.CERT_NONE}, ping_timeout=10)
 
-        return self.response
+        if self.stream:
+            # 启动WebSocket连接
+            import threading
 
-    async def ask(self, prompt, history=None) -> str:
-        loop = asyncio.get_event_loop()
-        return await loop.run_in_executor(None, partial(self.__ask, prompt=prompt, history=history))
+            threading.Thread(
+                target=ws.run_forever, kwargs={"sslopt": {"cert_reqs": ssl.CERT_NONE}, "ping_timeout": 10}, daemon=True
+            ).start()
+            while True:
+                # 使用阻塞获取队列内容，避免高CPU占用
+                try:
+                    content = self.stream_queue.get_nowait()
+                    if content is None:  # 流结束
+                        break
+                    yield content
+                except asyncio.QueueEmpty:
+                    # 队列为空，短暂等待后重试
+                    import time
+
+                    time.sleep(0.01)
+        else:
+            ws.run_forever(sslopt={"cert_reqs": ssl.CERT_NONE}, ping_timeout=10)
+            yield self.response
+
+    async def ask(self, prompt, history=None) -> Union[AsyncGenerator[str, None], str]:
+        if self.stream:
+
+            async def sync_to_async_generator():
+                loop = asyncio.get_event_loop()
+                generator = await loop.run_in_executor(None, partial(self.__ask, prompt=prompt, history=history))
+                for chunk in generator:
+                    yield chunk
+
+            return sync_to_async_generator()
+        else:
+            loop = asyncio.get_event_loop()
+            result = await loop.run_in_executor(None, partial(self.__ask, prompt=prompt, history=history))
+            return "".join(result)  # 转换生成器结果为字符串
