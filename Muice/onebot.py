@@ -224,15 +224,24 @@ async def handle_supported_adapters(message: UniMsg, event: Event):
         return
 
     if muice.model_config.stream:
-        current_paragraphs = ""
+        current_paragraph = ""
+
         async for chunk in muice.ask_stream(message_text, userid, image_paths=image_paths):
-            current_paragraphs += chunk
+            current_paragraph += chunk
             logger.debug(f"Stream response: {chunk}")
-            if current_paragraphs.endswith("\n\n") or current_paragraphs.endswith("。"):
-                await UniMessage(current_paragraphs).send()
-                current_paragraphs = ""
-        if current_paragraphs:
-            await UniMessage(current_paragraphs).finish()
+            paragraphs = current_paragraph.split("\n\n")
+
+            while len(paragraphs) > 1:
+                current_paragraph = paragraphs[0].strip()
+                if current_paragraph:
+                    await UniMessage(current_paragraph).send()
+                paragraphs = paragraphs[1:]
+
+            current_paragraph = paragraphs[-1].strip()
+
+        if current_paragraph:
+            await UniMessage(current_paragraph).finish()
+
         return
 
     response = await muice.ask(message_text, userid, image_paths=image_paths)

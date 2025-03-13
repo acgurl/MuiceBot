@@ -100,7 +100,7 @@ class Muice:
         logger.info(f"模型调用时长: {end_time - start_time} s")
 
         thought, result = process_thoughts(reply, self.think)  # type: ignore
-        reply = "".join([thought, result])
+        reply = "\n\n".join([thought, result])
 
         await self.database.add_item(userid, message, result, image_paths)
 
@@ -194,7 +194,7 @@ class Muice:
         logger.info(f"模型返回：{reply}")
 
         thought, result = process_thoughts(reply, self.think)  # type: ignore
-        reply = "".join([thought, result])
+        reply = "\n\n".join([thought, result])
 
         await self.database.add_item(userid, message, result, image_paths)
 

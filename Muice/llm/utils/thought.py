@@ -26,4 +26,4 @@ def process_thoughts(message: str, status: Literal[0, 1, 2] = 1) -> tuple[str, s
     if status == 2 or not thoughts:
         return ("", result)
 
-    return (f"思考过程：{thoughts}\n", f"{result}")
+    return (f"思考过程：{thoughts}", f"{result}")
