@@ -27,7 +27,7 @@ User_Agent = (
 )
 
 
-async def save_image_as_file(image_url: str, file_name: str = "image.png") -> str:
+async def save_image_as_file(image_url: str, file_name: str = str(time.time_ns()) + ".jpg") -> str:
     """
     保存图片至本地目录
 
