@@ -46,15 +46,21 @@ class Dashscope(BasicModel):
     async def _ask_sync(self, prompt: str, history: List[Tuple[str, str]]) -> str:
         messages = self._build_messages(prompt, history)
 
-        response = dashscope.Generation.call(
-            api_key=self.api_key,
-            model=self.model,
-            messages=messages,
-            max_tokens=self.max_tokens,
-            temperature=self.temperature,
-            top_p=self.top_p,
-            repetition_penalty=self.repetition_penalty,
-            stream=False,
+        loop = asyncio.get_event_loop()
+
+        response = await loop.run_in_executor(
+            None,
+            partial(
+                dashscope.Generation.call,
+                api_key=self.api_key,
+                model=self.model,
+                messages=messages,
+                max_tokens=self.max_tokens,
+                temperature=self.temperature,
+                top_p=self.top_p,
+                repetition_penalty=self.repetition_penalty,
+                stream=False,
+            ),
         )
 
         if isinstance(response, GenerationResponse):
@@ -65,15 +71,21 @@ class Dashscope(BasicModel):
     async def _ask_stream(self, prompt: str, history: List[Tuple[str, str]]) -> AsyncGenerator[str, None]:
         messages = self._build_messages(prompt, history)
 
-        response = dashscope.Generation.call(
-            api_key=self.api_key,
-            model=self.model,
-            messages=messages,
-            max_tokens=self.max_tokens,
-            temperature=self.temperature,
-            top_p=self.top_p,
-            repetition_penalty=self.repetition_penalty,
-            stream=True,
+        loop = asyncio.get_event_loop()
+
+        response = await loop.run_in_executor(
+            None,
+            partial(
+                dashscope.Generation.call,
+                api_key=self.api_key,
+                model=self.model,
+                messages=messages,
+                max_tokens=self.max_tokens,
+                temperature=self.temperature,
+                top_p=self.top_p,
+                repetition_penalty=self.repetition_penalty,
+                stream=True,
+            ),
         )
 
         if isinstance(response, GenerationResponse):
@@ -114,13 +126,9 @@ class Dashscope(BasicModel):
 
         return await self._ask_sync(prompt, history)
 
-    def _ask_vision(self, prompt, image_paths: list, history=None) -> str:
-        """
-        多模态：图像识别
+    # 多模态部分
 
-        :param image_path: 图像路径
-        :return: 识别结果
-        """
+    def _build_message_vision(self, prompt: str, image_paths: List[str], history: List[Tuple[str, str]]) -> list:
         messages = []
 
         if self.auto_system_prompt:
@@ -155,34 +163,93 @@ class Dashscope(BasicModel):
 
         messages.append({"role": "user", "content": user_content})
 
-        response = dashscope.MultiModalConversation.call(  # type: ignore
-            api_key=self.api_key, model=self.model, messages=messages
+        return messages
+
+    async def _ask_vision_sync(self, prompt: str, image_paths: List[str], history: List[Tuple[str, str]]) -> str:
+        messages = self._build_message_vision(prompt, image_paths, history)
+
+        loop = asyncio.get_event_loop()
+
+        response = await loop.run_in_executor(
+            None,
+            partial(
+                dashscope.MultiModalConversation.call,
+                api_key=self.api_key,
+                model=self.model,
+                messages=messages,
+                stream=False,
+            ),
         )
 
         if isinstance(response, Generator):
-            response = next(response)
+            return "(模型内部错误: 在流关闭的情况下返回了 Generator)"
 
         if response.status_code != 200:
             logger.error(f"DashScope failed to generate response: {response}")
-            return "（模型内部错误）"
+            return f"（模型内部错误: {response}）"
 
-        if isinstance(response, MultiModalConversationResponse):
-            if isinstance(response.output.choices[0].message.content, str):
-                return response.output.choices[0].message.content
-            return response.output.choices[0].message.content[0]["text"]  # type: ignore
+        if isinstance(response.output.choices[0].message.content, str):
+            return response.output.choices[0].message.content
 
-        logger.error(f"DashScope failed to generate response: {response}")
-        return "（模型内部错误）"
+        return response.output.choices[0].message.content[0]["text"]  # type: ignore
 
-    async def ask_vision(self, prompt, image_paths: list, history=None) -> str:
-        """异步版本的 ask_vision 方法"""
+    async def _ask_vision_stream(
+        self, prompt: str, image_paths: List[str], history: List[Tuple[str, str]]
+    ) -> AsyncGenerator[str, None]:
+        messages = self._build_message_vision(prompt, image_paths, history)
+
         loop = asyncio.get_event_loop()
-        return await loop.run_in_executor(
+
+        response = await loop.run_in_executor(
             None,
             partial(
-                self._ask_vision,
-                prompt=prompt,
-                image_paths=image_paths,
-                history=history,
+                dashscope.MultiModalConversation.call,
+                api_key=self.api_key,
+                model=self.model,
+                messages=messages,
+                stream=True,
             ),
         )
+
+        if isinstance(response, MultiModalConversationResponse):
+            logger.warning("模型内部错误：在流开启的情况下返回了 MultiModalConversationResponse")
+            if isinstance(response.output.choices[0].message.content, str):
+                yield response.output.choices[0].message.content
+            else:
+                yield response.output.choices[0].message.content[0]["text"]
+            return
+
+        size = 0
+
+        for chunk in response:
+            logger.debug(chunk)
+            content_body = chunk.output.choices[0].message.content
+            if isinstance(content_body, str):
+                yield content_body[size:]
+                size = len(content_body)
+            else:
+                yield content_body[0]["text"][size:]
+                size = len(content_body[0]["text"])
+
+    @overload
+    async def ask_vision(
+        self, prompt, image_paths: list, history: List[Tuple[str, str]], stream: Literal[False]
+    ) -> str: ...
+
+    @overload
+    async def ask_vision(
+        self, prompt, image_paths: list, history: List[Tuple[str, str]], stream: Literal[True]
+    ) -> AsyncGenerator[str, None]: ...
+
+    async def ask_vision(
+        self, prompt: str, image_paths: List[str], history: List[Tuple[str, str]], stream: bool = False
+    ) -> Union[AsyncGenerator[str, None], str]:
+        """
+        多模态：图像识别
+
+        :param image_path: 图像路径
+        :return: 识别结果
+        """
+        if not stream:
+            return await self._ask_vision_sync(prompt, image_paths, history)
+        return self._ask_vision_stream(prompt, image_paths, history)

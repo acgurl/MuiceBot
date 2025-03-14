@@ -147,8 +147,18 @@ class BasicModel(metaclass=ABCMeta):
         """
         pass
 
+    @overload
     async def ask_vision(
-        self, prompt, image_paths: list, history: List[Tuple[str, str]]
+        self, prompt, image_paths: list, history: List[Tuple[str, str]], stream: Literal[False]
+    ) -> str: ...
+
+    @overload
+    async def ask_vision(
+        self, prompt, image_paths: list, history: List[Tuple[str, str]], stream: Literal[True]
+    ) -> AsyncGenerator[str, None]: ...
+
+    async def ask_vision(
+        self, prompt, image_paths: list, history: List[Tuple[str, str]], stream: Optional[bool] = False
     ) -> Union[AsyncGenerator[str, None], str]:
         """
         多模态：图像识别
