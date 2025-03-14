@@ -1,6 +1,6 @@
 from abc import ABCMeta, abstractmethod
 from importlib.util import find_spec
-from typing import AsyncGenerator, Literal, Union
+from typing import AsyncGenerator, List, Literal, Optional, Tuple, Union, overload
 
 from nonebot import logger
 from pydantic import BaseModel as BasicConfigModel
@@ -82,6 +82,9 @@ class ModelConfig(BasicConfigModel):
 
 class BasicModel(metaclass=ABCMeta):
     def __init__(self, model_config: ModelConfig) -> None:
+        """
+        统一在此处声明变量
+        """
         self.config = model_config
         self.is_running = False
 
@@ -95,17 +98,46 @@ class BasicModel(metaclass=ABCMeta):
         if missing_fields:
             raise ValueError(f"对于 {self.config.loader} 以下配置是必需的: {', '.join(missing_fields)}")
 
-    @abstractmethod
-    def load(self) -> bool:
+    def _build_messages(self, prompt: str, history: List[Tuple[str, str]]):
         """
-        加载模型
-
-        :return: 是否加载成功
+        构建对话上下文历史的函数
         """
         pass
 
+    def load(self) -> bool:
+        """
+        加载模型（通常是耗时操作，在线模型如无需校验可直接返回 true）
+
+        :return: 是否加载成功
+        """
+        self.is_running = True
+        return True
+
     @abstractmethod
-    async def ask(self, prompt: str, history: list) -> Union[AsyncGenerator[str, None], str]:
+    async def _ask_sync(self, prompt: str, history: List[Tuple[str, str]]) -> str:
+        """
+        同步模型调用（子类必须实现）
+        """
+        pass
+
+    def _ask_stream(self, prompt: str, history: List[Tuple[str, str]]):
+        """
+        流式输出
+        """
+        pass
+
+    @overload
+    async def ask(self, prompt: str, history: List[Tuple[str, str]], stream: Literal[False]) -> str: ...
+
+    @overload
+    async def ask(
+        self, prompt: str, history: List[Tuple[str, str]], stream: Literal[True]
+    ) -> AsyncGenerator[str, None]: ...
+
+    @abstractmethod
+    async def ask(
+        self, prompt: str, history: List[Tuple[str, str]], stream: Optional[bool] = False
+    ) -> Union[AsyncGenerator[str, None], str]:
         """
         模型交互询问
 
@@ -115,7 +147,9 @@ class BasicModel(metaclass=ABCMeta):
         """
         pass
 
-    async def ask_vision(self, prompt, image_paths: list, history=None) -> Union[AsyncGenerator[str, None], str]:
+    async def ask_vision(
+        self, prompt, image_paths: list, history: List[Tuple[str, str]]
+    ) -> Union[AsyncGenerator[str, None], str]:
         """
         多模态：图像识别
 

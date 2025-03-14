@@ -4,10 +4,21 @@ import hashlib
 import hmac
 import json
 import ssl
+import threading
+import time
 from datetime import datetime
 from functools import partial
 from time import mktime
-from typing import AsyncGenerator, Generator, Union
+from typing import (
+    AsyncGenerator,
+    Generator,
+    List,
+    Literal,
+    Optional,
+    Tuple,
+    Union,
+    overload,
+)
 from urllib.parse import urlencode, urlparse
 from wsgiref.handlers import format_date_time
 
@@ -26,8 +37,6 @@ class Xfyun(BasicModel):
     def __init__(self, model_config: ModelConfig) -> None:
         super().__init__(model_config)
         self._require("app_id", "api_key", "api_secret", "service_id", "resource_id")
-
-    def load(self) -> bool:
         self.app_id = self.config.app_id
         self.api_key = self.config.api_key
         self.api_secret = self.config.api_secret
@@ -46,13 +55,9 @@ class Xfyun(BasicModel):
 
         self.stream_queue: asyncio.Queue = asyncio.Queue()
         self.response = ""
-        self.is_history = False
-        self.is_running = True
         self.is_insert_think_label = False
 
-        return self.is_running
-
-    def __add_think_tag(self, text_body: dict) -> str:
+    def _add_think_tag(self, text_body: dict) -> str:
         """
         添加思考过程标签
         """
@@ -76,7 +81,7 @@ class Xfyun(BasicModel):
 
         return ""
 
-    def __create_url(self) -> str:
+    def _create_url(self) -> str:
         now = datetime.now()
         date = format_date_time(mktime(now.timetuple()))
 
@@ -121,7 +126,7 @@ class Xfyun(BasicModel):
         text_body = response["payload"]["choices"]["text"][0]
 
         if response["header"]["status"] in [0, 1, 2]:
-            content = self.__add_think_tag(text_body)
+            content = self._add_think_tag(text_body)
             self.response += content
             if self.stream:
                 self.stream_queue.put_nowait(content)
@@ -149,7 +154,7 @@ class Xfyun(BasicModel):
                     "max_tokens": self.max_tokens,
                 }
             },
-            "payload": {"message": {"text": self.history}},
+            "payload": {"message": {"text": self.messages}},
         }
         ws.send(json.dumps(request_data))
 
@@ -158,38 +163,41 @@ class Xfyun(BasicModel):
             return "system\n\n" + auto_system_prompt(user_text) + "user\n\n"
         return "system\n\n" + self.system_prompt + "user\n\n"
 
-    def __generate_history(self, history: list):
-        self.history = []
-        if len(history) == 0:
-            return
-        self.is_history = True
-        self.history.append(
-            {
-                "role": "user",
-                "content": self.__generate_system_prompt(history[0][0]) + history[0][1],
-            }
-        )
-        for item in history:
-            self.history.append({"role": "user", "content": item[0]})
-            self.history.append({"role": "assistant", "content": item[1]})
+    def _build_messages(self, prompt: str, history: List[Tuple[str, str]]) -> list:
+        messages = []
 
-    def __ask(self, prompt: str, history: list) -> Generator[str, None, None]:
-        self.response = ""
-        self.stream_queue = asyncio.Queue()
-        self.__generate_history(history)
-        if not self.is_history:
-            self.history.append(
+        if len(history) > 0:
+            messages.append(
+                {
+                    "role": "user",
+                    "content": self.__generate_system_prompt(history[0][0]) + history[0][1],
+                }
+            )
+
+        for item in history:
+            messages.append({"role": "user", "content": item[0]})
+            messages.append({"role": "assistant", "content": item[1]})
+
+        if len(history) == 0:
+            messages.append(
                 {
                     "role": "user",
                     "content": self.__generate_system_prompt(prompt) + prompt,
                 }
             )
         else:
-            self.history.append({"role": "user", "content": prompt})
+            messages.append({"role": "user", "content": prompt})
 
-        logger.debug(f"发送给Spark的数据: {self.history}")
+        return messages
+
+    def _ask(self, prompt: str, history: list) -> Generator[str, None, None]:
+        self.response = ""
+        self.stream_queue = asyncio.Queue()
+
+        self.messages = self._build_messages(prompt, history)
+
         ws = websocket.WebSocketApp(
-            self.__create_url(),
+            self._create_url(),
             on_message=self.__on_message,
             on_error=self.__on_error,
             on_close=self.__on_close,
@@ -197,39 +205,47 @@ class Xfyun(BasicModel):
         ws.on_open = self.__on_open
 
         if self.stream:
-            # 启动WebSocket连接
-            import threading
-
             threading.Thread(
                 target=ws.run_forever, kwargs={"sslopt": {"cert_reqs": ssl.CERT_NONE}, "ping_timeout": 10}, daemon=True
             ).start()
             while True:
-                # 使用阻塞获取队列内容，避免高CPU占用
                 try:
                     content = self.stream_queue.get_nowait()
                     if content is None:  # 流结束
                         break
                     yield content
                 except asyncio.QueueEmpty:
-                    # 队列为空，短暂等待后重试
-                    import time
-
                     time.sleep(0.01)
         else:
             ws.run_forever(sslopt={"cert_reqs": ssl.CERT_NONE}, ping_timeout=10)
             yield self.response
 
-    async def ask(self, prompt, history=None) -> Union[AsyncGenerator[str, None], str]:
-        if self.stream:
+    async def _ask_sync(self, prompt: str, history: List[Tuple[str, str]]) -> str:
+        loop = asyncio.get_event_loop()
+        result = await loop.run_in_executor(None, partial(self._ask, prompt=prompt, history=history))
+        return "".join(result)  # 转换生成器结果为字符串
 
-            async def sync_to_async_generator():
-                loop = asyncio.get_event_loop()
-                generator = await loop.run_in_executor(None, partial(self.__ask, prompt=prompt, history=history))
-                for chunk in generator:
-                    yield chunk
-
-            return sync_to_async_generator()
-        else:
+    async def _ask_stream(self, prompt: str, history: List[Tuple[str, str]]) -> AsyncGenerator[str, None]:
+        async def sync_to_async_generator():
             loop = asyncio.get_event_loop()
-            result = await loop.run_in_executor(None, partial(self.__ask, prompt=prompt, history=history))
-            return "".join(result)  # 转换生成器结果为字符串
+            generator = await loop.run_in_executor(None, partial(self._ask, prompt=prompt, history=history))
+            for chunk in generator:
+                yield chunk
+
+        return sync_to_async_generator()
+
+    @overload
+    async def ask(self, prompt: str, history: List[Tuple[str, str]], stream: Literal[False]) -> str: ...
+
+    @overload
+    async def ask(
+        self, prompt: str, history: List[Tuple[str, str]], stream: Literal[True]
+    ) -> AsyncGenerator[str, None]: ...
+
+    async def ask(
+        self, prompt: str, history: List[Tuple[str, str]], stream: Optional[bool] = False
+    ) -> Union[AsyncGenerator[str, None], str]:
+        if stream:
+            return await self._ask_stream(prompt, history)
+        else:
+            return await self._ask_sync(prompt, history)

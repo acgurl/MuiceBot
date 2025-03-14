@@ -7,7 +7,7 @@ from nonebot import logger
 from .config import get_config
 from .database import Database
 from .llm import BasicModel
-from .llm.utils.thought import process_thoughts
+from .llm.utils.thought import process_thoughts, stream_process_thoughts
 
 
 class Muice:
@@ -40,10 +40,10 @@ class Muice:
         """
         logger.info("正在加载模型...")
         if not self.model:
-            logger.error("模型加载失败")
+            logger.error("模型加载失败: self.model 变量不存在")
             return False
         if not self.model.load():
-            logger.error("模型加载失败")
+            logger.error("模型加载失败: self.model.load 函数失败")
             return False
         logger.info("模型加载成功")
         return True
@@ -93,7 +93,7 @@ class Muice:
         if self.multimodal:
             reply = await self.model.ask_vision(message, image_paths, history)
         else:
-            reply = await self.model.ask(message, history)
+            reply = await self.model.ask(message, history, stream=False)
         if isinstance(reply, str):
             reply.strip()
         end_time = time.time()
@@ -129,9 +129,9 @@ class Muice:
         logger.debug(f"模型调用参数：Prompt: {message}, History: {history}")
 
         if self.multimodal:
-            response = await self.model.ask_vision(message, image_paths, history)
+            response = await self.model.ask_vision(message, image_paths, history)  # TODO: 支持流式输出...
         else:
-            response = await self.model.ask(message, history)  # 改成流式
+            response = await self.model.ask(message, history, stream=True)
 
         reply = ""
 
@@ -140,7 +140,7 @@ class Muice:
             reply = response
         else:
             async for chunk in response:
-                yield (chunk if not self.think else chunk.replace("<think>", "思考过程：").replace("</think>", ""))
+                yield (chunk if not self.think else stream_process_thoughts(chunk, self.think))  # type:ignore
                 reply += chunk
 
         end_time = time.time()
@@ -186,7 +186,7 @@ class Muice:
         if self.multimodal and image_paths:
             reply = await self.model.ask_vision(message, image_paths, history)
         else:
-            reply = await self.model.ask(message, history)
+            reply = await self.model.ask(message, history, stream=False)
         if isinstance(reply, str):
             reply.strip()
         end_time = time.time()

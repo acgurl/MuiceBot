@@ -60,7 +60,17 @@ top_k: 0.95 # 模型生成的 Top_k 参数（可选）
 loader: Ollama # 使用 Ollama 加载器（必填）
 model_name: deepseek-r1 # ollama 模型名称（必填）
 api_host: http://localhost:11434 # ollama 客户端端口（可选）
+top_k: 20 #从概率分布中选择最高概率的前k个候选项
+top_p: 0.9 # 从概率分布中选择累积概率达到阈值p的候选项
+temperature: 0.8 # 温度参数，用于调整概率分布的形状
+repeat_penalty: 1.2 # 模型的重复惩罚
+presence_penalty: 1.5 # 存在惩罚系数，用于调整已出现的词的概率
+frequency_penalty: 1.0 # 频率惩罚系数，用于调整频繁出现的词的概率
 stream: false # 流式对话
+system_prompt: '现在开始你是一个名为的“沐雪”的AI女孩子' # 系统提示（可选）
+auto_system_prompt: false # 自动配置沐雪的系统提示（默认为 false）
+user_instructions: '我们来玩一个角色扮演的小游戏吧，现在开始你是一个名为的“沐雪”的AI女孩子，用猫娘的语气和我说话。' # 用户提示（对于 DeepSeek-R1 此类不推荐添加系统提示的模型非常有用。此项仅在 History 为空时生效）
+auto_user_instructions: false # 自动配置沐雪的用户提示（默认为 false）
 ```
 
 ## Openai (支持 DeepSeek 官方 API 调用)
