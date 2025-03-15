@@ -163,7 +163,9 @@ class Xfyun(BasicModel):
             return "system\n\n" + auto_system_prompt(user_text) + "user\n\n"
         return "system\n\n" + self.system_prompt + "user\n\n"
 
-    def _build_messages(self, prompt: str, history: List[Tuple[str, str]]) -> list:
+    def _build_messages(
+        self, prompt: str, history: List[Tuple[str, str]], images_path: Optional[List[str]] = None
+    ) -> list:
         messages = []
 
         if len(history) > 0:
@@ -190,11 +192,11 @@ class Xfyun(BasicModel):
 
         return messages
 
-    def _ask(self, prompt: str, history: list) -> Generator[str, None, None]:
+    def _ask(self, messages: list) -> Generator[str, None, None]:
         self.response = ""
         self.stream_queue = asyncio.Queue()
 
-        self.messages = self._build_messages(prompt, history)
+        self.messages = messages
 
         ws = websocket.WebSocketApp(
             self._create_url(),
@@ -220,15 +222,15 @@ class Xfyun(BasicModel):
             ws.run_forever(sslopt={"cert_reqs": ssl.CERT_NONE}, ping_timeout=10)
             yield self.response
 
-    async def _ask_sync(self, prompt: str, history: List[Tuple[str, str]]) -> str:
+    async def _ask_sync(self, messages: list) -> str:
         loop = asyncio.get_event_loop()
-        result = await loop.run_in_executor(None, partial(self._ask, prompt=prompt, history=history))
+        result = await loop.run_in_executor(None, partial(self._ask, messages=messages))
         return "".join(result)  # 转换生成器结果为字符串
 
-    async def _ask_stream(self, prompt: str, history: List[Tuple[str, str]]) -> AsyncGenerator[str, None]:
+    async def _ask_stream(self, messages: list) -> AsyncGenerator[str, None]:
         async def sync_to_async_generator():
             loop = asyncio.get_event_loop()
-            generator = await loop.run_in_executor(None, partial(self._ask, prompt=prompt, history=history))
+            generator = await loop.run_in_executor(None, partial(self._ask, messages=messages))
             for chunk in generator:
                 yield chunk
 
@@ -245,7 +247,9 @@ class Xfyun(BasicModel):
     async def ask(
         self, prompt: str, history: List[Tuple[str, str]], stream: Optional[bool] = False
     ) -> Union[AsyncGenerator[str, None], str]:
+        messages = self._build_messages(prompt, history)
+
         if stream:
-            return await self._ask_stream(prompt, history)
+            return await self._ask_stream(messages)
         else:
-            return await self._ask_sync(prompt, history)
+            return await self._ask_sync(messages)
