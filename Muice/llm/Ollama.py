@@ -82,6 +82,8 @@ class Ollama(BasicModel):
 
             message["images"] = images  # type:ignore
 
+        messages.append(message)
+
         return messages
 
     async def _ask_sync(self, messages: list) -> str:
@@ -102,27 +104,30 @@ class Ollama(BasicModel):
         return response.message.content if response.message.content else "(警告：模型无返回)"
 
     async def _ask_stream(self, messages: list) -> AsyncGenerator[str, None]:
-        response = await self.client.chat(
-            model=self.model,
-            messages=messages,
-            stream=True,
-            options={
-                "temperature": self.temperature,
-                "top_k": self.top_k,
-                "top_p": self.top_p,
-                "repeat_penalty": self.repeat_penalty,
-                "presence_penalty": self.presence_penalty,
-                "frequency_penalty": self.frequency_penalty,
-            },
-        )
-
         try:
+            response = await self.client.chat(
+                model=self.model,
+                messages=messages,
+                stream=True,
+                options={
+                    "temperature": self.temperature,
+                    "top_k": self.top_k,
+                    "top_p": self.top_p,
+                    "repeat_penalty": self.repeat_penalty,
+                    "presence_penalty": self.presence_penalty,
+                    "frequency_penalty": self.frequency_penalty,
+                },
+            )
+
             async for chunk in response:
                 logger.debug(chunk)
+
                 if chunk.message.content:
                     yield chunk.message.content
+
         except Exception as e:
             logger.error(f"流式处理中断: {e}")
+            yield f"(处理出错: {str(e)})"
 
     @overload
     async def ask(self, prompt: str, history: List[Tuple[str, str]], stream: Literal[False]) -> str: ...
