@@ -4,6 +4,7 @@ import httpx
 import openai
 from nonebot import logger
 
+from ..utils import get_image_base64
 from ._types import BasicModel, ModelConfig
 from .utils.auto_system_prompt import auto_system_prompt
 
@@ -24,7 +25,9 @@ class Openai(BasicModel):
         self.stream = self.config.stream
         self.client = openai.AsyncOpenAI(api_key=self.api_key, base_url=self.api_base)
 
-    def _build_messages(self, prompt: str, history: List[Tuple[str, str]]) -> list:
+    async def _build_messages(
+        self, prompt: str, history: List[Tuple[str, str]], image_paths: Optional[list] = None
+    ) -> list:
         messages = []
 
         if self.auto_system_prompt:
@@ -49,15 +52,26 @@ class Openai(BasicModel):
                 messages.append({"role": "assistant", "content": item[1]})
 
         if not history and self.user_instructions:
-            messages.append({"role": "user", "content": self.user_instructions + "\n" + prompt})
+            text = self.user_instructions + "\n" + prompt
         else:
-            messages.append({"role": "user", "content": prompt})
+            text = prompt
+
+        if not image_paths:
+            messages.append({"role": "user", "content": text})
+            return messages
+
+        user_content: List[dict] = [{"type": "text", "text": text}]
+
+        for url in image_paths:
+            image_format = url.split(".")[-1]
+            image_url = f"data:image/{image_format};base64,{get_image_base64(local_path=url)}"
+            user_content.append({"type": "image_url", "image_url": {"url": image_url}})
+
+        messages.append({"role": "user", "content": user_content})  # type: ignore
 
         return messages
 
-    async def _ask_sync(self, prompt: str, history: List[Tuple[str, str]]) -> str:
-        messages = self._build_messages(prompt, history)
-
+    async def _ask_sync(self, messages: list, *args) -> str:
         try:
             response = await self.client.chat.completions.create(
                 model=self.model,
@@ -88,9 +102,7 @@ class Openai(BasicModel):
 
         return "（模型内部错误）"
 
-    async def _ask_stream(self, prompt: str, history: List[Tuple[str, str]]) -> AsyncGenerator[str, None]:
-        messages = self._build_messages(prompt, history)
-
+    async def _ask_stream(self, messages: list, *args) -> AsyncGenerator[str, None]:
         try:
             response = await self.client.chat.completions.create(
                 model=self.model,
@@ -142,6 +154,34 @@ class Openai(BasicModel):
         :param history: 之前的对话历史（可选）
         :return: 模型生成的文本
         """
+        messages = await self._build_messages(prompt, history)
+
         if stream:
-            return self._ask_stream(prompt, history)
-        return await self._ask_sync(prompt, history)
+            return self._ask_stream(messages)
+        return await self._ask_sync(messages)
+
+    # 多模态部分
+    @overload
+    async def ask_vision(
+        self, prompt, image_paths: list, history: List[Tuple[str, str]], stream: Literal[False]
+    ) -> str: ...
+
+    @overload
+    async def ask_vision(
+        self, prompt, image_paths: list, history: List[Tuple[str, str]], stream: Literal[True]
+    ) -> AsyncGenerator[str, None]: ...
+
+    async def ask_vision(
+        self, prompt, image_paths: list, history: List[Tuple[str, str]], stream: Optional[bool] = False
+    ) -> Union[AsyncGenerator[str, None], str]:
+        """
+        多模态：图像识别
+
+        :param image_paths: 图片路径列表
+        :return: 图片描述
+        """
+        messages = await self._build_messages(prompt, history, image_paths)
+
+        if stream:
+            return self._ask_stream(messages)
+        return await self._ask_sync(messages)

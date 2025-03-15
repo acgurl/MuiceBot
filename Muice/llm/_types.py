@@ -98,7 +98,7 @@ class BasicModel(metaclass=ABCMeta):
         if missing_fields:
             raise ValueError(f"对于 {self.config.loader} 以下配置是必需的: {', '.join(missing_fields)}")
 
-    def _build_messages(self, prompt: str, history: List[Tuple[str, str]]):
+    def _build_messages(self, prompt: str, history: List[Tuple[str, str]], images_path: Optional[List[str]] = None):
         """
         构建对话上下文历史的函数
         """
@@ -114,29 +114,31 @@ class BasicModel(metaclass=ABCMeta):
         return True
 
     @abstractmethod
-    async def _ask_sync(self, prompt: str, history: List[Tuple[str, str]]) -> str:
+    async def _ask_sync(self, messages: list, *args, **kwargs) -> str:
         """
         同步模型调用（子类必须实现）
         """
         pass
 
-    def _ask_stream(self, prompt: str, history: List[Tuple[str, str]]):
+    def _ask_stream(self, messages: list, *args, **kwargs):
         """
         流式输出
         """
         pass
 
     @overload
-    async def ask(self, prompt: str, history: List[Tuple[str, str]], stream: Literal[False]) -> str: ...
+    async def ask(
+        self, prompt: str, history: List[Tuple[str, str]], stream: Literal[False], *args, **kwargs
+    ) -> str: ...
 
     @overload
     async def ask(
-        self, prompt: str, history: List[Tuple[str, str]], stream: Literal[True]
+        self, prompt: str, history: List[Tuple[str, str]], stream: Literal[True], *args, **kwargs
     ) -> AsyncGenerator[str, None]: ...
 
     @abstractmethod
     async def ask(
-        self, prompt: str, history: List[Tuple[str, str]], stream: Optional[bool] = False
+        self, prompt: str, history: List[Tuple[str, str]], stream: Optional[bool] = False, *args, **kwargs
     ) -> Union[AsyncGenerator[str, None], str]:
         """
         模型交互询问

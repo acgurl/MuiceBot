@@ -27,6 +27,20 @@ User_Agent = (
 )
 
 
+def get_image_base64(local_path: Optional[str] = None, image_bytes: Optional[bytes] = None) -> str:
+    """
+    获取本地图像 Base64 的方法
+    """
+    if local_path:
+        with open(local_path, "rb") as f:
+            image_data = base64.b64encode(f.read()).decode("utf-8")
+            return image_data
+    if image_bytes:
+        image_base64 = base64.b64encode(image_bytes)
+        return image_base64.decode("utf-8")
+    raise ValueError("You must pass in a valid parameter!")
+
+
 async def save_image_as_file(image_url: str, file_name: str = str(time.time_ns()) + ".jpg") -> str:
     """
     保存图片至本地目录
@@ -43,16 +57,17 @@ async def save_image_as_file(image_url: str, file_name: str = str(time.time_ns()
         return str(local_path)
 
 
-async def save_image_as_base64(image_url: Optional[str], image_bytes: Optional[bytes]) -> bytes:
-    if image_url:
-        async with httpx.AsyncClient() as client:
-            r = await client.get(image_url, headers={"User-Agent": User_Agent})
-            image_base64 = base64.b64encode(r.content)
-            return image_base64
-    if image_bytes:
-        image_base64 = base64.b64encode(image_bytes)
-        return image_bytes
-    raise ValueError("You must pass in a valid parameter!")
+async def save_image_as_base64(image_url: str) -> str:
+    """
+    从在线 url 获取图像 Base64
+
+    :image_url: 图片在线地址
+    :return: 本地地址
+    """
+    async with httpx.AsyncClient() as client:
+        r = await client.get(image_url, headers={"User-Agent": User_Agent})
+        image_base64 = base64.b64encode(r.content)
+    return image_base64.decode("utf-8")
 
 
 async def legacy_get_images(message: MessageSegment, event: Event) -> str:

@@ -1,7 +1,16 @@
 import asyncio
 import pathlib
 from functools import partial
-from typing import AsyncGenerator, Generator, List, Literal, Tuple, Union, overload
+from typing import (
+    AsyncGenerator,
+    Generator,
+    List,
+    Literal,
+    Optional,
+    Tuple,
+    Union,
+    overload,
+)
 
 import dashscope
 from dashscope.api_entities.dashscope_response import (
@@ -27,7 +36,9 @@ class Dashscope(BasicModel):
         self.system_prompt = self.config.system_prompt
         self.auto_system_prompt = self.config.auto_system_prompt
 
-    def _build_messages(self, prompt: str, history: List[Tuple[str, str]]) -> list:
+    def _build_messages(
+        self, prompt: str, history: List[Tuple[str, str]], image_paths: Optional[List[str]] = None
+    ) -> list:
         messages = []
 
         if self.auto_system_prompt:
@@ -39,13 +50,31 @@ class Dashscope(BasicModel):
             for h in history:
                 messages.append({"role": "user", "content": h[0]})
                 messages.append({"role": "assistant", "content": h[1]})
-        messages.append({"role": "user", "content": prompt})
+
+        if not image_paths:
+            messages.append({"role": "user", "content": prompt})
+            return messages
+
+        image_contents = []
+        for image_path in image_paths:
+            if not (image_path.startswith("http") or image_path.startswith("file")):
+                abs_path = pathlib.Path(image_path).resolve()
+                image_path = abs_path.as_uri()
+                image_path = image_path.replace("file:///", "file://")
+
+            image_contents.append({"image": image_path})
+
+        user_content = [image_content for image_content in image_contents]
+
+        if not prompt:
+            prompt = "请描述图像内容"
+        user_content.append({"type": "text", "text": prompt})
+
+        messages.append({"role": "user", "content": user_content})  # type: ignore
 
         return messages
 
-    async def _ask_sync(self, prompt: str, history: List[Tuple[str, str]]) -> str:
-        messages = self._build_messages(prompt, history)
-
+    async def _ask_sync(self, messages: list) -> str:
         loop = asyncio.get_event_loop()
 
         response = await loop.run_in_executor(
@@ -68,9 +97,7 @@ class Dashscope(BasicModel):
 
         return "(模型内部错误：在流关闭的情况下返回了 Generator)"
 
-    async def _ask_stream(self, prompt: str, history: List[Tuple[str, str]]) -> AsyncGenerator[str, None]:
-        messages = self._build_messages(prompt, history)
-
+    async def _ask_stream(self, messages: list) -> AsyncGenerator[str, None]:
         loop = asyncio.get_event_loop()
 
         response = await loop.run_in_executor(
@@ -121,53 +148,14 @@ class Dashscope(BasicModel):
     async def ask(
         self, prompt: str, history: List[Tuple[str, str]], stream: bool = False
     ) -> Union[AsyncGenerator[str, None], str]:
+        messages = self._build_messages(prompt, history)
         if stream:
-            return self._ask_stream(prompt, history)
+            return self._ask_stream(messages)
 
-        return await self._ask_sync(prompt, history)
+        return await self._ask_sync(messages)
 
     # 多模态部分
-
-    def _build_message_vision(self, prompt: str, image_paths: List[str], history: List[Tuple[str, str]]) -> list:
-        messages = []
-
-        if self.auto_system_prompt:
-            self.system_prompt = auto_system_prompt(prompt)
-        if self.system_prompt:
-            messages.append(
-                {
-                    "role": "system",
-                    "content": [{"type": "text", "text": self.system_prompt}],
-                }
-            )
-
-        if history:
-            for h in history:
-                messages.append({"role": "user", "content": [{"type": "text", "text": h[0]}]})
-                messages.append({"role": "assistant", "content": [{"type": "text", "text": h[1]}]})
-
-        image_contents = []
-        for image_path in image_paths:
-            if not (image_path.startswith("http") or image_path.startswith("file")):
-                abs_path = pathlib.Path(image_path).resolve()
-                image_path = abs_path.as_uri()
-                image_path = image_path.replace("file:///", "file://")
-
-            image_contents.append({"image": image_path})
-
-        user_content = [image_content for image_content in image_contents]
-
-        if not prompt:
-            prompt = "请描述图像内容"
-        user_content.append({"type": "text", "text": prompt})
-
-        messages.append({"role": "user", "content": user_content})
-
-        return messages
-
-    async def _ask_vision_sync(self, prompt: str, image_paths: List[str], history: List[Tuple[str, str]]) -> str:
-        messages = self._build_message_vision(prompt, image_paths, history)
-
+    async def _ask_vision_sync(self, messages: list) -> str:
         loop = asyncio.get_event_loop()
 
         response = await loop.run_in_executor(
@@ -193,11 +181,7 @@ class Dashscope(BasicModel):
 
         return response.output.choices[0].message.content[0]["text"]  # type: ignore
 
-    async def _ask_vision_stream(
-        self, prompt: str, image_paths: List[str], history: List[Tuple[str, str]]
-    ) -> AsyncGenerator[str, None]:
-        messages = self._build_message_vision(prompt, image_paths, history)
-
+    async def _ask_vision_stream(self, messages: list) -> AsyncGenerator[str, None]:
         loop = asyncio.get_event_loop()
 
         response = await loop.run_in_executor(
@@ -250,6 +234,9 @@ class Dashscope(BasicModel):
         :param image_path: 图像路径
         :return: 识别结果
         """
+        messages = self._build_messages(prompt, history, image_paths)
+
         if not stream:
-            return await self._ask_vision_sync(prompt, image_paths, history)
-        return self._ask_vision_stream(prompt, image_paths, history)
+            return await self._ask_vision_sync(messages)
+
+        return self._ask_vision_stream(messages)

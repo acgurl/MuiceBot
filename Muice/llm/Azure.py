@@ -1,11 +1,16 @@
 import os
-from typing import AsyncGenerator, List, Literal, Tuple, Union, overload
+from typing import AsyncGenerator, List, Literal, Optional, Tuple, Union, overload
 
 from azure.ai.inference.aio import ChatCompletionsClient
 from azure.ai.inference.models import (
     AssistantMessage,
     ChatRequestMessage,
+    ContentItem,
+    ImageContentItem,
+    ImageDetailLevel,
+    ImageUrl,
     SystemMessage,
+    TextContentItem,
     UserMessage,
 )
 from azure.core.credentials import AzureKeyCredential
@@ -32,7 +37,9 @@ class Azure(BasicModel):
         self.token = os.getenv("AZURE_API_KEY", self.config.api_key)
         self.endpoint = self.config.api_host if self.config.api_host else "https://models.inference.ai.azure.com"
 
-    def _build_messages(self, prompt: str, history: List[Tuple[str, str]]) -> List[ChatRequestMessage]:
+    def _build_messages(
+        self, prompt: str, history: List[Tuple[str, str]], image_paths: Optional[List] = None
+    ) -> List[ChatRequestMessage]:
         messages: List[ChatRequestMessage] = []
 
         if self.auto_system_prompt:
@@ -47,15 +54,36 @@ class Azure(BasicModel):
 
         if self.auto_user_instructions:
             self.user_instructions = auto_system_prompt(prompt)
+
         if self.user_instructions and not history:
-            messages.append(UserMessage(self.user_instructions + "\n" + prompt))
+            user_message = self.user_instructions + "\n" + prompt
         else:
-            messages.append(UserMessage(prompt))
+            user_message = prompt
+
+        if not image_paths:
+            messages.append(UserMessage(user_message))
+            return messages
+
+        image_content_items: List[ContentItem] = []
+
+        for item in image_paths:
+            image_content_items.append(
+                ImageContentItem(
+                    image_url=ImageUrl.load(
+                        image_file=item, image_format=item.split(".")[-1], detail=ImageDetailLevel.AUTO
+                    )
+                )
+            )
+
+        content = [TextContentItem(text=user_message)] + image_content_items
+
+        messages.append(UserMessage(content=content))
 
         return messages
 
-    async def _ask_sync(self, client: ChatCompletionsClient, messages: List[ChatRequestMessage]) -> str:
-        """非流式处理，返回完整的字符串"""
+    async def _ask_sync(self, messages: List[ChatRequestMessage]) -> str:
+        client = ChatCompletionsClient(endpoint=self.endpoint, credential=AzureKeyCredential(self.token))
+
         try:
             response = await client.complete(
                 messages=messages,
@@ -65,7 +93,7 @@ class Azure(BasicModel):
                 top_p=self.top_p,
                 frequency_penalty=self.frequency_penalty,
                 presence_penalty=self.presence_penalty,
-                stream=False,  # 这里强制非流式
+                stream=False,
             )
             return response.choices[0].message.content  # type: ignore
         except Exception as e:
@@ -74,10 +102,9 @@ class Azure(BasicModel):
         finally:
             await client.close()
 
-    async def _ask_stream(
-        self, client: ChatCompletionsClient, messages: List[ChatRequestMessage]
-    ) -> AsyncGenerator[str, None]:
-        """流式处理，返回一个异步生成器"""
+    async def _ask_stream(self, messages: List[ChatRequestMessage]) -> AsyncGenerator[str, None]:
+        client = ChatCompletionsClient(endpoint=self.endpoint, credential=AzureKeyCredential(self.token))
+
         try:
             response = await client.complete(
                 messages=messages,
@@ -112,9 +139,34 @@ class Azure(BasicModel):
     ) -> Union[AsyncGenerator[str, None], str]:
         messages = self._build_messages(prompt, history)
 
-        client = ChatCompletionsClient(endpoint=self.endpoint, credential=AzureKeyCredential(self.token))
+        if stream:
+            return self._ask_stream(messages)
+
+        return await self._ask_sync(messages)
+
+    # 多模态实现
+    @overload
+    async def ask_vision(
+        self, prompt, image_paths: List[str], history: List[Tuple[str, str]], stream: Literal[False]
+    ) -> str: ...
+
+    @overload
+    async def ask_vision(
+        self, prompt, image_paths: List[str], history: List[Tuple[str, str]], stream: Literal[True]
+    ) -> AsyncGenerator[str, None]: ...
+
+    async def ask_vision(
+        self, prompt, image_paths: List[str], history: List[Tuple[str, str]], stream: bool = False
+    ) -> Union[AsyncGenerator[str, None], str]:
+        """
+        多模态：图像识别
+
+        :param image_paths: 图片路径列表
+        :return: 图片描述
+        """
+        messages = self._build_messages(prompt, history, image_paths)
 
         if stream:
-            return self._ask_stream(client, messages)
+            return self._ask_stream(messages)
 
-        return await self._ask_sync(client, messages)
+        return await self._ask_sync(messages)

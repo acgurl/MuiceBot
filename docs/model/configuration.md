@@ -96,12 +96,8 @@ stream: false # 流式对话
 
 ## Transformers
 
-```yaml
-loader: Transformers # 使用 rwkv-transformers 加载器
-model_path: model/Qwen2.5-7B-Instruct-GPTQ-Int4 # 原始模型路径（必填）
-adapter_path: model/Muice-2.7.1-Qwen2.5-7B-Instruct-GPTQ-Int4-8e-4# # 微调模型路径（可选）
-stream: false # 流式对话
-```
+*由于 Transformers 模型加载器最初为加载 ChatGLM2 系列模型而制作，现已不支持市面上大多数模型，故被弃用*
+
 
 ## Xfyun (星火大模型精调平台)
 
