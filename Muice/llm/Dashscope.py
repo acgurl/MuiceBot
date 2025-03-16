@@ -35,6 +35,7 @@ class Dashscope(BasicModel):
         self.repetition_penalty = self.config.repetition_penalty
         self.system_prompt = self.config.system_prompt
         self.auto_system_prompt = self.config.auto_system_prompt
+        self.enable_search = self.config.online_search
 
     def _build_messages(
         self, prompt: str, history: List[Tuple[str, str]], image_paths: Optional[List[str]] = None
@@ -89,6 +90,7 @@ class Dashscope(BasicModel):
                 top_p=self.top_p,
                 repetition_penalty=self.repetition_penalty,
                 stream=False,
+                enable_search=self.enable_search,
             ),
         )
 
@@ -112,6 +114,7 @@ class Dashscope(BasicModel):
                 top_p=self.top_p,
                 repetition_penalty=self.repetition_penalty,
                 stream=True,
+                enable_search=self.enable_search,
             ),
         )
 
@@ -121,7 +124,14 @@ class Dashscope(BasicModel):
             return
 
         is_insert_think_label = False
+        size = 0
+
         for chunk in response:
+            if hasattr(chunk.output, "text") and chunk.output.text:  # 傻逼 Dashscope 为什么不统一接口？
+                yield chunk.output.text[size:]
+                size = len(chunk.output.text)
+                continue
+
             answer_content = chunk.output.choices[0].message.content
             reasoning_content = chunk.output.choices[0].message.reasoning_content
             if answer_content == "" and reasoning_content == "":

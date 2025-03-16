@@ -37,6 +37,8 @@ class ModelConfig(BasicConfigModel):
     """针对 Deepseek-R1 等思考模型的思考过程提取模式"""
     stream: bool = False
     """是否使用流式输出"""
+    online_search: bool = False
+    """是否启用联网搜索（原生实现）"""
 
     model_path: str = ""
     """本地模型路径"""

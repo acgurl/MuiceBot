@@ -23,7 +23,10 @@ class Openai(BasicModel):
         self.user_instructions = self.config.user_instructions
         self.auto_user_instructions = self.config.auto_user_instructions
         self.stream = self.config.stream
+        self.enable_search = self.config.online_search
+
         self.client = openai.AsyncOpenAI(api_key=self.api_key, base_url=self.api_base)
+        self.extra_body = {"enable_search": True} if self.enable_search else None
 
     async def _build_messages(
         self, prompt: str, history: List[Tuple[str, str]], image_paths: Optional[list] = None
@@ -79,6 +82,7 @@ class Openai(BasicModel):
                 max_tokens=self.max_tokens,
                 temperature=self.temperature,
                 stream=False,
+                extra_body=self.extra_body,
             )
 
             result = ""
@@ -110,6 +114,7 @@ class Openai(BasicModel):
                 max_tokens=self.max_tokens,
                 temperature=self.temperature,
                 stream=True,
+                extra_body=self.extra_body,
             )
 
             is_insert_think_label = False
