@@ -7,7 +7,6 @@ from typing import (
     List,
     Literal,
     Optional,
-    Tuple,
     Union,
     overload,
 )
@@ -19,7 +18,7 @@ from dashscope.api_entities.dashscope_response import (
 )
 from nonebot import logger
 
-from ._types import BasicModel, ModelConfig
+from ._types import BasicModel, Message, ModelConfig
 from .utils.auto_system_prompt import auto_system_prompt
 
 
@@ -37,25 +36,7 @@ class Dashscope(BasicModel):
         self.auto_system_prompt = self.config.auto_system_prompt
         self.enable_search = self.config.online_search
 
-    def _build_messages(
-        self, prompt: str, history: List[Tuple[str, str]], image_paths: Optional[List[str]] = None
-    ) -> list:
-        messages = []
-
-        if self.auto_system_prompt:
-            self.system_prompt = auto_system_prompt(prompt)
-        if self.system_prompt:
-            messages.append({"role": "system", "content": self.system_prompt})
-
-        if history:
-            for h in history:
-                messages.append({"role": "user", "content": h[0]})
-                messages.append({"role": "assistant", "content": h[1]})
-
-        if not image_paths:
-            messages.append({"role": "user", "content": prompt})
-            return messages
-
+    def __build_image_message(self, prompt: str, image_paths: List[str]) -> dict:
         image_contents = []
         for image_path in image_paths:
             if not (image_path.startswith("http") or image_path.startswith("file")):
@@ -71,7 +52,30 @@ class Dashscope(BasicModel):
             prompt = "请描述图像内容"
         user_content.append({"type": "text", "text": prompt})
 
-        messages.append({"role": "user", "content": user_content})  # type: ignore
+        return {"role": "user", "content": user_content}
+
+    def _build_messages(self, prompt: str, history: List[Message], image_paths: Optional[List[str]] = None) -> list:
+        messages = []
+
+        if self.auto_system_prompt:
+            self.system_prompt = auto_system_prompt(prompt)
+        if self.system_prompt:
+            messages.append({"role": "system", "content": self.system_prompt})
+
+        for msg in history:
+            user_msg = (
+                {"role": "user", "content": msg.message}
+                if not msg.images
+                else self.__build_image_message(msg.message, msg.images)
+            )
+            messages.append(user_msg)
+            messages.append({"role": "assistant", "content": msg.respond})
+
+        user_msg = (
+            {"role": "user", "content": prompt} if not image_paths else self.__build_image_message(prompt, image_paths)
+        )
+
+        messages.append(user_msg)
 
         return messages
 
@@ -148,15 +152,13 @@ class Dashscope(BasicModel):
                 is_insert_think_label = False
 
     @overload
-    async def ask(self, prompt: str, history: List[Tuple[str, str]], stream: Literal[False]) -> str: ...
+    async def ask(self, prompt: str, history: List[Message], stream: Literal[False]) -> str: ...
 
     @overload
-    async def ask(
-        self, prompt: str, history: List[Tuple[str, str]], stream: Literal[True]
-    ) -> AsyncGenerator[str, None]: ...
+    async def ask(self, prompt: str, history: List[Message], stream: Literal[True]) -> AsyncGenerator[str, None]: ...
 
     async def ask(
-        self, prompt: str, history: List[Tuple[str, str]], stream: bool = False
+        self, prompt: str, history: List[Message], stream: bool = False
     ) -> Union[AsyncGenerator[str, None], str]:
         messages = self._build_messages(prompt, history)
         if stream:
@@ -226,17 +228,15 @@ class Dashscope(BasicModel):
                 size = len(content_body[0]["text"])
 
     @overload
-    async def ask_vision(
-        self, prompt, image_paths: list, history: List[Tuple[str, str]], stream: Literal[False]
-    ) -> str: ...
+    async def ask_vision(self, prompt, image_paths: list, history: List[Message], stream: Literal[False]) -> str: ...
 
     @overload
     async def ask_vision(
-        self, prompt, image_paths: list, history: List[Tuple[str, str]], stream: Literal[True]
+        self, prompt, image_paths: list, history: List[Message], stream: Literal[True]
     ) -> AsyncGenerator[str, None]: ...
 
     async def ask_vision(
-        self, prompt: str, image_paths: List[str], history: List[Tuple[str, str]], stream: bool = False
+        self, prompt: str, image_paths: List[str], history: List[Message], stream: bool = False
     ) -> Union[AsyncGenerator[str, None], str]:
         """
         多模态：图像识别

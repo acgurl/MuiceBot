@@ -1,4 +1,4 @@
-from typing import AsyncGenerator, List, Literal, Optional, Tuple, Union, overload
+from typing import AsyncGenerator, List, Literal, Optional, Union, overload
 
 import numpy as np
 from llmtuner.chat import ChatModel
@@ -6,7 +6,7 @@ from nonebot import logger
 from numpy.typing import NDArray
 from PIL import Image
 
-from ._types import BasicModel, ModelConfig
+from ._types import BasicModel, Message, ModelConfig
 from .utils.auto_system_prompt import auto_system_prompt
 
 
@@ -42,16 +42,19 @@ class Llmtuner(BasicModel):
             logger.error(f"Error loading model: {e}")
             return False
 
-    def _build_messages(
-        self, prompt: str, history: List[Tuple[str, str]], images_path: Optional[List[str]] = None
-    ) -> list:
+    def _build_messages(self, prompt: str, history: List[Message], images_path: Optional[List[str]] = None) -> list:
         messages = []
+
+        if images_path:
+            logger.warning("警告：该模型加载器不支持传入历史对话中的图片")
+
         if self.auto_system_prompt:
             self.system_prompt = auto_system_prompt(prompt)
+
         if history:
-            for chat in history:
-                messages.append({"role": "user", "content": chat[0]})
-                messages.append({"role": "assistant", "content": chat[1]})
+            for msg in history:
+                messages.append({"role": "user", "content": msg.message})
+                messages.append({"role": "assistant", "content": msg.respond})
         messages.append({"role": "user", "content": prompt})
         return messages
 
@@ -67,15 +70,13 @@ class Llmtuner(BasicModel):
         return response[0].response_text
 
     @overload
-    async def ask(self, prompt: str, history: List[Tuple[str, str]], stream: Literal[False]) -> str: ...
+    async def ask(self, prompt: str, history: List[Message], stream: Literal[False]) -> str: ...
 
     @overload
-    async def ask(
-        self, prompt: str, history: List[Tuple[str, str]], stream: Literal[True]
-    ) -> AsyncGenerator[str, None]: ...
+    async def ask(self, prompt: str, history: List[Message], stream: Literal[True]) -> AsyncGenerator[str, None]: ...
 
     async def ask(
-        self, prompt: str, history: List[Tuple[str, str]], stream: Optional[bool] = False
+        self, prompt: str, history: List[Message], stream: Optional[bool] = False
     ) -> Union[str, AsyncGenerator[str, None]]:
         messages = self._build_messages(prompt, history)
         if stream:
@@ -90,16 +91,16 @@ class Llmtuner(BasicModel):
 
     @overload
     async def ask_vision(
-        self, prompt, image_paths: List[str], history: List[Tuple[str, str]], stream: Literal[False]
+        self, prompt, image_paths: List[str], history: List[Message], stream: Literal[False]
     ) -> str: ...
 
     @overload
     async def ask_vision(
-        self, prompt, image_paths: List[str], history: List[Tuple[str, str]], stream: Literal[True]
+        self, prompt, image_paths: List[str], history: List[Message], stream: Literal[True]
     ) -> AsyncGenerator[str, None]: ...
 
     async def ask_vision(
-        self, prompt, image_paths: List[str], history: List[Tuple[str, str]], stream: bool = False
+        self, prompt, image_paths: List[str], history: List[Message], stream: bool = False
     ) -> Union[AsyncGenerator[str, None], str]:
         if stream:
             raise NotImplementedError(f"{self.config.loader} 不支持流式输出！")

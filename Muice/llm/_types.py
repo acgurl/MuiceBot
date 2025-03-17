@@ -1,10 +1,12 @@
 from abc import ABCMeta, abstractmethod
 from importlib.util import find_spec
-from typing import AsyncGenerator, List, Literal, Optional, Tuple, Union, overload
+from typing import AsyncGenerator, List, Literal, Optional, Union, overload
 
 from nonebot import logger
 from pydantic import BaseModel as BasicConfigModel
 from pydantic import field_validator
+
+from .._types import Message
 
 
 class ModelConfig(BasicConfigModel):
@@ -100,7 +102,7 @@ class BasicModel(metaclass=ABCMeta):
         if missing_fields:
             raise ValueError(f"对于 {self.config.loader} 以下配置是必需的: {', '.join(missing_fields)}")
 
-    def _build_messages(self, prompt: str, history: List[Tuple[str, str]], images_path: Optional[List[str]] = None):
+    def _build_messages(self, prompt: str, history: List[Message]):
         """
         构建对话上下文历史的函数
         """
@@ -129,18 +131,16 @@ class BasicModel(metaclass=ABCMeta):
         pass
 
     @overload
-    async def ask(
-        self, prompt: str, history: List[Tuple[str, str]], stream: Literal[False], *args, **kwargs
-    ) -> str: ...
+    async def ask(self, prompt: str, history: List[Message], stream: Literal[False], *args, **kwargs) -> str: ...
 
     @overload
     async def ask(
-        self, prompt: str, history: List[Tuple[str, str]], stream: Literal[True], *args, **kwargs
+        self, prompt: str, history: List[Message], stream: Literal[True], *args, **kwargs
     ) -> AsyncGenerator[str, None]: ...
 
     @abstractmethod
     async def ask(
-        self, prompt: str, history: List[Tuple[str, str]], stream: Optional[bool] = False, *args, **kwargs
+        self, prompt: str, history: List[Message], stream: Optional[bool] = False, *args, **kwargs
     ) -> Union[AsyncGenerator[str, None], str]:
         """
         模型交互询问
@@ -153,16 +153,16 @@ class BasicModel(metaclass=ABCMeta):
 
     @overload
     async def ask_vision(
-        self, prompt, image_paths: list, history: List[Tuple[str, str]], stream: Literal[False]
+        self, prompt: str, image_paths: List[str], history: List[Message], stream: Literal[False]
     ) -> str: ...
 
     @overload
     async def ask_vision(
-        self, prompt, image_paths: list, history: List[Tuple[str, str]], stream: Literal[True]
+        self, prompt: str, image_paths: List[str], history: List[Message], stream: Literal[True]
     ) -> AsyncGenerator[str, None]: ...
 
     async def ask_vision(
-        self, prompt, image_paths: list, history: List[Tuple[str, str]], stream: Optional[bool] = False
+        self, prompt: str, image_paths: List[str], history: List[Message], stream: Optional[bool] = False
     ) -> Union[AsyncGenerator[str, None], str]:
         """
         多模态：图像识别

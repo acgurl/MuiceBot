@@ -15,7 +15,6 @@ from typing import (
     List,
     Literal,
     Optional,
-    Tuple,
     Union,
     overload,
 )
@@ -25,7 +24,7 @@ from wsgiref.handlers import format_date_time
 import websocket
 from nonebot import logger
 
-from ._types import BasicModel, ModelConfig
+from ._types import BasicModel, Message, ModelConfig
 from .utils.auto_system_prompt import auto_system_prompt
 
 
@@ -163,22 +162,20 @@ class Xfyun(BasicModel):
             return "system\n\n" + auto_system_prompt(user_text) + "user\n\n"
         return "system\n\n" + self.system_prompt + "user\n\n"
 
-    def _build_messages(
-        self, prompt: str, history: List[Tuple[str, str]], images_path: Optional[List[str]] = None
-    ) -> list:
+    def _build_messages(self, prompt: str, history: List[Message], images_path: Optional[List[str]] = None) -> list:
         messages = []
 
         if len(history) > 0:
             messages.append(
                 {
                     "role": "user",
-                    "content": self.__generate_system_prompt(history[0][0]) + history[0][1],
+                    "content": self.__generate_system_prompt(history[0].message) + history[0].message,
                 }
             )
 
         for item in history:
-            messages.append({"role": "user", "content": item[0]})
-            messages.append({"role": "assistant", "content": item[1]})
+            messages.append({"role": "user", "content": item.message})
+            messages.append({"role": "assistant", "content": item.respond})
 
         if len(history) == 0:
             messages.append(
@@ -237,15 +234,13 @@ class Xfyun(BasicModel):
         return sync_to_async_generator()
 
     @overload
-    async def ask(self, prompt: str, history: List[Tuple[str, str]], stream: Literal[False]) -> str: ...
+    async def ask(self, prompt: str, history: List[Message], stream: Literal[False]) -> str: ...
 
     @overload
-    async def ask(
-        self, prompt: str, history: List[Tuple[str, str]], stream: Literal[True]
-    ) -> AsyncGenerator[str, None]: ...
+    async def ask(self, prompt: str, history: List[Message], stream: Literal[True]) -> AsyncGenerator[str, None]: ...
 
     async def ask(
-        self, prompt: str, history: List[Tuple[str, str]], stream: Optional[bool] = False
+        self, prompt: str, history: List[Message], stream: Optional[bool] = False
     ) -> Union[AsyncGenerator[str, None], str]:
         messages = self._build_messages(prompt, history)
 

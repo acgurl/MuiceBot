@@ -1,11 +1,11 @@
-from typing import AsyncGenerator, List, Literal, Optional, Tuple, Union, overload
+from typing import AsyncGenerator, List, Literal, Optional, Union, overload
 
 import ollama
 from nonebot import logger
 from ollama import ResponseError
 
 from ..utils import get_image_base64
-from ._types import BasicModel, ModelConfig
+from ._types import BasicModel, Message, ModelConfig
 from .utils.auto_system_prompt import auto_system_prompt
 
 
@@ -43,9 +43,18 @@ class Ollama(BasicModel):
         finally:
             return self.is_running
 
-    async def _build_messages(
-        self, prompt: str, history: List[Tuple[str, str]], image_paths: Optional[List[str]] = None
-    ) -> list:
+    def __build_image_message(self, prompt: str, image_paths: List[str] = []) -> dict:
+        images = []
+
+        for image_path in image_paths:
+            image_base64 = get_image_base64(local_path=image_path)
+            images.append(image_base64)
+
+        message = {"role": "user", "content": prompt, "images": images}
+
+        return message
+
+    def _build_messages(self, prompt: str, history: List[Message], image_paths: List[str] = []) -> list:
         messages = []
 
         if self.auto_system_prompt:
@@ -58,29 +67,19 @@ class Ollama(BasicModel):
 
         for index, item in enumerate(history):
             if index == 0:
-                messages.append(
-                    {
-                        "role": "user",
-                        "content": self.user_instructions + "\n" + item[0],
-                    }
-                )
+                user_content = self.user_instructions + "\n" + item.message
             else:
-                messages.append({"role": "user", "content": item[0]})
-            messages.append({"role": "assistant", "content": item[1]})
+                user_content = item.message
+
+            messages.append(self.__build_image_message(user_content, image_paths))
+            messages.append({"role": "assistant", "content": item.respond})
 
         if not history and self.user_instructions:
-            message = {"role": "user", "content": self.user_instructions + "\n" + prompt}
+            user_content = self.user_instructions + "\n" + prompt
         else:
-            message = {"role": "user", "content": prompt}
+            user_content = prompt
 
-        if image_paths:
-            images = []
-
-            for image_path in image_paths:
-                image_base64 = get_image_base64(local_path=image_path)
-                images.append(image_base64)
-
-            message["images"] = images  # type:ignore
+        message = self.__build_image_message(user_content, image_paths)
 
         messages.append(message)
 
@@ -130,17 +129,15 @@ class Ollama(BasicModel):
             yield f"(处理出错: {str(e)})"
 
     @overload
-    async def ask(self, prompt: str, history: List[Tuple[str, str]], stream: Literal[False]) -> str: ...
+    async def ask(self, prompt: str, history: List[Message], stream: Literal[False]) -> str: ...
 
     @overload
-    async def ask(
-        self, prompt: str, history: List[Tuple[str, str]], stream: Literal[True]
-    ) -> AsyncGenerator[str, None]: ...
+    async def ask(self, prompt: str, history: List[Message], stream: Literal[True]) -> AsyncGenerator[str, None]: ...
 
     async def ask(
-        self, prompt: str, history: List[Tuple[str, str]], stream: Optional[bool] = False
+        self, prompt: str, history: List[Message], stream: Optional[bool] = False
     ) -> Union[AsyncGenerator[str, None], str]:
-        messages = await self._build_messages(prompt, history)
+        messages = self._build_messages(prompt, history)
 
         if stream:
             return self._ask_stream(messages)
@@ -149,16 +146,16 @@ class Ollama(BasicModel):
     # 多模态实现
     @overload
     async def ask_vision(
-        self, prompt, image_paths: List[str], history: List[Tuple[str, str]], stream: Literal[False]
+        self, prompt, image_paths: List[str], history: List[Message], stream: Literal[False]
     ) -> str: ...
 
     @overload
     async def ask_vision(
-        self, prompt, image_paths: List[str], history: List[Tuple[str, str]], stream: Literal[True]
+        self, prompt, image_paths: List[str], history: List[Message], stream: Literal[True]
     ) -> AsyncGenerator[str, None]: ...
 
     async def ask_vision(
-        self, prompt, image_paths: List[str], history: List[Tuple[str, str]], stream: bool = False
+        self, prompt, image_paths: List[str], history: List[Message], stream: bool = False
     ) -> Union[AsyncGenerator[str, None], str]:
         """
         多模态：图像识别
@@ -166,7 +163,7 @@ class Ollama(BasicModel):
         :param image_paths: 图片路径列表
         :return: 图片描述
         """
-        messages = await self._build_messages(prompt, history, image_paths)
+        messages = self._build_messages(prompt, history, image_paths)
 
         if stream:
             return self._ask_stream(messages)

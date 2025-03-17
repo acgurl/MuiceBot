@@ -4,6 +4,7 @@ from typing import AsyncGenerator, Optional
 
 from nonebot import logger
 
+from ._types import Message
 from .config import get_config
 from .database import Database
 from .llm import BasicModel
@@ -86,7 +87,7 @@ class Muice:
 
         logger.info("正在调用模型...")
 
-        history = await self.get_chat_memory(userid) if enable_history else []
+        history = await self.database.get_history(userid) if enable_history else []
 
         start_time = time.time()
         logger.debug(f"模型调用参数：Prompt: {message}, History: {history}")
@@ -102,16 +103,14 @@ class Muice:
         thought, result = process_thoughts(reply, self.think)  # type: ignore
         reply = "\n\n".join([thought, result])
 
-        await self.database.add_item(userid, message, result, image_paths)
+        message_object = Message(userid=userid, message=message, respond=result, images=image_paths)
+
+        await self.database.add_item(message_object)
 
         return reply
 
     async def ask_stream(
-        self,
-        message: str,
-        userid: str,
-        image_paths: list = [],
-        enable_history: bool = True,
+        self, message: str, userid: str, image_paths: list = [], enable_history: bool = True
     ) -> AsyncGenerator[str, None]:
         """
         以流式方式调用模型并逐步返回输出
@@ -123,7 +122,7 @@ class Muice:
 
         logger.info("正在调用模型...")
 
-        history = await self.get_chat_memory(userid) if enable_history else []
+        history = await self.database.get_history(userid)
 
         start_time = time.time()
         logger.debug(f"模型调用参数：Prompt: {message}, History: {history}")
@@ -148,18 +147,9 @@ class Muice:
 
         _, result = process_thoughts(reply, self.think)  # type: ignore
 
-        await self.database.add_item(userid, message, result, image_paths)
+        message_object = Message(userid=userid, message=message, respond=result, images=image_paths)
 
-    async def get_chat_memory(self, userid: str) -> list:
-        """
-        获取记忆
-        """
-        history = await self.database.get_history(userid)
-        if not history:
-            return []
-
-        history = [[item[3], item[4]] for item in history]
-        return history
+        await self.database.add_item(message_object)
 
     async def refresh(self, userid: str) -> str:
         """
@@ -167,7 +157,8 @@ class Muice:
         """
         logger.info(f"用户 {userid} 请求刷新")
 
-        last_item = await self.database.get_last_item(userid)
+        last_item = await self.database.get_history(userid, limit=1)
+        last_item = last_item[0]
 
         if not last_item:
             logger.error("用户对话数据不存在，拒绝刷新")
@@ -176,10 +167,12 @@ class Muice:
             logger.error("模型未加载")
             return "(模型未加载)"
 
-        userid, message = set(last_item[0][3:5])
-        image_paths = last_item[0][-1]
+        userid = last_item.userid
+        message = last_item.message
+        image_paths = last_item.images
+
         await self.database.remove_last_item(userid)
-        history = await self.get_chat_memory(userid)
+        history = await self.database.get_history(userid)
 
         start_time = time.time()
         logger.debug(f"模型调用参数：Prompt: {message}, History: {history}")
@@ -198,7 +191,9 @@ class Muice:
         thought, result = process_thoughts(reply, self.think)  # type: ignore
         reply = "\n\n".join([thought, result])
 
-        await self.database.add_item(userid, message, result, image_paths)
+        message_class = Message(userid=userid, message=message, respond=result, images=image_paths)
+
+        await self.database.add_item(message_class)
 
         return reply
 

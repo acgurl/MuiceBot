@@ -1,11 +1,11 @@
-from typing import AsyncGenerator, List, Literal, Optional, Tuple, Union, overload
+from typing import AsyncGenerator, List, Literal, Optional, Union, overload
 
 import httpx
 import openai
 from nonebot import logger
 
 from ..utils import get_image_base64
-from ._types import BasicModel, ModelConfig
+from ._types import BasicModel, Message, ModelConfig
 from .utils.auto_system_prompt import auto_system_prompt
 
 
@@ -28,9 +28,17 @@ class Openai(BasicModel):
         self.client = openai.AsyncOpenAI(api_key=self.api_key, base_url=self.api_base)
         self.extra_body = {"enable_search": True} if self.enable_search else None
 
-    async def _build_messages(
-        self, prompt: str, history: List[Tuple[str, str]], image_paths: Optional[list] = None
-    ) -> list:
+    def __build_image_message(self, prompt: str, image_paths: List[str]) -> dict:
+        user_content: List[dict] = [{"type": "text", "text": prompt}]
+
+        for url in image_paths:
+            image_format = url.split(".")[-1]
+            image_url = f"data:image/{image_format};base64,{get_image_base64(local_path=url)}"
+            user_content.append({"type": "image_url", "image_url": {"url": image_url}})
+
+        return {"role": "user", "content": user_content}
+
+    def _build_messages(self, prompt: str, history: List[Message], image_paths: List[str] = []) -> list:
         messages = []
 
         if self.auto_system_prompt:
@@ -44,33 +52,29 @@ class Openai(BasicModel):
         if history:
             for index, item in enumerate(history):
                 if index == 0:
-                    messages.append(
-                        {
-                            "role": "user",
-                            "content": self.user_instructions + "\n" + item[0],
-                        }
-                    )
+                    user_msg = self.user_instructions + "\n" + item.message
                 else:
-                    messages.append({"role": "user", "content": item[0]})
-                messages.append({"role": "assistant", "content": item[1]})
+                    user_msg = item.message
+
+                user_content = (
+                    {"role": "user", "content": user_msg}
+                    if not item.images
+                    else self.__build_image_message(item.message, item.images)
+                )
+
+                messages.append(user_content)
+                messages.append({"role": "assistant", "content": item.respond})
 
         if not history and self.user_instructions:
             text = self.user_instructions + "\n" + prompt
         else:
             text = prompt
 
-        if not image_paths:
-            messages.append({"role": "user", "content": text})
-            return messages
+        user_content = (
+            {"role": "user", "content": text} if not item.images else self.__build_image_message(text, image_paths)
+        )
 
-        user_content: List[dict] = [{"type": "text", "text": text}]
-
-        for url in image_paths:
-            image_format = url.split(".")[-1]
-            image_url = f"data:image/{image_format};base64,{get_image_base64(local_path=url)}"
-            user_content.append({"type": "image_url", "image_url": {"url": image_url}})
-
-        messages.append({"role": "user", "content": user_content})  # type: ignore
+        messages.append(user_content)
 
         return messages
 
@@ -142,15 +146,13 @@ class Openai(BasicModel):
             yield f"请求失败: {e}"
 
     @overload
-    async def ask(self, prompt: str, history: List[Tuple[str, str]], stream: Literal[False]) -> str: ...
+    async def ask(self, prompt: str, history: List[Message], stream: Literal[False]) -> str: ...
 
     @overload
-    async def ask(
-        self, prompt: str, history: List[Tuple[str, str]], stream: Literal[True]
-    ) -> AsyncGenerator[str, None]: ...
+    async def ask(self, prompt: str, history: List[Message], stream: Literal[True]) -> AsyncGenerator[str, None]: ...
 
     async def ask(
-        self, prompt: str, history: List[Tuple[str, str]], stream: Optional[bool] = False
+        self, prompt: str, history: List[Message], stream: Optional[bool] = False
     ) -> Union[AsyncGenerator[str, None], str]:
         """
         向 OpenAI 模型发送请求，并获取模型的推理结果
@@ -159,7 +161,7 @@ class Openai(BasicModel):
         :param history: 之前的对话历史（可选）
         :return: 模型生成的文本
         """
-        messages = await self._build_messages(prompt, history)
+        messages = self._build_messages(prompt, history)
 
         if stream:
             return self._ask_stream(messages)
@@ -167,17 +169,15 @@ class Openai(BasicModel):
 
     # 多模态部分
     @overload
-    async def ask_vision(
-        self, prompt, image_paths: list, history: List[Tuple[str, str]], stream: Literal[False]
-    ) -> str: ...
+    async def ask_vision(self, prompt, image_paths: list, history: List[Message], stream: Literal[False]) -> str: ...
 
     @overload
     async def ask_vision(
-        self, prompt, image_paths: list, history: List[Tuple[str, str]], stream: Literal[True]
+        self, prompt, image_paths: list, history: List[Message], stream: Literal[True]
     ) -> AsyncGenerator[str, None]: ...
 
     async def ask_vision(
-        self, prompt, image_paths: list, history: List[Tuple[str, str]], stream: Optional[bool] = False
+        self, prompt, image_paths: list, history: List[Message], stream: Optional[bool] = False
     ) -> Union[AsyncGenerator[str, None], str]:
         """
         多模态：图像识别
@@ -185,7 +185,7 @@ class Openai(BasicModel):
         :param image_paths: 图片路径列表
         :return: 图片描述
         """
-        messages = await self._build_messages(prompt, history, image_paths)
+        messages = self._build_messages(prompt, history, image_paths)
 
         if stream:
             return self._ask_stream(messages)

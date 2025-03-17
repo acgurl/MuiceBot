@@ -41,15 +41,19 @@ def get_image_base64(local_path: Optional[str] = None, image_bytes: Optional[byt
     raise ValueError("You must pass in a valid parameter!")
 
 
-async def save_image_as_file(image_url: str, file_name: str = str(time.time_ns()) + ".jpg") -> str:
+async def save_image_as_file(
+    image_url: str, file_name: str = str(time.time_ns()) + ".jpg", proxy: Optional[str] = None
+) -> str:
     """
     保存图片至本地目录
 
     :image_url: 图片在线地址
     :file_name: 要保存的文件名
+    :proxy: 代理地址
+
     :return: 保存后的本地目录
     """
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(proxy=proxy) as client:
         r = await client.get(image_url, headers={"User-Agent": User_Agent})
         local_path = (IMG_DIR / file_name).resolve()
         with open(local_path, "wb") as file:
@@ -100,7 +104,7 @@ async def legacy_get_images(message: MessageSegment, event: Event) -> str:
                 return ""
             url = f"https://api.telegram.org/file/bot{bot.bot_config.token}/{file.file_path}"  # type: ignore
             filename = file.file_path.split("/")[1]
-            return await save_image_as_file(url, filename)
+            return await save_image_as_file(url, filename, proxy=plugin_config.telegram_proxy)
 
     return ""
 
