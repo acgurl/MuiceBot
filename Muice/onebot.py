@@ -17,7 +17,7 @@ from nonebot_plugin_alconna.uniseg import Image, UniMsg
 from .config import plugin_config
 from .muice import Muice
 from .scheduler import setup_scheduler
-from .utils import legacy_get_images, save_image_as_file
+from .utils.utils import legacy_get_images, save_image_as_file
 
 muice = Muice()
 scheduler = None

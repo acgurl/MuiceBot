@@ -15,7 +15,7 @@ from nonebot.adapters.telegram import Event as TelegramEvent
 from nonebot.adapters.telegram.message import File as TelegramFile
 from nonebot.log import default_filter, logger_id
 
-from .config import plugin_config
+from ..config import plugin_config
 
 IMG_DIR = store.get_plugin_data_dir() / ".cache" / "images"
 IMG_DIR.mkdir(parents=True, exist_ok=True)
@@ -25,20 +25,6 @@ User_Agent = (
     "AppleWebKit/537.36 (KHTML, like Gecko)"
     "Chrome/134.0.0.0 Safari/537.36 Edg/134.0.0.0"
 )
-
-
-def get_image_base64(local_path: Optional[str] = None, image_bytes: Optional[bytes] = None) -> str:
-    """
-    获取本地图像 Base64 的方法
-    """
-    if local_path:
-        with open(local_path, "rb") as f:
-            image_data = base64.b64encode(f.read()).decode("utf-8")
-            return image_data
-    if image_bytes:
-        image_base64 = base64.b64encode(image_bytes)
-        return image_base64.decode("utf-8")
-    raise ValueError("You must pass in a valid parameter!")
 
 
 async def save_image_as_file(

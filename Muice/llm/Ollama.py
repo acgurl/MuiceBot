@@ -4,9 +4,9 @@ import ollama
 from nonebot import logger
 from ollama import ResponseError
 
-from ..utils import get_image_base64
 from ._types import BasicModel, Message, ModelConfig
 from .utils.auto_system_prompt import auto_system_prompt
+from .utils.images import get_image_base64
 
 
 class Ollama(BasicModel):
