@@ -151,22 +151,6 @@ class Dashscope(BasicModel):
                 yield (answer_content if not is_insert_think_label else "</think>" + answer_content)
                 is_insert_think_label = False
 
-    @overload
-    async def ask(self, prompt: str, history: List[Message], stream: Literal[False]) -> str: ...
-
-    @overload
-    async def ask(self, prompt: str, history: List[Message], stream: Literal[True]) -> AsyncGenerator[str, None]: ...
-
-    async def ask(
-        self, prompt: str, history: List[Message], stream: bool = False
-    ) -> Union[AsyncGenerator[str, None], str]:
-        messages = self._build_messages(prompt, history)
-        if stream:
-            return self._ask_stream(messages)
-
-        return await self._ask_sync(messages)
-
-    # 多模态部分
     async def _ask_vision_sync(self, messages: list) -> str:
         loop = asyncio.get_event_loop()
 
@@ -228,25 +212,43 @@ class Dashscope(BasicModel):
                 size = len(content_body[0]["text"])
 
     @overload
-    async def ask_vision(self, prompt, image_paths: list, history: List[Message], stream: Literal[False]) -> str: ...
+    async def ask(
+        self,
+        prompt: str,
+        history: List[Message],
+        images: Optional[List[str]] = [],
+        stream: Literal[False] = False,
+        **kwargs,
+    ) -> str: ...
 
     @overload
-    async def ask_vision(
-        self, prompt, image_paths: list, history: List[Message], stream: Literal[True]
+    async def ask(
+        self,
+        prompt: str,
+        history: List[Message],
+        images: Optional[List[str]] = [],
+        stream: Literal[True] = True,
+        **kwargs,
     ) -> AsyncGenerator[str, None]: ...
 
-    async def ask_vision(
-        self, prompt: str, image_paths: List[str], history: List[Message], stream: bool = False
+    async def ask(
+        self,
+        prompt: str,
+        history: List[Message],
+        images: Optional[List[str]] = [],
+        stream: Optional[bool] = False,
+        **kwargs,
     ) -> Union[AsyncGenerator[str, None], str]:
         """
-        多模态：图像识别
-
-        :param image_path: 图像路径
-        :return: 识别结果
+        因为 Dashscope 对于多模态模型的接口不同，所以这里不能统一函数
         """
-        messages = self._build_messages(prompt, history, image_paths)
+        messages = self._build_messages(prompt, history, images)
 
-        if not stream:
+        if stream:
+            if self.config.multimodal:
+                return self._ask_vision_stream(messages)
+            return self._ask_stream(messages)
+
+        if self.config.multimodal:
             return await self._ask_vision_sync(messages)
-
-        return self._ask_vision_stream(messages)
+        return await self._ask_sync(messages)

@@ -2,7 +2,6 @@ from abc import ABCMeta, abstractmethod
 from importlib.util import find_spec
 from typing import AsyncGenerator, List, Literal, Optional, Union, overload
 
-from nonebot import logger
 from pydantic import BaseModel as BasicConfigModel
 from pydantic import field_validator
 
@@ -131,44 +130,41 @@ class BasicModel(metaclass=ABCMeta):
         pass
 
     @overload
-    async def ask(self, prompt: str, history: List[Message], stream: Literal[False], *args, **kwargs) -> str: ...
+    async def ask(
+        self,
+        prompt: str,
+        history: List[Message],
+        images: Optional[List[str]] = [],
+        stream: Literal[False] = False,
+        **kwargs,
+    ) -> str: ...
 
     @overload
     async def ask(
-        self, prompt: str, history: List[Message], stream: Literal[True], *args, **kwargs
+        self,
+        prompt: str,
+        history: List[Message],
+        images: Optional[List[str]] = [],
+        stream: Literal[True] = True,
+        **kwargs,
     ) -> AsyncGenerator[str, None]: ...
 
     @abstractmethod
     async def ask(
-        self, prompt: str, history: List[Message], stream: Optional[bool] = False, *args, **kwargs
+        self,
+        prompt: str,
+        history: List[Message],
+        images: Optional[List[str]] = [],
+        stream: Optional[bool] = False,
+        **kwargs,
     ) -> Union[AsyncGenerator[str, None], str]:
         """
         模型交互询问
 
         :param prompt: 询问的内容
         :param history: 询问历史记录
+        :param image_paths: 本地图片路径列表
+
         :return: 模型回复
         """
         pass
-
-    @overload
-    async def ask_vision(
-        self, prompt: str, image_paths: List[str], history: List[Message], stream: Literal[False]
-    ) -> str: ...
-
-    @overload
-    async def ask_vision(
-        self, prompt: str, image_paths: List[str], history: List[Message], stream: Literal[True]
-    ) -> AsyncGenerator[str, None]: ...
-
-    async def ask_vision(
-        self, prompt: str, image_paths: List[str], history: List[Message], stream: Optional[bool] = False
-    ) -> Union[AsyncGenerator[str, None], str]:
-        """
-        多模态：图像识别
-
-        :param image_paths: 图片路径列表
-        :return: 图片描述
-        """
-        logger.error("此模型加载器不是多模态的")
-        return "此模型加载器不是多模态的"

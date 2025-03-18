@@ -234,17 +234,42 @@ class Xfyun(BasicModel):
         return sync_to_async_generator()
 
     @overload
-    async def ask(self, prompt: str, history: List[Message], stream: Literal[False]) -> str: ...
+    async def ask(
+        self,
+        prompt: str,
+        history: List[Message],
+        images: Optional[List[str]] = [],
+        stream: Literal[False] = False,
+        **kwargs,
+    ) -> str: ...
 
     @overload
-    async def ask(self, prompt: str, history: List[Message], stream: Literal[True]) -> AsyncGenerator[str, None]: ...
+    async def ask(
+        self,
+        prompt: str,
+        history: List[Message],
+        images: Optional[List[str]] = [],
+        stream: Literal[True] = True,
+        **kwargs,
+    ) -> AsyncGenerator[str, None]: ...
 
     async def ask(
-        self, prompt: str, history: List[Message], stream: Optional[bool] = False
+        self,
+        prompt: str,
+        history: List[Message],
+        images: Optional[List[str]] = [],
+        stream: Optional[bool] = False,
+        **kwargs,
     ) -> Union[AsyncGenerator[str, None], str]:
-        messages = self._build_messages(prompt, history)
+        """
+        多模态：图像识别
+
+        :param image_path: 图像路径
+        :return: 识别结果
+        """
+        messages = self._build_messages(prompt, history, images)
 
         if stream:
             return await self._ask_stream(messages)
-        else:
-            return await self._ask_sync(messages)
+
+        return await self._ask_sync(messages)

@@ -91,10 +91,9 @@ class Muice:
 
         start_time = time.time()
         logger.debug(f"模型调用参数：Prompt: {message}, History: {history}")
-        if self.multimodal:
-            reply = await self.model.ask_vision(message, image_paths, history, stream=False)
-        else:
-            reply = await self.model.ask(message, history, stream=False)
+
+        reply = await self.model.ask(message, history, image_paths, stream=False)
+
         if isinstance(reply, str):
             reply.strip()
         end_time = time.time()
@@ -127,10 +126,7 @@ class Muice:
         start_time = time.time()
         logger.debug(f"模型调用参数：Prompt: {message}, History: {history}")
 
-        if self.multimodal:
-            response = await self.model.ask_vision(message, image_paths, history, stream=True)
-        else:
-            response = await self.model.ask(message, history, stream=True)
+        response = await self.model.ask(message, history, image_paths, stream=True)
 
         reply = ""
 
@@ -176,12 +172,9 @@ class Muice:
 
         start_time = time.time()
         logger.debug(f"模型调用参数：Prompt: {message}, History: {history}")
-        if self.multimodal and image_paths:
-            reply = await self.model.ask_vision(
-                message, image_paths, history, stream=False
-            )  # TODO: 或许什么时候刷新操作支持流式，我想应该要复用 ask 了
-        else:
-            reply = await self.model.ask(message, history, stream=False)
+        reply = await self.model.ask(
+            message, history, image_paths, stream=False
+        )  # TODO: 或许什么时候刷新操作支持流式，我想应该要复用 ask 了
         if isinstance(reply, str):
             reply.strip()
         end_time = time.time()

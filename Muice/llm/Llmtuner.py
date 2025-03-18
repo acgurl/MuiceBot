@@ -42,6 +42,11 @@ class Llmtuner(BasicModel):
             logger.error(f"Error loading model: {e}")
             return False
 
+    def _build_vision_image(self, image_path: str) -> NDArray:
+        image = Image.open(image_path)
+        ndarry_image = np.array(image)
+        return ndarry_image
+
     def _build_messages(self, prompt: str, history: List[Message], images_path: Optional[List[str]] = None) -> list:
         messages = []
 
@@ -70,45 +75,43 @@ class Llmtuner(BasicModel):
         return response[0].response_text
 
     @overload
-    async def ask(self, prompt: str, history: List[Message], stream: Literal[False]) -> str: ...
-
-    @overload
-    async def ask(self, prompt: str, history: List[Message], stream: Literal[True]) -> AsyncGenerator[str, None]: ...
-
     async def ask(
-        self, prompt: str, history: List[Message], stream: Optional[bool] = False
-    ) -> Union[str, AsyncGenerator[str, None]]:
-        messages = self._build_messages(prompt, history)
-        if stream:
-            raise NotImplementedError(f"{self.config.loader} 不支持流式输出！")
-        return await self._ask_sync(messages)
-
-    # 多模态实现
-    def _build_vision_image(self, image_path: str) -> NDArray:
-        image = Image.open(image_path)
-        ndarry_image = np.array(image)
-        return ndarry_image
-
-    @overload
-    async def ask_vision(
-        self, prompt, image_paths: List[str], history: List[Message], stream: Literal[False]
+        self,
+        prompt: str,
+        history: List[Message],
+        images: Optional[List[str]] = [],
+        stream: Literal[False] = False,
+        **kwargs,
     ) -> str: ...
 
     @overload
-    async def ask_vision(
-        self, prompt, image_paths: List[str], history: List[Message], stream: Literal[True]
+    async def ask(
+        self,
+        prompt: str,
+        history: List[Message],
+        images: Optional[List[str]] = [],
+        stream: Literal[True] = True,
+        **kwargs,
     ) -> AsyncGenerator[str, None]: ...
 
-    async def ask_vision(
-        self, prompt, image_paths: List[str], history: List[Message], stream: bool = False
+    async def ask(
+        self,
+        prompt: str,
+        history: List[Message],
+        images: Optional[List[str]] = [],
+        stream: Optional[bool] = False,
+        **kwargs,
     ) -> Union[AsyncGenerator[str, None], str]:
+        image = None
+
         if stream:
             raise NotImplementedError(f"{self.config.loader} 不支持流式输出！")
 
-        if len(image_paths) > 1:
-            logger.warning("只能接受一张图片传入！")
+        if images:
+            if len(images) > 1:
+                logger.warning(f"{self.config.loader} 只能接受一张图片传入！")
+            image = self._build_vision_image(images[0])
 
-        messages = self._build_messages(prompt, history)
-        image = self._build_vision_image(image_paths[0])
+        messages = self._build_messages(prompt, history, images)
 
         return await self._ask_sync(messages, image)

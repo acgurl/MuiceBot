@@ -43,18 +43,19 @@ class Ollama(BasicModel):
         finally:
             return self.is_running
 
-    def __build_image_message(self, prompt: str, image_paths: List[str] = []) -> dict:
+    def __build_image_message(self, prompt: str, image_paths: Optional[List[str]] = []) -> dict:
         images = []
 
-        for image_path in image_paths:
-            image_base64 = get_image_base64(local_path=image_path)
-            images.append(image_base64)
+        if image_paths:
+            for image_path in image_paths:
+                image_base64 = get_image_base64(local_path=image_path)
+                images.append(image_base64)
 
         message = {"role": "user", "content": prompt, "images": images}
 
         return message
 
-    def _build_messages(self, prompt: str, history: List[Message], image_paths: List[str] = []) -> list:
+    def _build_messages(self, prompt: str, history: List[Message], image_paths: Optional[List[str]] = []) -> list:
         messages = []
 
         if self.auto_system_prompt:
@@ -129,41 +130,40 @@ class Ollama(BasicModel):
             yield f"(处理出错: {str(e)})"
 
     @overload
-    async def ask(self, prompt: str, history: List[Message], stream: Literal[False]) -> str: ...
-
-    @overload
-    async def ask(self, prompt: str, history: List[Message], stream: Literal[True]) -> AsyncGenerator[str, None]: ...
-
     async def ask(
-        self, prompt: str, history: List[Message], stream: Optional[bool] = False
-    ) -> Union[AsyncGenerator[str, None], str]:
-        messages = self._build_messages(prompt, history)
-
-        if stream:
-            return self._ask_stream(messages)
-        return await self._ask_sync(messages)
-
-    # 多模态实现
-    @overload
-    async def ask_vision(
-        self, prompt, image_paths: List[str], history: List[Message], stream: Literal[False]
+        self,
+        prompt: str,
+        history: List[Message],
+        images: Optional[List[str]] = [],
+        stream: Literal[False] = False,
+        **kwargs,
     ) -> str: ...
 
     @overload
-    async def ask_vision(
-        self, prompt, image_paths: List[str], history: List[Message], stream: Literal[True]
+    async def ask(
+        self,
+        prompt: str,
+        history: List[Message],
+        images: Optional[List[str]] = [],
+        stream: Literal[True] = True,
+        **kwargs,
     ) -> AsyncGenerator[str, None]: ...
 
-    async def ask_vision(
-        self, prompt, image_paths: List[str], history: List[Message], stream: bool = False
+    async def ask(
+        self,
+        prompt: str,
+        history: List[Message],
+        images: Optional[List[str]] = [],
+        stream: Optional[bool] = False,
+        **kwargs,
     ) -> Union[AsyncGenerator[str, None], str]:
         """
         多模态：图像识别
 
-        :param image_paths: 图片路径列表
-        :return: 图片描述
+        :param image_path: 图像路径
+        :return: 识别结果
         """
-        messages = self._build_messages(prompt, history, image_paths)
+        messages = self._build_messages(prompt, history, images)
 
         if stream:
             return self._ask_stream(messages)

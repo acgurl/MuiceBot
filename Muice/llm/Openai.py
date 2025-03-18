@@ -38,7 +38,7 @@ class Openai(BasicModel):
 
         return {"role": "user", "content": user_content}
 
-    def _build_messages(self, prompt: str, history: List[Message], image_paths: List[str] = []) -> list:
+    def _build_messages(self, prompt: str, history: List[Message], image_paths: Optional[List[str]] = []) -> list:
         messages = []
 
         if self.auto_system_prompt:
@@ -71,7 +71,7 @@ class Openai(BasicModel):
             text = prompt
 
         user_content = (
-            {"role": "user", "content": text} if not item.images else self.__build_image_message(text, image_paths)
+            {"role": "user", "content": text} if not image_paths else self.__build_image_message(text, image_paths)
         )
 
         messages.append(user_content)
@@ -146,47 +146,42 @@ class Openai(BasicModel):
             yield f"请求失败: {e}"
 
     @overload
-    async def ask(self, prompt: str, history: List[Message], stream: Literal[False]) -> str: ...
-
-    @overload
-    async def ask(self, prompt: str, history: List[Message], stream: Literal[True]) -> AsyncGenerator[str, None]: ...
-
     async def ask(
-        self, prompt: str, history: List[Message], stream: Optional[bool] = False
-    ) -> Union[AsyncGenerator[str, None], str]:
-        """
-        向 OpenAI 模型发送请求，并获取模型的推理结果
-
-        :param prompt: 输入给模型的文本
-        :param history: 之前的对话历史（可选）
-        :return: 模型生成的文本
-        """
-        messages = self._build_messages(prompt, history)
-
-        if stream:
-            return self._ask_stream(messages)
-        return await self._ask_sync(messages)
-
-    # 多模态部分
-    @overload
-    async def ask_vision(self, prompt, image_paths: list, history: List[Message], stream: Literal[False]) -> str: ...
+        self,
+        prompt: str,
+        history: List[Message],
+        images: Optional[List[str]] = [],
+        stream: Literal[False] = False,
+        **kwargs,
+    ) -> str: ...
 
     @overload
-    async def ask_vision(
-        self, prompt, image_paths: list, history: List[Message], stream: Literal[True]
+    async def ask(
+        self,
+        prompt: str,
+        history: List[Message],
+        images: Optional[List[str]] = [],
+        stream: Literal[True] = True,
+        **kwargs,
     ) -> AsyncGenerator[str, None]: ...
 
-    async def ask_vision(
-        self, prompt, image_paths: list, history: List[Message], stream: Optional[bool] = False
+    async def ask(
+        self,
+        prompt: str,
+        history: List[Message],
+        images: Optional[List[str]] = [],
+        stream: Optional[bool] = False,
+        **kwargs,
     ) -> Union[AsyncGenerator[str, None], str]:
         """
         多模态：图像识别
 
-        :param image_paths: 图片路径列表
-        :return: 图片描述
+        :param image_path: 图像路径
+        :return: 识别结果
         """
-        messages = self._build_messages(prompt, history, image_paths)
+        messages = self._build_messages(prompt, history, images)
 
         if stream:
             return self._ask_stream(messages)
+
         return await self._ask_sync(messages)
