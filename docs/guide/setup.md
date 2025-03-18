@@ -18,28 +18,15 @@ git clone https://github.com/Moemu/MuiceBot
 
 然后安装依赖：
 
-如果只使用在线模型服务，请执行：
-
 ```shell
 pip install .
 pip install nonebot2[fastapi]
 ```
 
-如果想同时使用本地运行的模型服务，请执行：
-
-```shell
-pip install .[local]
-pip install nonebot2[fastapi]
-```
-
-> [!NOTE]
->
-> 通过这种方法安装的 `Pytorch` 可能并不支持 `cuda` 。如需要，请额外安装。
-
 如果想为本项目做出贡献，请执行：
 
 ```shell
-pip install .[local,dev]
+pip install .[dev]
 pip install nonebot2[fastapi]
 ```
 

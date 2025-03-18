@@ -23,7 +23,7 @@ jobs:
         python -m pip install pdm
         python -m pip install pre-commit
         pdm config python.use_venv false
-        pdm install --no-lock --group dev --group local
+        pdm install --no-lock --group dev
         pre-commit install
 
     - name: Run pre-commit

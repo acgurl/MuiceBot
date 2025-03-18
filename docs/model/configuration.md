@@ -44,18 +44,9 @@ online_search: false # 联网搜索（目前仅支持 qwen-max/plus/turbo 系列
 
 ## Llmtuner (LLama-Factory)
 
-```yaml
-loader: Llmtuner # 使用 Llmtuner 加载器（必须）
-model_path: model/Qwen2.5-7B-Instruct-GPTQ-Int4 # 原始模型路径（必填）
-adapter_path: model/Muice-2.7.1-Qwen2.5-7B-Instruct-GPTQ-Int4-8e-4# # 微调模型路径（可选）
-template: qwen # LLaMA-Factory 中模型的模板（必填）
-system_prompt: '现在开始你是一个名为的“沐雪”的AI女孩子' # 系统提示（可选）
-auto_system_prompt: false # 自动配置沐雪的系统提示（默认为 false）
-max_tokens: 1024 # 模型生成的最大 token 数（可选，默认为 1024）
-temperature: 0.75 # 模型生成的温度参数（可选）
-top_k: 0.95 # 模型生成的 Top_k 参数（可选）
-multimodal: false # 是否启用多模态（可选。注意：使用的模型必须是多模态的）
-```
+*由于 llmtuner pypi 版本过低，无法兼容最新的模型，且被使用的可能性越来越少。为了优化本项目的环境大小，我们最终决定放弃 llmtuner 模型加载器*
+
+*如果你觉得此加载器的对您的意义重大，您可以 [从此处](https://github.com/Moemu/MuiceBot/blob/f62969871a296744c1b601730c3027816a4fe133/Muice/llm/Llmtuner.py) 获取到 Llmtuner.py 内容并放置到 `Muice/llm` 文件夹中并安装相关依赖，感谢您的理解*
 
 ## Ollama
 

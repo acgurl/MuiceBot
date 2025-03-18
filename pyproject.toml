@@ -30,11 +30,6 @@ authors = [
 ]
 
 [project.optional-dependencies]
-local = [
-    "llmtuner>=0.7.1",
-    "torch>=2.6.0",
-    "transformers>=4.46.3"
-]
 dev = [
     "pre-commit>=4.1.0",
     "nonebot-adapter-onebot>=2.4.6",
