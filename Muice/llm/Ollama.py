@@ -87,19 +87,23 @@ class Ollama(BasicModel):
         return messages
 
     async def _ask_sync(self, messages: list) -> str:
-        response = await self.client.chat(
-            model=self.model,
-            messages=messages,
-            stream=False,
-            options={
-                "temperature": self.temperature,
-                "top_k": self.top_k,
-                "top_p": self.top_p,
-                "repeat_penalty": self.repeat_penalty,
-                "presence_penalty": self.presence_penalty,
-                "frequency_penalty": self.frequency_penalty,
-            },
-        )
+        try:
+            response = await self.client.chat(
+                model=self.model,
+                messages=messages,
+                stream=False,
+                options={
+                    "temperature": self.temperature,
+                    "top_k": self.top_k,
+                    "top_p": self.top_p,
+                    "repeat_penalty": self.repeat_penalty,
+                    "presence_penalty": self.presence_penalty,
+                    "frequency_penalty": self.frequency_penalty,
+                },
+            )
+        except ollama.ResponseError as e:
+            logger.error(f"模型调用错误: {e.error}")
+            return f"模型调用错误: {e.error}"
 
         return response.message.content if response.message.content else "(警告：模型无返回)"
 
@@ -125,9 +129,9 @@ class Ollama(BasicModel):
                 if chunk.message.content:
                     yield chunk.message.content
 
-        except Exception as e:
-            logger.error(f"流式处理中断: {e}")
-            yield f"(处理出错: {str(e)})"
+        except ollama.ResponseError as e:
+            logger.error(f"模型调用错误: {e.error}")
+            yield f"模型调用错误: {e.error}"
 
     @overload
     async def ask(

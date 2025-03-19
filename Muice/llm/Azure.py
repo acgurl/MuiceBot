@@ -14,6 +14,7 @@ from azure.ai.inference.models import (
     UserMessage,
 )
 from azure.core.credentials import AzureKeyCredential
+from azure.core.exceptions import HttpResponseError
 from nonebot import logger
 
 from ._types import BasicModel, Message, ModelConfig
@@ -104,9 +105,10 @@ class Azure(BasicModel):
                 stream=False,
             )
             return response.choices[0].message.content  # type: ignore
-        except Exception as e:
-            logger.error(f"非流式 API 调用失败: {e}")
-            return "模型响应失败"
+        except HttpResponseError as e:
+            logger.error(f"模型响应失败: {e.status_code} ({e.reason})")
+            logger.error(f"{e.message}")
+            return f"模型响应失败: {e.status_code} ({e.reason})"
         finally:
             await client.close()
 
@@ -129,8 +131,10 @@ class Azure(BasicModel):
                 if chunk.choices and chunk["choices"][0]["delta"]:
                     yield chunk["choices"][0]["delta"]["content"]
 
-        except Exception as e:
-            logger.error(f"流式处理中断: {e}")
+        except HttpResponseError as e:
+            logger.error(f"模型响应失败: {e.status_code} ({e.reason})")
+            logger.error(f"{e.message}")
+            yield f"模型响应失败: {e.status_code} ({e.reason})"
         finally:
             await client.close()
 

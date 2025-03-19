@@ -98,10 +98,15 @@ class Dashscope(BasicModel):
             ),
         )
 
-        if isinstance(response, GenerationResponse):
-            return response.output.text
+        if not isinstance(response, GenerationResponse):
+            return "(模型内部错误：在流关闭的情况下返回了 Generator)"
 
-        return "(模型内部错误：在流关闭的情况下返回了 Generator)"
+        if response.status_code != 200:
+            logger.error(f"模型调用失败: {response.status_code}({response.code})")
+            logger.error(f"{response.message}")
+            return f"模型调用失败: {response.status_code}({response.code})"
+
+        return response.output.text
 
     async def _ask_stream(self, messages: list) -> AsyncGenerator[str, None]:
         loop = asyncio.get_event_loop()
@@ -131,6 +136,11 @@ class Dashscope(BasicModel):
         size = 0
 
         for chunk in response:
+            if chunk.status_code != 200:
+                logger.error(f"模型调用失败: {chunk.status_code}({chunk.code})")
+                logger.error(f"{chunk.message}")
+                yield f"模型调用失败: {chunk.status_code}({chunk.code})"
+
             if hasattr(chunk.output, "text") and chunk.output.text:  # 傻逼 Dashscope 为什么不统一接口？
                 yield chunk.output.text[size:]
                 size = len(chunk.output.text)
@@ -169,8 +179,9 @@ class Dashscope(BasicModel):
             return "(模型内部错误: 在流关闭的情况下返回了 Generator)"
 
         if response.status_code != 200:
-            logger.error(f"DashScope failed to generate response: {response}")
-            return f"（模型内部错误: {response}）"
+            logger.error(f"模型调用失败: {response.status_code}({response.code})")
+            logger.error(f"{response.message}")
+            return f"模型调用失败: {response.status_code}({response.code})"
 
         if isinstance(response.output.choices[0].message.content, str):
             return response.output.choices[0].message.content
@@ -203,6 +214,12 @@ class Dashscope(BasicModel):
 
         for chunk in response:
             logger.debug(chunk)
+            if chunk.status_code != 200:
+                logger.error(f"模型调用失败: {chunk.status_code}({chunk.code})")
+                logger.error(f"{chunk.message}")
+                yield f"模型调用失败: {chunk.status_code}({chunk.code})"
+                return
+
             content_body = chunk.output.choices[0].message.content
             if isinstance(content_body, str):
                 yield content_body[size:]

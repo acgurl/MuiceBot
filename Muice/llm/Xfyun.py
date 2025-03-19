@@ -114,10 +114,11 @@ class Xfyun(BasicModel):
         # logger.debug(f"Spark返回数据: {response}")
 
         if response["header"]["code"] != 0:  # 不合规时该值为10013
-            logger.warning(f"调用Spark在线模型时发生错误: {response['header']['message']}")
-            self.response = "（已被过滤）"
+            error_message = f"调用Spark在线模型时发生错误: {response['header']['message']}"
+            logger.warning(error_message)
+            self.response = error_message
             if self.stream:
-                self.stream_queue.put_nowait("（已被过滤）")
+                self.stream_queue.put_nowait(error_message)
                 self.stream_queue.put_nowait(None)  # 表示流结束
             ws.close()
             return

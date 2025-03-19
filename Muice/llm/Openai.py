@@ -1,6 +1,5 @@
 from typing import AsyncGenerator, List, Literal, Optional, Union, overload
 
-import httpx
 import openai
 from nonebot import logger
 
@@ -25,7 +24,7 @@ class Openai(BasicModel):
         self.stream = self.config.stream
         self.enable_search = self.config.online_search
 
-        self.client = openai.AsyncOpenAI(api_key=self.api_key, base_url=self.api_base)
+        self.client = openai.AsyncOpenAI(api_key=self.api_key, base_url=self.api_base, timeout=30)
         self.extra_body = {"enable_search": True} if self.enable_search else None
 
     def __build_image_message(self, prompt: str, image_paths: List[str]) -> dict:
@@ -78,7 +77,7 @@ class Openai(BasicModel):
 
         return messages
 
-    async def _ask_sync(self, messages: list, *args) -> str:
+    async def _ask_sync(self, messages: list, **kwargs) -> str:
         try:
             response = await self.client.chat.completions.create(
                 model=self.model,
@@ -102,15 +101,18 @@ class Openai(BasicModel):
                 result += message.content  # type:ignore
             return result if result else "（警告：模型无输出！）"
 
-        except openai.OpenAIError as e:
-            logger.error(f"OpenAI API 错误: {e}", exc_info=True)
+        except openai.APIConnectionError as e:
+            error_message = f"API 连接错误: {e}"
+            logger.error(error_message)
+            logger.error(e.__cause__)
 
-        except httpx.RequestError as e:
-            logger.error(f"请求失败: {e}", exc_info=True)
+        except openai.APIStatusError as e:
+            error_message = f"API 状态异常: {e.status_code}({e.response})"
+            logger.error(error_message)
 
-        return "（模型内部错误）"
+        return error_message
 
-    async def _ask_stream(self, messages: list, *args) -> AsyncGenerator[str, None]:
+    async def _ask_stream(self, messages: list, **kwargs) -> AsyncGenerator[str, None]:
         try:
             response = await self.client.chat.completions.create(
                 model=self.model,
@@ -138,12 +140,16 @@ class Openai(BasicModel):
                     yield (answer_content if not is_insert_think_label else "</think>" + answer_content)
                     is_insert_think_label = False
 
-        except openai.OpenAIError as e:
-            logger.error(f"OpenAI API 错误: {e}", exc_info=True)
-            yield f"OpenAI API 错误: {e}"
-        except httpx.RequestError as e:
-            logger.error(f"请求失败: {e}", exc_info=True)
-            yield f"请求失败: {e}"
+        except openai.APIConnectionError as e:
+            error_message = f"API 连接错误: {e}"
+            logger.error(error_message)
+            logger.error(e.__cause__)
+
+        except openai.APIStatusError as e:
+            error_message = f"API 状态异常: {e.status_code}({e.response})"
+            logger.error(error_message)
+
+        yield error_message
 
     @overload
     async def ask(
