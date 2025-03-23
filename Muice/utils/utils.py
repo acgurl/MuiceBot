@@ -1,8 +1,8 @@
 import base64
 import os
+import ssl
 import sys
 import time
-import ssl
 from typing import Optional
 
 import httpx
@@ -43,7 +43,7 @@ async def save_image_as_file(
     ssl_context = ssl.create_default_context()
     ssl_context.set_ciphers("DEFAULT")
 
-    async with httpx.AsyncClient(proxy=proxy,verify=ssl_context) as client:
+    async with httpx.AsyncClient(proxy=proxy, verify=ssl_context) as client:
         r = await client.get(image_url, headers={"User-Agent": User_Agent})
         local_path = (IMG_DIR / file_name).resolve()
         with open(local_path, "wb") as file:
@@ -51,14 +51,17 @@ async def save_image_as_file(
         return str(local_path)
 
 
-async def save_image_as_base64(image_url: str) -> str:
+async def save_image_as_base64(image_url: str, proxy: Optional[str] = None) -> str:
     """
     从在线 url 获取图像 Base64
 
     :image_url: 图片在线地址
     :return: 本地地址
     """
-    async with httpx.AsyncClient() as client:
+    ssl_context = ssl.create_default_context()
+    ssl_context.set_ciphers("DEFAULT")
+
+    async with httpx.AsyncClient(proxy=proxy, verify=ssl_context) as client:
         r = await client.get(image_url, headers={"User-Agent": User_Agent})
         image_base64 = base64.b64encode(r.content)
     return image_base64.decode("utf-8")
