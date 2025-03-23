@@ -2,6 +2,7 @@ import base64
 import os
 import sys
 import time
+import ssl
 from typing import Optional
 
 import httpx
@@ -39,7 +40,10 @@ async def save_image_as_file(
 
     :return: 保存后的本地目录
     """
-    async with httpx.AsyncClient(proxy=proxy) as client:
+    ssl_context = ssl.create_default_context()
+    ssl_context.set_ciphers("DEFAULT")
+
+    async with httpx.AsyncClient(proxy=proxy,verify=ssl_context) as client:
         r = await client.get(image_url, headers={"User-Agent": User_Agent})
         local_path = (IMG_DIR / file_name).resolve()
         with open(local_path, "wb") as file:
