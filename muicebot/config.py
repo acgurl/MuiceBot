@@ -8,6 +8,10 @@ from pydantic import BaseModel
 
 from .llm import ModelConfig
 
+MODELS_CONFIG_PATH = Path("configs/models.yml").resolve()
+SCHEDULES_CONFIG_PATH = Path("configs/schedules.yml").resolve()
+PLUGINS_CONFIG_PATH = Path("configs/plugins.yml").resolve()
+
 
 class PluginConfig(BaseModel):
     log_level: str = "INFO"
@@ -49,28 +53,57 @@ class Config(BaseModel):
         extra = "allow"
 
 
-CONFIG_PATH = Path("configs.yml").resolve()
+def get_schedule_configs() -> List[Schedule]:
+    """
+    从配置文件 `configs/schedules.yml` 中获取所有调度器配置
 
+    如果没有该文件，才抛出 `FileNotFoundError`
+    """
+    if not os.path.isfile(SCHEDULES_CONFIG_PATH):
+        raise FileNotFoundError("configs/models.yml 不存在！请先创建")
 
-def get_config(model_config_name: str = "model") -> Config:
-    if not os.path.isfile(CONFIG_PATH):
-        raise FileNotFoundError("configs.yml 不存在！请先创建")
-
-    with open(CONFIG_PATH, "r", encoding="utf-8") as f:
+    with open(SCHEDULES_CONFIG_PATH, "r", encoding="utf-8") as f:
         configs = yaml_.load(f, Loader=yaml_.FullLoader)
 
+    if not configs:
+        return []
+
+    schedule_configs = []
+
+    for schedule_id, config in configs.items():
+        config["id"] = schedule_id
+        schedule_config = Schedule(**config)
+        schedule_configs.append(schedule_config)
+
+    return schedule_configs
+
+
+def get_model_config(model_config_name: Optional[str] = None) -> ModelConfig:
+    """
+    从配置文件 `configs/models.yml` 中获取指定模型的配置文件
+
+    :model_config_name: (可选)模型配置名称。若为空，则先寻找配置了 `default: true` 的首个配置项，若失败就再寻找首个配置项
+    若都不存在，则抛出 `FileNotFoundError`
+    """
+    if not os.path.isfile(MODELS_CONFIG_PATH):
+        raise FileNotFoundError("configs/models.yml 不存在！请先创建")
+
+    with open(MODELS_CONFIG_PATH, "r", encoding="utf-8") as f:
+        configs = yaml_.load(f, Loader=yaml_.FullLoader)
+
+    if not configs:
+        raise ValueError("configs/models.yml 为空，请先至少定义一个模型配置")
+
     model_config = configs.get(model_config_name, {})
-    schedule_configs = configs.get("schedule", [])
 
     if not model_config:
-        raise ValueError(f"{model_config_name} 模型配置项不存在！")
+        model_config = next((config for config in configs.values() if config.get("default")), None)  # 尝试获取默认配置
+        if not model_config:
+            model_config = next(iter(configs.values()), None)  # 尝试获取第一个配置
+
+    if not model_config:
+        raise FileNotFoundError("configs/models.yml 中不存在有效的模型配置项！")
 
     model_config = ModelConfig(**model_config)
-    schedule_configs = [Schedule(**schedule_config) for schedule_config in schedule_configs]
 
-    configs.update({"model": model_config})
-    configs.update({"schedule": schedule_configs})
-
-    config = Config(**configs)
-
-    return config
+    return model_config
