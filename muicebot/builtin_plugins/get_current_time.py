@@ -1,4 +1,5 @@
-from muicebot.plugin import PluginMetadata, on_function_call
+from muicebot.plugin import PluginMetadata
+from muicebot.plugin.func_call import on_function_call
 
 __metadata__ = PluginMetadata(
     name="time", description="时间插件", usage="直接调用，返回 %Y-%m-%d %H:%M:%S 格式的当前时间"
@@ -6,7 +7,6 @@ __metadata__ = PluginMetadata(
 
 
 @on_function_call(
-    name="get_current_time",
     description="获取当前时间",
 )
 async def get_current_time() -> str:

@@ -4,14 +4,15 @@ from nonebot.adapters.onebot.v12 import Bot as Onebotv12Bot
 from nonebot.adapters.qq import Event as QQEvent
 from nonebot.adapters.telegram import Event as TelegramEvent
 
-from muicebot.plugin import PluginMetadata, on_function_call
+from muicebot.plugin import PluginMetadata
+from muicebot.plugin.func_call import on_function_call
 
 __metadata__ = PluginMetadata(
     name="get_username", description="获取用户名的插件", usage="直接调用，返回当前对话的用户名"
 )
 
 
-@on_function_call(name="get_username", description="获取当前对话的用户名字")
+@on_function_call(description="获取当前对话的用户名字")
 async def get_username(bot: Bot, event: Event) -> str:
     userid = event.get_user_id()
     username = ""

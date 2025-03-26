@@ -8,7 +8,7 @@ from nonebot.matcher import Matcher
 from ..context import get_bot, get_event, get_mather
 from ..typing import ASYNC_FUNCTION_CALL_FUNC, F
 from ..utils import async_wrap, is_coroutine_callable
-from .models import Parameter
+from .parameter import Parameter
 
 # from nonebot.typing import T_State
 
@@ -18,8 +18,8 @@ _caller_data: dict[str, "Caller"] = {}
 
 
 class Caller:
-    def __init__(self, name: str, description: str):
-        self._name: str = name
+    def __init__(self, description: str):
+        self._name: str = ""
         """函数名称"""
         self._description: str = description
         """函数描述"""
@@ -42,6 +42,8 @@ class Caller:
             self.function = func
         else:
             self.function = async_wrap(func)  # type:ignore
+
+        self._name = func.__name__
 
         # 获取模块名
         if module := inspect.getmodule(func):
@@ -130,17 +132,16 @@ class Caller:
         }
 
 
-def on_function_call(name: str, description: str) -> Caller:
+def on_function_call(description: str) -> Caller:
     """
     返回一个Caller类，可用于装饰一个函数，使其注册为一个可被AI调用的function call函数
 
-    :name: 函数名称，若为空则从函数的__name__属性获取
     :description: 函数描述，若为None则从函数的docstring中获取
 
     :return: Caller对象
     """
 
-    caller = Caller(name=name, description=description)
+    caller = Caller(description=description)
     return caller
 
 
