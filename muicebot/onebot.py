@@ -44,6 +44,7 @@ async def load_bot():
     logger.success(f"模型适配器加载成功: {muice.model_loader} ⭐")
 
     logger.info("加载 MuiceBot 插件...")
+    load_plugins("./muicebot/builtin_plugins")
     load_plugins("./muicebot/plugins")
     logger.success("插件加载完成⭐")
 
