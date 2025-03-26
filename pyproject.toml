@@ -37,7 +37,7 @@ dev = [
     "mypy>=1.15.0",
     "black>=25.1.0",
     "types-requests",
-    "types-PyYAML"
+    "types-PyYAML",
 ]
 test = [
     "nonebug>=0.4.3",
