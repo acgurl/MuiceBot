@@ -57,10 +57,10 @@ def get_schedule_configs() -> List[Schedule]:
     """
     从配置文件 `configs/schedules.yml` 中获取所有调度器配置
 
-    如果没有该文件，才抛出 `FileNotFoundError`
+    如果没有该文件，返回空列表
     """
     if not os.path.isfile(SCHEDULES_CONFIG_PATH):
-        raise FileNotFoundError("configs/models.yml 不存在！请先创建")
+        return []
 
     with open(SCHEDULES_CONFIG_PATH, "r", encoding="utf-8") as f:
         configs = yaml_.load(f, Loader=yaml_.FullLoader)
