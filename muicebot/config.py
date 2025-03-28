@@ -94,12 +94,14 @@ def get_model_config(model_config_name: Optional[str] = None) -> ModelConfig:
     if not configs:
         raise ValueError("configs/models.yml 为空，请先至少定义一个模型配置")
 
-    model_config = configs.get(model_config_name, {})
-
-    if not model_config:
+    if model_config_name in [None, ""]:
         model_config = next((config for config in configs.values() if config.get("default")), None)  # 尝试获取默认配置
         if not model_config:
             model_config = next(iter(configs.values()), None)  # 尝试获取第一个配置
+    elif model_config_name in configs:
+        model_config = configs.get(model_config_name, {})
+    else:
+        raise ValueError("指定的模型配置不存在！")
 
     if not model_config:
         raise FileNotFoundError("configs/models.yml 中不存在有效的模型配置项！")

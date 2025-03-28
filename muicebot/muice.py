@@ -54,7 +54,7 @@ class Muice:
         """
         try:
             self.model_config = get_model_config(config_name)
-        except ValueError as e:
+        except (ValueError, FileNotFoundError) as e:
             return str(e)
         self.think = self.model_config.think
         self.model_loader = self.model_config.loader
@@ -62,7 +62,7 @@ class Muice:
         self.__load_model()
         self.load_model()
 
-        return f"已成功加载 {config_name}"
+        return f"已成功加载 {config_name}" if config_name else "未指定模型配置名，已加载默认模型配置"
 
     async def ask(
         self,

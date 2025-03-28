@@ -90,7 +90,7 @@ command_load = on_alconna(
     Alconna(
         [".", "/"],
         "load",
-        Args["config_name", str, "model"],
+        Args["config_name", str, ""],
         meta=CommandMeta("加载模型", usage="load <config_name>", example="load model.deepseek"),
     ),
     priority=10,
