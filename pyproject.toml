@@ -5,6 +5,7 @@ description = "一个可以用来调用多种模型，且被用来练手的Noneb
 readme = "README.md"
 requires-python = ">=3.10, <=3.12"
 dependencies = [
+    "aiosqlite>=0.17.0",
     "APScheduler>=3.11.0",
     "azure-ai-inference>=1.0.0b7",
     "dashscope>=1.22.1",
@@ -23,6 +24,7 @@ dependencies = [
     "httpx>=0.27.0",
     "ruamel.yaml>=0.18.10",
     "SQLAlchemy>=2.0.38",
+    "toml>=0.10.2; python_version < '3.11'",
     "websocket_client>=1.8.0",
     "setuptools-scm>=8.2.0"
 ]
