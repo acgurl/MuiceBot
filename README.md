@@ -40,11 +40,9 @@
 
 # TODO📝
 
-- [ ] 群管理指令。这是基本功能吧？
+- [X] Function Call 插件系统
 
-- [ ] 插件系统。世界上唯一一个还没支持插件的 Bot 诞生了
-
-- [ ] 多模态：工具集。沐雪还不会用呢
+- [X] 多模态模型：工具集支持
 
 - [ ] OFA 图像识别。既然都有了多模态为什么还用 OFA？好吧，因为没钱调用接口
 
@@ -68,7 +66,7 @@
 
 本项目基于 [BSD 3](https://github.com/Moemu/nonebot-plugin-muice/blob/main/LICENSE) 许可证提供（暂定），出现特殊用途时请仔细阅读许可证中的规定
 
-本项目标识使用了 [nonebot/nonebot2](https://github.com/nonebot/nonebot2) 和 画师 [Nakkar](https://www.pixiv.net/users/28246124) ~~[已被删除](https://www.pixiv.net/artworks/101063891)~~ 的资产或作品。如有侵权，请及时与我们联系
+本项目标识使用了 [nonebot/nonebot2](https://github.com/nonebot/nonebot2) 和 画师 [Nakkar](https://www.pixiv.net/users/28246124) ~~[Pixiv作品](https://www.pixiv.net/artworks/101063891)~~ 的资产或作品。如有侵权，请及时与我们联系
 
 对于沐雪的人设和未明确注明许可证和使用范围的模型文件，虽然没有明确限制，但十分不建议将其作为商业用途
 
