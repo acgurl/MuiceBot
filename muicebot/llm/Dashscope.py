@@ -160,7 +160,6 @@ class Dashscope(BasicModel):
 
         is_insert_think_label = False
         is_function_call = False
-        size = 0
 
         tool_call_id: str = ""
         function_name: str = ""
@@ -189,12 +188,15 @@ class Dashscope(BasicModel):
                 continue
 
             if hasattr(chunk.output, "text") and chunk.output.text:  # 傻逼 Dashscope 为什么不统一接口？
-                yield chunk.output.text[size:]
-                size = len(chunk.output.text)
+                yield chunk.output.text
+                continue
+
+            if chunk.output.choices is None:
                 continue
 
             answer_content = chunk.output.choices[0].message.content
             reasoning_content = chunk.output.choices[0].message.get("reasoning_content", "")
+
             if answer_content == "" and reasoning_content == "":
                 continue
 

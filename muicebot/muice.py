@@ -1,6 +1,6 @@
 import importlib
 import time
-from typing import AsyncGenerator, Optional
+from typing import AsyncGenerator, Optional, Union
 
 from nonebot import logger
 
@@ -91,7 +91,9 @@ class Muice:
         start_time = time.perf_counter()
         logger.debug(f"模型调用参数：Prompt: {message}, History: {history}")
 
-        reply = await self.model.ask(message, history, image_paths, stream=False, tools=get_tools())
+        reply = await self.model.ask(
+            message, history, image_paths, stream=False, tools=get_tools() if self.model_config.function_call else []
+        )
 
         if isinstance(reply, str):
             reply.strip()
@@ -126,7 +128,9 @@ class Muice:
         start_time = time.perf_counter()
         logger.debug(f"模型调用参数：Prompt: {message}, History: {history}")
 
-        response = await self.model.ask(message, history, image_paths, stream=True, tools=get_tools())
+        response = await self.model.ask(
+            message, history, image_paths, stream=True, tools=get_tools() if self.model_config.function_call else []
+        )
 
         reply = ""
 
@@ -148,9 +152,11 @@ class Muice:
 
         await self.database.add_item(message_object)
 
-    async def refresh(self, userid: str) -> str:
+    async def refresh(self, userid: str) -> Union[AsyncGenerator[str, None], str]:
         """
         刷新对话
+
+        :userid: 用户唯一标识id
         """
         logger.info(f"用户 {userid} 请求刷新")
 
@@ -160,37 +166,17 @@ class Muice:
         if not last_item:
             logger.warning("用户对话数据不存在，拒绝刷新")
             return "你都还没和我说过一句话呢，得和我至少聊上一段才能刷新哦"
-        if not (self.model and self.model.is_running):
-            logger.error("模型未加载")
-            return "(模型未加载)"
 
         userid = last_item.userid
         message = last_item.message
         image_paths = last_item.images
 
         await self.database.remove_last_item(userid)
-        history = await self.database.get_history(userid)
 
-        start_time = time.perf_counter()
-        logger.debug(f"模型调用参数：Prompt: {message}, History: {history}")
-        reply = await self.model.ask(
-            message, history, image_paths, stream=False
-        )  # TODO: 或许什么时候刷新操作支持流式，我想应该要复用 ask 了
-        if isinstance(reply, str):
-            reply.strip()
-        end_time = time.perf_counter()
+        if not self.model_config.stream:
+            return await self.ask(message, userid, image_paths)
 
-        logger.success(f"模型调用成功: {reply}")
-        logger.debug(f"模型调用时长: {end_time - start_time} s")
-
-        thought, result = process_thoughts(reply, self.think)  # type: ignore
-        reply = "\n\n".join([thought, result])
-
-        message_class = Message(userid=userid, message=message, respond=result, images=image_paths)
-
-        await self.database.add_item(message_class)
-
-        return reply
+        return self.ask_stream(message, userid, image_paths)
 
     async def reset(self, userid: str) -> str:
         """

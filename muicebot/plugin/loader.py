@@ -18,7 +18,7 @@ def load_plugin(plugin_path: Path | str) -> Optional[Plugin]:
     加载单个插件
     """
     try:
-        logger.debug(f"加载插件: {plugin_path} ...")
+        logger.info(f"加载插件: {plugin_path}")
         if isinstance(plugin_path, Path):
             plugin_path = path_to_module_name(plugin_path)
         module = importlib.import_module(plugin_path)
@@ -28,7 +28,6 @@ def load_plugin(plugin_path: Path | str) -> Optional[Plugin]:
             ValueError(f"插件 {plugin_path} 包名出现冲突！")
 
         _plugins.append({plugin.package_name: plugin})
-        logger.success(f"成功加载: {plugin_path}")
 
         return plugin
 

@@ -44,8 +44,8 @@ async def load_bot():
     logger.success(f"模型适配器加载成功: {muice.model_loader} ⭐")
 
     logger.info("加载 MuiceBot 插件...")
-    load_plugins("./muicebot/builtin_plugins")
-    load_plugins("./muicebot/plugins")
+    for plugin_dir in plugin_config.plugins_dir:
+        load_plugins(plugin_dir)
     logger.success("插件加载完成⭐")
 
     logger.success("MuiceBot 已准备就绪✨")
@@ -204,12 +204,32 @@ async def handle_command_refresh(event: Event):
     userid = event.get_user_id()
     response = await muice.refresh(userid)
 
-    paragraphs = response.split("\n")
+    if isinstance(response, str):
+        paragraphs = response.split("\n\n")
 
-    for index, paragraph in enumerate(paragraphs):
-        if index == len(paragraphs) - 1:
-            await command_refresh.finish(paragraph)
-        await command_refresh.send(paragraph)
+        for index, paragraph in enumerate(paragraphs):
+            if index == len(paragraphs) - 1:
+                await command_refresh.finish(paragraph)
+            await command_refresh.send(paragraph)
+
+        return
+
+    current_paragraph = ""
+
+    async for chunk in response:
+        current_paragraph += chunk
+        paragraphs = current_paragraph.split("\n\n")
+
+        while len(paragraphs) > 1:
+            current_paragraph = paragraphs[0].strip()
+            if current_paragraph:
+                await UniMessage(current_paragraph).send()
+            paragraphs = paragraphs[1:]
+
+        current_paragraph = paragraphs[-1].strip()
+
+    if current_paragraph:
+        await UniMessage(current_paragraph).finish()
 
 
 @command_undo.handle()
@@ -268,7 +288,6 @@ async def handle_supported_adapters(message: UniMsg, event: Event, bot: Bot, sta
 
         async for chunk in muice.ask_stream(message_text, userid, image_paths=image_paths):
             current_paragraph += chunk
-            logger.debug(f"Stream response: {chunk}")
             paragraphs = current_paragraph.split("\n\n")
 
             while len(paragraphs) > 1:

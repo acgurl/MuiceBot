@@ -40,6 +40,8 @@ class ModelConfig(BaseModel):
     """是否使用流式输出"""
     online_search: bool = False
     """是否启用联网搜索（原生实现）"""
+    function_call: bool = False
+    """是否启用工具调用"""
 
     model_path: str = ""
     """本地模型路径"""
@@ -84,6 +86,12 @@ class ModelConfig(BaseModel):
 
 
 class BasicModel(metaclass=ABCMeta):
+    """
+    模型基类，所有模型加载器都必须继承于该类
+
+    推荐使用该基类中定义的方法构建模型加载器类，但无论如何都必须实现 `ask` 方法
+    """
+
     def __init__(self, model_config: ModelConfig) -> None:
         """
         统一在此处声明变量
@@ -116,10 +124,9 @@ class BasicModel(metaclass=ABCMeta):
         self.is_running = True
         return True
 
-    @abstractmethod
-    async def _ask_sync(self, messages: list, *args, **kwargs) -> str:
+    async def _ask_sync(self, messages: list, *args, **kwargs):
         """
-        同步模型调用（子类必须实现）
+        同步模型调用
         """
         pass
 
