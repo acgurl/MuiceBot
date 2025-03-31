@@ -20,8 +20,10 @@ class PluginConfig(BaseModel):
     """沐雪的自定义昵称，作为消息前缀条件响应信息事件"""
     telegram_proxy: str | None = None
     """telegram代理，这个配置项用于获取图片时使用"""
-    plugins_dir: list = ["./muicebot/plugins", "./muicebot/builtin_plugins"]
+    plugins_dir: list = []
     """自定义插件加载目录"""
+    enable_builtin_plugins: bool = True
+    """启用内嵌插件"""
 
 
 plugin_config = get_plugin_config(PluginConfig)

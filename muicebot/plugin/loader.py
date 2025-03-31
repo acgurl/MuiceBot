@@ -36,7 +36,7 @@ def load_plugin(plugin_path: Path | str) -> Optional[Plugin]:
         return None
 
 
-def load_plugins(*plugins_dirs: str) -> set[Plugin]:
+def load_plugins(*plugins_dirs: Path | str) -> set[Plugin]:
     """
     加载传入插件目录中的所有插件
     """
@@ -44,7 +44,7 @@ def load_plugins(*plugins_dirs: str) -> set[Plugin]:
     plugins = set()
 
     for plugin_dir in plugins_dirs:
-        plugin_dir_path = Path(plugin_dir)
+        plugin_dir_path = Path(plugin_dir) if isinstance(plugin_dir, str) else plugin_dir
 
         for plugin in os.listdir(plugin_dir_path):
             plugin_path = Path(os.path.join(plugin_dir_path, plugin))
