@@ -181,7 +181,7 @@ async def handle_command_status():
 
     plugins_list = get_plugins()
     if plugins_list:
-        plugin_names = [list(plugin.keys())[0] for plugin in plugins_list]
+        plugin_names = plugins_list.keys()
         plugins_list = "、".join(plugin_names)
     else:
         plugins_list = "暂无已加载的插件"
