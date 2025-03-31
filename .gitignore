@@ -146,6 +146,9 @@ node_modules
 dist/
 doc_build/
 
+# MuiceBot
 configs.yml
 .vscode
 logs
+configs
+plugins

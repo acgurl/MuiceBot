@@ -1,14 +1,14 @@
 from abc import ABCMeta, abstractmethod
 from importlib.util import find_spec
-from typing import AsyncGenerator, List, Literal, Optional, Union, overload
+from typing import Any, AsyncGenerator, List, Literal, Optional, Union, overload
 
-from pydantic import BaseModel as BasicConfigModel
-from pydantic import field_validator
+from pydantic import BaseModel, field_validator
 
 from .._types import Message
+from ..plugin import get_function_calls
 
 
-class ModelConfig(BasicConfigModel):
+class ModelConfig(BaseModel):
     loader: str = ""
     """所使用加载器的名称，位于 llm 文件夹下，loader 开头必须大写"""
 
@@ -40,6 +40,8 @@ class ModelConfig(BasicConfigModel):
     """是否使用流式输出"""
     online_search: bool = False
     """是否启用联网搜索（原生实现）"""
+    function_call: bool = False
+    """是否启用工具调用"""
 
     model_path: str = ""
     """本地模型路径"""
@@ -74,7 +76,7 @@ class ModelConfig(BasicConfigModel):
             raise ValueError("loader is required")
 
         # Check if the specified loader exists
-        module_path = f"Muice.llm.{loader}"
+        module_path = f"muicebot.llm.{loader}"
 
         # 使用 find_spec 仅检测模块是否存在，不实际导入
         if find_spec(module_path) is None:
@@ -84,6 +86,12 @@ class ModelConfig(BasicConfigModel):
 
 
 class BasicModel(metaclass=ABCMeta):
+    """
+    模型基类，所有模型加载器都必须继承于该类
+
+    推荐使用该基类中定义的方法构建模型加载器类，但无论如何都必须实现 `ask` 方法
+    """
+
     def __init__(self, model_config: ModelConfig) -> None:
         """
         统一在此处声明变量
@@ -116,10 +124,9 @@ class BasicModel(metaclass=ABCMeta):
         self.is_running = True
         return True
 
-    @abstractmethod
-    async def _ask_sync(self, messages: list, *args, **kwargs) -> str:
+    async def _ask_sync(self, messages: list, *args, **kwargs):
         """
-        同步模型调用（子类必须实现）
+        同步模型调用
         """
         pass
 
@@ -135,6 +142,7 @@ class BasicModel(metaclass=ABCMeta):
         prompt: str,
         history: List[Message],
         images: Optional[List[str]] = [],
+        tools: Optional[List[dict]] = [],
         stream: Literal[False] = False,
         **kwargs,
     ) -> str: ...
@@ -145,6 +153,7 @@ class BasicModel(metaclass=ABCMeta):
         prompt: str,
         history: List[Message],
         images: Optional[List[str]] = [],
+        tools: Optional[List[dict]] = [],
         stream: Literal[True] = True,
         **kwargs,
     ) -> AsyncGenerator[str, None]: ...
@@ -155,6 +164,7 @@ class BasicModel(metaclass=ABCMeta):
         prompt: str,
         history: List[Message],
         images: Optional[List[str]] = [],
+        tools: Optional[List[dict]] = [],
         stream: Optional[bool] = False,
         **kwargs,
     ) -> Union[AsyncGenerator[str, None], str]:
@@ -163,8 +173,30 @@ class BasicModel(metaclass=ABCMeta):
 
         :param prompt: 询问的内容
         :param history: 询问历史记录
-        :param image_paths: 本地图片路径列表
+        :param images: 本地图片路径列表
+        :param tools: 工具列表
+        :param stream: 是否使用流式输出
 
         :return: 模型回复
         """
         pass
+
+
+class FunctionCallRequest(BaseModel):
+    """
+    模型 FunctionCall 请求
+    """
+
+    func: str
+    """函数名称"""
+    arguments: dict[str, str] | None = None
+    """函数参数"""
+
+
+async def function_call_handler(func: str, arguments: dict[str, str] | None = None) -> Any:
+    """
+    模型 Function Call 请求处理
+    """
+    arguments = arguments if arguments else {}
+    func_caller = get_function_calls().get(func)
+    return await func_caller.run(**arguments) if func_caller else "(Unknown Function)"
