@@ -1,0 +1,22 @@
+name: Publish
+
+on:
+    release:
+        types: [published]
+
+jobs:
+  pypi-publish:
+    name: upload release to PyPI
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Setup pdm
+        uses: pdm-project/setup-pdm@v4
+      - name: Publish package distributions to PyPI
+        run: pdm publish
+      - name: Publish distribution to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
