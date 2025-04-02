@@ -5,7 +5,6 @@ from nonebot import logger
 from ollama import ResponseError
 
 from ._types import BasicModel, Message, ModelConfig, function_call_handler
-from .utils.auto_system_prompt import auto_system_prompt
 from .utils.images import get_image_base64
 
 
@@ -26,11 +25,6 @@ class Ollama(BasicModel):
         self.presence_penalty = self.config.presence_penalty
         self.frequency_penalty = self.config.frequency_penalty
         self.stream = self.config.stream
-
-        self.system_prompt = self.config.system_prompt
-        self.auto_system_prompt = self.config.auto_system_prompt
-        self.user_instructions = self.config.user_instructions
-        self.auto_user_instructions = self.config.auto_user_instructions
 
         self._tools: List[dict] = []
 
@@ -57,32 +51,19 @@ class Ollama(BasicModel):
 
         return message
 
-    def _build_messages(self, prompt: str, history: List[Message], image_paths: Optional[List[str]] = []) -> list:
+    def _build_messages(
+        self, prompt: str, history: List[Message], image_paths: Optional[List[str]] = [], system: Optional[str] = None
+    ) -> list:
         messages = []
 
-        if self.auto_system_prompt:
-            self.system_prompt = auto_system_prompt(prompt)
-        if self.system_prompt:
-            messages.append({"role": "system", "content": self.system_prompt})
-
-        if self.auto_user_instructions:
-            self.user_instructions = auto_system_prompt(prompt)
+        if system:
+            messages.append({"role": "system", "content": system})
 
         for index, item in enumerate(history):
-            if index == 0:
-                user_content = self.user_instructions + "\n" + item.message
-            else:
-                user_content = item.message
-
-            messages.append(self.__build_image_message(user_content, image_paths))
+            messages.append(self.__build_image_message(item.message, image_paths))
             messages.append({"role": "assistant", "content": item.respond})
 
-        if not history and self.user_instructions:
-            user_content = self.user_instructions + "\n" + prompt
-        else:
-            user_content = prompt
-
-        message = self.__build_image_message(user_content, image_paths)
+        message = self.__build_image_message(prompt, image_paths)
 
         messages.append(message)
 
@@ -124,8 +105,10 @@ class Ollama(BasicModel):
 
         except ollama.ResponseError as e:
             logger.error(f"模型调用错误: {e.error}")
+            self.succeed = False
             return f"模型调用错误: {e.error}"
 
+        self.succeed = False
         return "模型调用错误: 未知错误"
 
     async def _ask_stream(self, messages: list) -> AsyncGenerator[str, None]:
@@ -174,6 +157,8 @@ class Ollama(BasicModel):
         except ollama.ResponseError as e:
             logger.error(f"模型调用错误: {e.error}")
             yield f"模型调用错误: {e.error}"
+            self.succeed = False
+            return
 
     @overload
     async def ask(
@@ -183,6 +168,7 @@ class Ollama(BasicModel):
         images: Optional[List[str]] = [],
         tools: Optional[List[dict]] = [],
         stream: Literal[False] = False,
+        system: Optional[str] = None,
         **kwargs,
     ) -> str: ...
 
@@ -194,6 +180,7 @@ class Ollama(BasicModel):
         images: Optional[List[str]] = [],
         tools: Optional[List[dict]] = [],
         stream: Literal[True] = True,
+        system: Optional[str] = None,
         **kwargs,
     ) -> AsyncGenerator[str, None]: ...
 
@@ -204,16 +191,12 @@ class Ollama(BasicModel):
         images: Optional[List[str]] = [],
         tools: Optional[List[dict]] = [],
         stream: Optional[bool] = False,
+        system: Optional[str] = None,
         **kwargs,
     ) -> Union[AsyncGenerator[str, None], str]:
-        """
-        多模态：图像识别
-
-        :param image_path: 图像路径
-        :return: 识别结果
-        """
+        self.succeed = True
         self._tools = tools if tools else []
-        messages = self._build_messages(prompt, history, images)
+        messages = self._build_messages(prompt, history, images, system)
 
         if stream:
             return self._ask_stream(messages)

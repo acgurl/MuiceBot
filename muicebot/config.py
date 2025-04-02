@@ -24,6 +24,8 @@ class PluginConfig(BaseModel):
     """自定义插件加载目录"""
     enable_builtin_plugins: bool = True
     """启用内嵌插件"""
+    max_history_epoch: int = 0
+    """最大历史轮数"""
 
 
 plugin_config = get_plugin_config(PluginConfig)
@@ -42,19 +44,6 @@ class Schedule(BaseModel):
     """调度器参数"""
     target: dict
     """指定发送信息的目标用户/群聊"""
-
-
-class Config(BaseModel):
-    model: ModelConfig
-    """configs.yml 中的模型配置"""
-    schedule: List[Schedule]
-    """调度器配置列表"""
-
-    muice_nicknames: list = plugin_config.muice_nicknames
-    """沐雪的自定义昵称，作为消息前缀条件响应信息事件"""
-
-    class Config:
-        extra = "allow"
 
 
 def get_schedule_configs() -> List[Schedule]:

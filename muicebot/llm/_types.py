@@ -97,7 +97,11 @@ class BasicModel(metaclass=ABCMeta):
         统一在此处声明变量
         """
         self.config = model_config
+        """模型配置"""
         self.is_running = False
+        """模型状态"""
+        self.succeed = True
+        """模型是否成功返回结果"""
 
     def _require(self, *require_fields: str):
         """
@@ -144,6 +148,7 @@ class BasicModel(metaclass=ABCMeta):
         images: Optional[List[str]] = [],
         tools: Optional[List[dict]] = [],
         stream: Literal[False] = False,
+        system: Optional[str] = None,
         **kwargs,
     ) -> str: ...
 
@@ -155,6 +160,7 @@ class BasicModel(metaclass=ABCMeta):
         images: Optional[List[str]] = [],
         tools: Optional[List[dict]] = [],
         stream: Literal[True] = True,
+        system: Optional[str] = None,
         **kwargs,
     ) -> AsyncGenerator[str, None]: ...
 
@@ -166,6 +172,7 @@ class BasicModel(metaclass=ABCMeta):
         images: Optional[List[str]] = [],
         tools: Optional[List[dict]] = [],
         stream: Optional[bool] = False,
+        system: Optional[str] = None,
         **kwargs,
     ) -> Union[AsyncGenerator[str, None], str]:
         """
@@ -176,6 +183,7 @@ class BasicModel(metaclass=ABCMeta):
         :param images: 本地图片路径列表
         :param tools: 工具列表
         :param stream: 是否使用流式输出
+        :param system: 系统提示
 
         :return: 模型回复
         """

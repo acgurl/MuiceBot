@@ -8,7 +8,7 @@ import nonebot_plugin_localstore as store  # noqa: E402
 from nonebot import logger  # noqa: E402
 from nonebot.plugin import PluginMetadata, inherit_supported_adapters  # noqa: E402
 
-from .config import Config  # noqa: E402
+from .config import PluginConfig  # noqa: E402
 from .onebot import *  # noqa: E402, F403, F401
 from .utils.utils import get_version, init_logger  # noqa: E402
 
@@ -19,7 +19,7 @@ __plugin_meta__ = PluginMetadata(
     description="Muice-Chatbot 的 Nonebot2 实现，支持市面上大多数的模型",
     usage="@at / {config.MUICE_NICKNAMES} <message>: 与大语言模型交互；关于指令类可输入 .help 查询",
     type="application",
-    config=Config,
+    config=PluginConfig,
     homepage="https://bot.snowy.moe/",
     extra={},
     supported_adapters=inherit_supported_adapters("nonebot_plugin_alconna"),

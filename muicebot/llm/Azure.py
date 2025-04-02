@@ -25,7 +25,6 @@ from azure.core.exceptions import HttpResponseError
 from nonebot import logger
 
 from ._types import BasicModel, Message, ModelConfig, function_call_handler
-from .utils.auto_system_prompt import auto_system_prompt
 
 
 class Azure(BasicModel):
@@ -33,10 +32,6 @@ class Azure(BasicModel):
         super().__init__(model_config)
         self._require("model_name")
         self.model_name = self.config.model_name
-        self.system_prompt = self.config.system_prompt
-        self.auto_system_prompt = self.config.auto_system_prompt
-        self.user_instructions = self.config.user_instructions
-        self.auto_user_instructions = self.config.auto_user_instructions
         self.max_tokens = self.config.max_tokens
         self.temperature = self.config.temperature
         self.top_p = self.config.top_p
@@ -79,15 +74,12 @@ class Azure(BasicModel):
         return tool_definitions
 
     def _build_messages(
-        self, prompt: str, history: List[Message], image_paths: Optional[List] = None
+        self, prompt: str, history: List[Message], image_paths: Optional[List] = None, system: Optional[str] = None
     ) -> List[ChatRequestMessage]:
         messages: List[ChatRequestMessage] = []
 
-        if self.auto_system_prompt:
-            self.system_prompt = auto_system_prompt(prompt)
-
-        if self.system_prompt:
-            messages.append(SystemMessage(self.system_prompt))
+        if system:
+            messages.append(SystemMessage(system))
 
         for msg in history:
             user_msg = (
@@ -98,17 +90,7 @@ class Azure(BasicModel):
             messages.append(user_msg)
             messages.append(AssistantMessage(msg.respond))
 
-        if self.auto_user_instructions:
-            self.user_instructions = auto_system_prompt(prompt)
-
-        if self.user_instructions and not history:
-            user_message = self.user_instructions + "\n" + prompt
-        else:
-            user_message = prompt
-
-        user_message = (
-            UserMessage(user_message) if not image_paths else self.__build_image_messages(prompt, image_paths)
-        )
+        user_message = UserMessage(prompt) if not image_paths else self.__build_image_messages(prompt, image_paths)
 
         messages.append(user_message)
 
@@ -173,6 +155,7 @@ class Azure(BasicModel):
         except HttpResponseError as e:
             logger.error(f"模型响应失败: {e.status_code} ({e.reason})")
             logger.error(f"{e.message}")
+            self.succeed = False
             return f"模型响应失败: {e.status_code} ({e.reason})"
         finally:
             await client.close()
@@ -248,6 +231,7 @@ class Azure(BasicModel):
             logger.error(f"模型响应失败: {e.status_code} ({e.reason})")
             logger.error(f"{e.message}")
             yield f"模型响应失败: {e.status_code} ({e.reason})"
+            self.succeed = False
         finally:
             await client.close()
 
@@ -259,6 +243,7 @@ class Azure(BasicModel):
         images: Optional[List[str]] = [],
         tools: Optional[List[dict]] = [],
         stream: Literal[False] = False,
+        system: Optional[str] = None,
         **kwargs,
     ) -> str: ...
 
@@ -270,6 +255,7 @@ class Azure(BasicModel):
         images: Optional[List[str]] = [],
         tools: Optional[List[dict]] = [],
         stream: Literal[True] = True,
+        system: Optional[str] = None,
         **kwargs,
     ) -> AsyncGenerator[str, None]: ...
 
@@ -280,10 +266,12 @@ class Azure(BasicModel):
         images: Optional[List[str]] = [],
         tools: Optional[List[dict]] = [],
         stream: Optional[bool] = False,
+        system: Optional[str] = None,
         **kwargs,
     ) -> Union[AsyncGenerator[str, None], str]:
+        self.succeed = True
 
-        messages = self._build_messages(prompt, history, images)
+        messages = self._build_messages(prompt, history, images, system)
 
         self._tools = self.__build_tools_definition(tools) if tools else []
 

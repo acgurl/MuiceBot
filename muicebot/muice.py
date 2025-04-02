@@ -5,9 +5,10 @@ from typing import AsyncGenerator, Optional, Union
 from nonebot import logger
 
 from ._types import Message
-from .config import get_model_config
+from .config import get_model_config, plugin_config
 from .database import Database
 from .llm import BasicModel
+from .llm.utils.auto_system_prompt import auto_system_prompt
 from .llm.utils.thought import process_thoughts, stream_process_thoughts
 from .plugin import get_tools
 
@@ -23,6 +24,11 @@ class Muice:
         self.model_loader = self.model_config.loader
         self.multimodal = self.model_config.multimodal
         self.database = Database()
+        self.max_history_epoch = plugin_config.max_history_epoch
+
+        self.system_prompt: str = self.model_config.system_prompt
+        self.user_instructions = self.model_config.user_instructions
+
         self.__load_model()
 
     def __load_model(self) -> None:
@@ -64,6 +70,18 @@ class Muice:
 
         return f"已成功加载 {config_name}" if config_name else "未指定模型配置名，已加载默认模型配置"
 
+    def _prepare_prompt(self, message: str) -> str:
+        """
+        准备提示词
+        """
+        if self.model_config.auto_system_prompt:
+            self.system_prompt = auto_system_prompt(message)
+
+        elif self.model_config.auto_user_instructions:
+            self.user_instructions = auto_system_prompt(message)
+
+        return f"{self.user_instructions}\n\n{message}" if self.user_instructions else message
+
     async def ask(
         self,
         message: str,
@@ -86,27 +104,28 @@ class Muice:
 
         logger.info("正在调用模型...")
 
-        history = await self.database.get_history(userid) if enable_history else []
+        prompt = self._prepare_prompt(message)
+        history = await self.database.get_history(userid, self.max_history_epoch) if enable_history else []
+        tools = get_tools() if self.model_config.function_call else []
+        system = self.system_prompt if self.system_prompt else None
 
         start_time = time.perf_counter()
         logger.debug(f"模型调用参数：Prompt: {message}, History: {history}")
 
-        reply = await self.model.ask(
-            message, history, image_paths, stream=False, tools=get_tools() if self.model_config.function_call else []
-        )
+        reply = await self.model.ask(prompt, history, image_paths, stream=False, system=system, tools=tools)
 
-        if isinstance(reply, str):
-            reply.strip()
+        reply.strip()
         end_time = time.perf_counter()
-        logger.success(f"模型调用成功: {reply}")
+        if self.model.succeed:
+            logger.success(f"模型调用成功: {reply}")
         logger.debug(f"模型调用时长: {end_time - start_time} s")
 
         thought, result = process_thoughts(reply, self.think)  # type: ignore
         reply = "\n\n".join([thought, result])
 
-        message_object = Message(userid=userid, message=message, respond=result, images=image_paths)
-
-        await self.database.add_item(message_object)
+        if self.model.succeed:
+            message_object = Message(userid=userid, message=message, respond=result, images=image_paths)
+            await self.database.add_item(message_object)
 
         return reply
 
@@ -123,14 +142,15 @@ class Muice:
 
         logger.info("正在调用模型...")
 
-        history = await self.database.get_history(userid)
+        prompt = self._prepare_prompt(message)
+        history = await self.database.get_history(userid, self.max_history_epoch)
+        tools = get_tools() if self.model_config.function_call else []
+        system = self.system_prompt if self.system_prompt else None
 
         start_time = time.perf_counter()
         logger.debug(f"模型调用参数：Prompt: {message}, History: {history}")
 
-        response = await self.model.ask(
-            message, history, image_paths, stream=True, tools=get_tools() if self.model_config.function_call else []
-        )
+        response = await self.model.ask(prompt, history, image_paths, stream=True, system=system, tools=tools)
 
         reply = ""
 
@@ -148,9 +168,9 @@ class Muice:
 
         _, result = process_thoughts(reply, self.think)  # type: ignore
 
-        message_object = Message(userid=userid, message=message, respond=result, images=image_paths)
-
-        await self.database.add_item(message_object)
+        if self.model.succeed:
+            message_object = Message(userid=userid, message=message, respond=result, images=image_paths)
+            await self.database.add_item(message_object)
 
     async def refresh(self, userid: str) -> Union[AsyncGenerator[str, None], str]:
         """

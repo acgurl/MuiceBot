@@ -312,7 +312,7 @@ async def handle_supported_adapters(message: UniMsg, event: Event, bot: Bot, sta
     response = await muice.ask(message_text, userid, image_paths=image_paths)
     response = response.strip()
 
-    logger.info(f"生成最终回复: {message_text}")
+    logger.info(f"生成最终回复: {response}")
 
     paragraphs = response.split("\n\n")
 

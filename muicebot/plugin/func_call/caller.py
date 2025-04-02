@@ -122,7 +122,9 @@ class Caller:
         :return: 可用于 Function_call 的字典
         """
         if not self._parameters:
-            properties = {}
+            properties = {
+                "dummy_param": {"type": "string", "description": "为了兼容性设置的一个虚拟参数，因此不需要填写任何值"}
+            }
             required = []
         else:
             properties = {key: value.data() for key, value in self._parameters.items()}
