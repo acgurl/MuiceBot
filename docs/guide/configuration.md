@@ -81,18 +81,14 @@ azure:
 loader: Xfyun # 模型加载器名称，这些模型加载器位于插件目录下的 llm 文件夹中，并初始化同名文件的同名类，如果不存在则报错。注意，每个模型加载器因为兼容问题，开头首字母都是大写的
 think: 1 # 针对于 DeepSeek-R1 等思考模型的思考过程优化（0不做任何处理；1提取并同时输出思考过程和结果；2仅输出思考结果）。即使思考过程不存在，设置为 1 或 2 也不会引发任何错误。
 multimodal: true # 多模态支持。目前仅支持 Dashscope 加载器。设置为 true 将处理图片事件。如果调用的模型不是多模态模型将引发报错
-```
 
-下面的配置虽然出于各种原因，它们并不是通用的，但还是值得介绍一下：
-
-```yaml
 system_prompt: '现在开始你是一个名为的“沐雪”的AI女孩子' # 系统提示（可选）
 auto_system_prompt: false # 自动配置沐雪的系统提示（默认为 false）
 user_instructions: '我们来玩一个角色扮演的小游戏吧，现在开始你是一个名为的“沐雪”的AI女孩子，用猫娘的语气和我说话。' # 用户提示（对于 DeepSeek-R1 此类不推荐添加系统提示的模型非常有用，此项内容自动添加至历史上下文中）
 auto_user_instructions: true # 自动配置沐雪的用户提示（默认为 false）
 ```
 
-这里主要想补充沐雪的系统提示词，如果你不知道的话可以参考：[auto_system_prompt.py](muicebot/llm/utils/auto_system_prompt.py)
+其中，沐雪的系统提示词存放于：[auto_system_prompt.py](muicebot/llm/utils/auto_system_prompt.py)
 
 
 如果一切顺利，以 QQ 适配器为例，在运行 `nb run` 后，你将会看到以下输出，这表明 Bot 已经开始工作：
