@@ -6,30 +6,23 @@
 
 - Python 3.10 及以上 Python 版本
 
+- 一个已经存在的 Nonebot 项目，参见： [快速上手 | Nonebot](https://nonebot.dev/docs/quick-start#%E5%88%9B%E5%BB%BA%E9%A1%B9%E7%9B%AE)
+
+
 ## 安装插件⚙️
 
-由于此插件还在开发早期，因此请通过 git clone 等方式安装插件：
+由于此插件还在开发早期，因此请通过 `pip` 手动安装插件：
 
 ```shell
-git clone https://github.com/Moemu/MuiceBot
-cd MuiceBot
+pip install muicebot
 ```
 
-然后安装依赖：
+手动编辑 Nonebot 项目中的 `pyproject.toml`, 在 `[tool.nonebot]` 部分追加插件:
 
-```shell
-pip install .
-pip install nonebot2[fastapi]
+```toml
+plugins = ["muicebot"]
 ```
 
-如果想为本项目做出贡献，请执行：
-
-```shell
-pip install .[dev]
-pip install nonebot2[fastapi]
-```
-
-这将安装 `pre-commit` 和其他必须项用于代码检查
 
 ## 适配器配置🔧
 

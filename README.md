@@ -45,6 +45,14 @@
 
 ✅ 使用 SQLite3 保存对话数据。那有人就要问了：Maintainer，Maintainer，能不能实现长期短期记忆、LangChain、FairSeq 这些记忆优化啊，实在不行，多模态图像数据保存和最大记忆长度总该有吧。很抱歉，都没有（
 
+# 本项目适合谁？
+
+- 拥有编写过 Python 程序经验的开发者
+
+- 搭建过 Nonebot 项目的 bot 爱好者
+
+- 想要随时随地和大语言模型交互并寻找着能够同时兼容市面上绝大多数 SDK 的机器人框架的 AI 爱好者
+
 # TODO📝
 
 - [X] Function Call 插件系统
