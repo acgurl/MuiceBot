@@ -27,6 +27,7 @@ dependencies = [
     "SQLAlchemy>=2.0.38",
     "toml>=0.10.2; python_version < '3.11'",
     "websocket_client>=1.8.0",
+    "watchdog>=6.0.0",
     "setuptools-scm>=8.2.0"
 ]
 authors = [

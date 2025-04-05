@@ -5,7 +5,7 @@ from typing import AsyncGenerator, Optional, Union
 from nonebot import logger
 
 from ._types import Message
-from .config import get_model_config, plugin_config
+from .config import ModelConfig, get_model_config, model_config_manager, plugin_config
 from .database import Database
 from .llm import BasicModel
 from .llm.utils.auto_system_prompt import auto_system_prompt
@@ -31,6 +31,15 @@ class Muice:
 
         self.__load_model()
 
+        model_config_manager.register_listener(self._on_config_changed)
+
+    def __del__(self):
+        # 注销监听器
+        try:
+            model_config_manager.unregister_listener(self._on_config_changed)
+        except Exception:
+            pass
+
     def __load_model(self) -> None:
         """
         初始化模型类
@@ -53,6 +62,22 @@ class Muice:
             logger.error("模型加载失败: self.model.load 函数失败")
             return False
         return True
+
+    def _on_config_changed(self, new_config: ModelConfig, old_config: ModelConfig):
+        """配置文件变更时的回调函数"""
+        logger.info("检测到配置文件变更，自动重载模型...")
+        # 更新配置
+        self.model_config = new_config
+        self.think = new_config.think
+        self.model_loader = new_config.loader
+        self.multimodal = new_config.multimodal
+        self.system_prompt = new_config.system_prompt
+        self.user_instructions = new_config.user_instructions
+
+        # 重新加载模型
+        self.__load_model()
+        self.load_model()
+        logger.success(f"模型自动重载完成: {old_config.loader} -> {new_config.loader}")
 
     def change_model_config(self, config_name: str) -> str:
         """

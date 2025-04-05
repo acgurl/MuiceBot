@@ -1,10 +1,15 @@
+import atexit
 import os
+import threading
+import time
 from pathlib import Path
-from typing import List, Literal, Optional
+from typing import Callable, List, Literal, Optional
 
 import yaml as yaml_
-from nonebot import get_plugin_config
+from nonebot import get_plugin_config, logger
 from pydantic import BaseModel
+from watchdog.events import FileSystemEventHandler
+from watchdog.observers import Observer
 
 from .llm import ModelConfig
 
@@ -71,6 +76,144 @@ def get_schedule_configs() -> List[Schedule]:
     return schedule_configs
 
 
+class ConfigFileHandler(FileSystemEventHandler):
+    """配置文件变化处理器"""
+
+    def __init__(self, callback: Callable):
+        self.callback = callback
+        self.last_modified = time.time()
+        # 防止一次修改触发多次回调
+        self.cooldown = 1  # 冷却时间（秒）
+
+    def on_modified(self, event):
+        if event.is_directory:  # 检查是否是文件而不是目录
+            return
+
+        current_time = time.time()
+        if current_time - self.last_modified > self.cooldown:
+            self.last_modified = current_time
+            self.callback()
+
+
+class ModelConfigManager:
+    """模型配置管理器"""
+
+    _instance = None
+    _lock = threading.Lock()
+
+    def __new__(cls):
+        """确保实例在单例模式下运行"""
+        with cls._lock:
+            if cls._instance is None:
+                cls._instance = super(ModelConfigManager, cls).__new__(cls)
+                cls._instance._initialized = False
+            return cls._instance
+
+    def __init__(self):
+        if self._initialized:
+            return
+
+        self.configs = {}
+        self.default_config = None
+        self.observer = None
+        self.listeners: List[Callable] = []  # 注册的监听器列表
+        self._first_load = False
+        self._load_configs()
+        self._start_file_watcher()
+        self._initialized = True
+
+    def _load_configs(self):
+        """加载配置文件"""
+        if not os.path.isfile(MODELS_CONFIG_PATH):
+            raise FileNotFoundError("configs/models.yml 不存在！请先创建")
+
+        with open(MODELS_CONFIG_PATH, "r", encoding="utf-8") as f:
+            configs_dict = yaml_.load(f, Loader=yaml_.FullLoader)
+
+        if not configs_dict:
+            raise ValueError("configs/models.yml 为空，请先至少定义一个模型配置")
+
+        self.configs = {}
+        for name, config in configs_dict.items():
+            self.configs[name] = ModelConfig(**config)
+            if config.get("default"):
+                self.default_config = self.configs[name]
+
+        if not self.default_config and self.configs:
+            # 如果没有指定默认配置，使用第一个
+            self.default_config = next(iter(self.configs.values()))
+
+    def _start_file_watcher(self):
+        """启动文件监视器"""
+        if self.observer is not None:
+            self.observer.stop()
+
+        self.observer = Observer()
+        event_handler = ConfigFileHandler(self._on_config_changed)
+        self.observer.schedule(event_handler, str(MODELS_CONFIG_PATH), recursive=False)
+        self.observer.start()
+
+    def _on_config_changed(self):
+        """配置文件变化时的回调函数"""
+        # 如果是第一次加载，跳过重载流程
+        if self._first_load:
+            self._first_load = False
+            return
+
+        try:
+            # old_configs = self.configs.copy()
+            old_default = self.default_config
+
+            self._load_configs()
+
+            # 通知所有注册的监听器
+            for listener in self.listeners:
+                listener(self.default_config, old_default)
+
+        except Exception as e:
+            logger.info(f"重新加载配置文件失败: {e}")
+
+    def register_listener(self, listener: Callable):
+        """
+        注册配置变化监听器
+
+        :param listener: 回调函数，接收两个参数：新的默认配置和旧的默认配置
+        """
+        if listener not in self.listeners:
+            self.listeners.append(listener)
+
+    def unregister_listener(self, listener: Callable):
+        """取消注册配置变化监听器"""
+        if listener in self.listeners:
+            self.listeners.remove(listener)
+
+    def get_model_config(self, model_config_name: Optional[str] = None) -> ModelConfig:
+        """获取指定模型的配置"""
+        if model_config_name in [None, ""]:
+            if not self.default_config:
+                raise ValueError("没有找到默认模型配置！请确保存在至少一个有效的配置项！")
+            return self.default_config
+
+        elif model_config_name in self.configs:
+            return self.configs[model_config_name]
+
+        else:
+            logger.warning(f"指定的模型配置 '{model_config_name}' 不存在！")
+            raise ValueError(f"指定的模型配置 '{model_config_name}' 不存在！")
+
+    def stop_watcher(self):
+        """停止文件监视器"""
+        if self.observer is None:
+            return
+
+        self.observer.stop()
+        self.observer.join()
+
+
+model_config_manager = ModelConfigManager()
+atexit.register(model_config_manager.stop_watcher)
+
+
 def get_model_config(model_config_name: Optional[str] = None) -> ModelConfig:
     """
     从配置文件 `configs/models.yml` 中获取指定模型的配置文件
@@ -78,27 +221,4 @@ def get_model_config(model_config_name: Optional[str] = None) -> ModelConfig:
     :model_config_name: (可选)模型配置名称。若为空，则先寻找配置了 `default: true` 的首个配置项，若失败就再寻找首个配置项
     若都不存在，则抛出 `FileNotFoundError`
     """
-    if not os.path.isfile(MODELS_CONFIG_PATH):
-        raise FileNotFoundError("configs/models.yml 不存在！请先创建")
-
-    with open(MODELS_CONFIG_PATH, "r", encoding="utf-8") as f:
-        configs = yaml_.load(f, Loader=yaml_.FullLoader)
-
-    if not configs:
-        raise ValueError("configs/models.yml 为空，请先至少定义一个模型配置")
-
-    if model_config_name in [None, ""]:
-        model_config = next((config for config in configs.values() if config.get("default")), None)  # 尝试获取默认配置
-        if not model_config:
-            model_config = next(iter(configs.values()), None)  # 尝试获取第一个配置
-    elif model_config_name in configs:
-        model_config = configs.get(model_config_name, {})
-    else:
-        raise ValueError("指定的模型配置不存在！")
-
-    if not model_config:
-        raise FileNotFoundError("configs/models.yml 中不存在有效的模型配置项！")
-
-    model_config = ModelConfig(**model_config)
-
-    return model_config
+    return model_config_manager.get_model_config(model_config_name)
