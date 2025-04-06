@@ -202,7 +202,7 @@ class Dashscope(BasicModel):
                 continue
 
             if reasoning_content != "" and answer_content == "":
-                yield (reasoning_content if is_insert_think_label else "<think>" + reasoning_content)
+                yield (reasoning_content if is_insert_think_label else "<think>" + reasoning_content)  # type:ignore
                 is_insert_think_label = True
 
             elif answer_content != "":

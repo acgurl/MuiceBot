@@ -117,7 +117,6 @@ class ModelConfigManager:
         self.default_config = None
         self.observer = None
         self.listeners: List[Callable] = []  # 注册的监听器列表
-        self._first_load = False
         self._load_configs()
         self._start_file_watcher()
         self._initialized = True
@@ -150,16 +149,11 @@ class ModelConfigManager:
 
         self.observer = Observer()
         event_handler = ConfigFileHandler(self._on_config_changed)
-        self.observer.schedule(event_handler, str(MODELS_CONFIG_PATH), recursive=False)
+        self.observer.schedule(event_handler, str(Path(MODELS_CONFIG_PATH).parent), recursive=False)
         self.observer.start()
 
     def _on_config_changed(self):
         """配置文件变化时的回调函数"""
-        # 如果是第一次加载，跳过重载流程
-        if self._first_load:
-            self._first_load = False
-            return
-
         try:
             # old_configs = self.configs.copy()
             old_default = self.default_config
