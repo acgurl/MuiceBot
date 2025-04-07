@@ -205,6 +205,6 @@ async def function_call_handler(func: str, arguments: dict[str, str] | None = No
     """
     模型 Function Call 请求处理
     """
-    arguments = arguments if arguments else {}
+    arguments = arguments if arguments and arguments != {"dummy_param": ""} else {}
     func_caller = get_function_calls().get(func)
     return await func_caller.run(**arguments) if func_caller else "(Unknown Function)"
