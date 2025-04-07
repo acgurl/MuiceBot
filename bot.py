@@ -1,10 +1,10 @@
+import importlib
+import sys
+
 import nonebot
 import yaml
-from nonebot.adapters.onebot.v11 import Adapter as Adapterv11
-from nonebot.adapters.onebot.v12 import Adapter as Adapterv12
-from nonebot.adapters.qq import Adapter as QQAdapter
-from nonebot.adapters.telegram import Adapter as TelegramAdapter
 from nonebot.config import Config
+from nonebot.drivers import Driver
 
 PLUGINS_CONFIG_PATH = "./configs/plugins.yml"
 
@@ -20,6 +20,19 @@ def load_yaml_config() -> dict:
         return {}
 
 
+def load_specified_adapter(driver: Driver, adapter: str):
+    """
+    加载指定的 Nonebot 适配器
+    """
+    try:
+        module = importlib.import_module(adapter)
+        adapter = module.Adapter
+        driver.register_adapter(adapter)  # type:ignore
+    except ImportError:
+        print(f"\33[35m{adapter}不存在，请检查拼写错误或是否已安装该适配器？")
+        sys.exit(1)
+
+
 nonebot.init()
 
 driver = nonebot.get_driver()
@@ -29,10 +42,10 @@ env_config = driver.config.model_dump()
 final_config = {**env_config, **yaml_config}  # 合并配置，yaml优先
 driver.config = Config(**final_config)
 
-driver.register_adapter(Adapterv12)
-driver.register_adapter(Adapterv11)
-driver.register_adapter(TelegramAdapter)
-driver.register_adapter(QQAdapter)
+enable_adapters: list[str] = final_config.get("enable_adapters", [])
+
+for adapter in enable_adapters:
+    load_specified_adapter(driver, adapter)
 
 nonebot.load_plugin("muicebot")
 

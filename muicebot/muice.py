@@ -7,7 +7,7 @@ from nonebot import logger
 from ._types import Message
 from .config import ModelConfig, get_model_config, model_config_manager, plugin_config
 from .database import Database
-from .llm import BasicModel
+from .llm import MODEL_DEPENDENCY_MAP, BasicModel, get_missing_dependencies
 from .llm.utils.auto_system_prompt import auto_system_prompt
 from .llm.utils.thought import process_thoughts, stream_process_thoughts
 from .plugin import get_tools
@@ -44,10 +44,23 @@ class Muice:
         """
         初始化模型类
         """
-        module_name = f"muicebot.llm.{self.model_loader}"
-        module = importlib.import_module(module_name)
-        ModelClass = getattr(module, self.model_loader, None)
-        self.model: Optional[BasicModel] = ModelClass(self.model_config) if ModelClass else None
+        try:
+            module_name = f"muicebot.llm.{self.model_loader}"
+            module = importlib.import_module(module_name)
+            ModelClass = getattr(module, self.model_loader, None)
+            self.model: Optional[BasicModel] = ModelClass(self.model_config) if ModelClass else None
+
+        except ImportError as e:
+            logger.critical(f"导入模型加载器 '{self.model_loader}' 失败：{e}")
+            dependencies = MODEL_DEPENDENCY_MAP.get(self.model_loader, [])
+            missing = get_missing_dependencies(dependencies)
+            if missing:
+                install_command = "pip install " + " ".join(missing)
+                logger.critical(f"缺少依赖库：{', '.join(missing)}\n请运行以下命令安装缺失项：\n\n{install_command}")
+
+        except AttributeError as e:
+            logger.critical(f"导入模型加载器 '{self.model_loader}' 失败：{e}")
+            logger.critical("这有可能是负责编写模型加载器的开发者未正确命名类导致，又或者是您输入了错误的模型加载器名")
 
     def load_model(self) -> bool:
         """

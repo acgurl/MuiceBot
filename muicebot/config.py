@@ -31,6 +31,8 @@ class PluginConfig(BaseModel):
     """启用内嵌插件"""
     max_history_epoch: int = 0
     """最大历史轮数"""
+    enable_adapters: list = ["nonebot.adapters.onebot.v11", "nonebot.adapters.onebot.v12"]
+    """启用的 Nonebot 适配器"""
 
 
 plugin_config = get_plugin_config(PluginConfig)
@@ -165,7 +167,7 @@ class ModelConfigManager:
                 listener(self.default_config, old_default)
 
         except Exception as e:
-            logger.info(f"重新加载配置文件失败: {e}")
+            logger.error(f"重新加载配置文件失败: {e}")
 
     def register_listener(self, listener: Callable):
         """

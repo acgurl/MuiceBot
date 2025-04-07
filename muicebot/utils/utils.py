@@ -10,14 +10,10 @@ import httpx
 import nonebot_plugin_localstore as store
 from nonebot import get_bot, logger
 from nonebot.adapters import Event, MessageSegment
-from nonebot.adapters.onebot.v11 import Bot as Onebotv11Bot
-from nonebot.adapters.onebot.v12 import Bot as Onebotv12Bot
-from nonebot.adapters.onebot.v12.exception import UnsupportedParam
-from nonebot.adapters.telegram import Event as TelegramEvent
-from nonebot.adapters.telegram.message import File as TelegramFile
 from nonebot.log import default_filter, logger_id
 
 from ..config import plugin_config
+from .adapters import ADAPTER_CLASSES
 
 IMG_DIR = store.get_plugin_data_dir() / ".cache" / "images"
 IMG_DIR.mkdir(parents=True, exist_ok=True)
@@ -76,7 +72,13 @@ async def legacy_get_images(message: MessageSegment, event: Event) -> str:
     """
     bot = get_bot()
 
-    if isinstance(bot, Onebotv12Bot):
+    Onebotv12Bot = ADAPTER_CLASSES["onebot_v12"]
+    UnsupportedParam = ADAPTER_CLASSES["UnsupportedParam"]
+    Onebotv11Bot = ADAPTER_CLASSES["onebot_v11"]
+    TelegramEvent = ADAPTER_CLASSES["telegram_event"]
+    TelegramFile = ADAPTER_CLASSES["telegram_file"]
+
+    if Onebotv12Bot and UnsupportedParam and isinstance(bot, Onebotv12Bot):
         if message.type == "image":
             try:
                 image_path = await bot.get_file(type="url", file_id=message.data["file_id"])
@@ -86,11 +88,11 @@ async def legacy_get_images(message: MessageSegment, event: Event) -> str:
 
             return str(image_path)
 
-    elif isinstance(bot, Onebotv11Bot):
+    elif Onebotv11Bot and isinstance(bot, Onebotv11Bot):
         if message.type == "image" and "url" in message.data and "file" in message.data:
             return await save_image_as_file(message.data["url"], message.data["file"])
 
-    elif isinstance(event, TelegramEvent):
+    elif TelegramEvent and TelegramFile and isinstance(event, TelegramEvent):
         if isinstance(message, TelegramFile):
             file_id = message.data["file"]
             file = await bot.get_file(file_id=file_id)
