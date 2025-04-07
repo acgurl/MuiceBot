@@ -11,13 +11,21 @@
 
 ## 安装插件⚙️
 
+MuiceBot 将作为 Nonebot 插件的方式提供安装
+
 由于此插件还在开发早期，因此请通过 `pip` 手动安装插件：
 
 ```shell
 pip install muicebot
 ```
 
-手动编辑 Nonebot 项目中的 `pyproject.toml`, 在 `[tool.nonebot]` 部分追加插件:
+默认情况下，这会仅安装 `OpenAI` 加载器所需的依赖，要想完整安装所有依赖，请执行：
+
+```
+pip install muicebot[standard]
+```
+
+完成安装后，请手动编辑 Nonebot 项目中的 `pyproject.toml`, 在 `[tool.nonebot]` 部分追加插件:
 
 ```toml
 plugins = ["muicebot"]
@@ -84,11 +92,19 @@ SUPERUSERS=["123456789"]
 
 ## 自定义插件目录/启用内嵌插件
 
-从以下目录中加载 Nonebot2 或 Muicebot 插件，默认为空列表：
+从以下目录中加载 Muicebot 插件，默认为空列表：
 
 ```dotenv
 PLUGINS_DIR=["./plugins"]
 ENABLE_BUILTIN_PLUGINS=true
+```
+
+## 加载指定的 Nonebot 适配器(仅 Debug 用途)
+
+默认情况下，机器人入口文件只会加载 `nonebot.adapters.onebot.v11/12` 适配器，要想在 debug 环境中引入其他适配器，请参考：
+
+```dotenv
+enable_adapters = ["nonebot.adapters.onebot.v11", "nonebot.adapters.onebot.v12", "nonebot.adapters.telegram"]
 ```
 
 至此，`NoneBot` 的本身的配置部分到此结束

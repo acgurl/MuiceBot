@@ -12,16 +12,18 @@ MuiceBot 还未进入正式版，欢迎在 Issue 中提议要加入哪些新功�
 
 ## Pull Request
 
-MuiceBot 使用 pre-commit 进行代码规范管理，因此在提交代码前，请先配置 pre-commit 并通过代码检查：
+MuiceBot 使用 pre-commit 进行代码规范管理，因此在提交代码前，我们推荐安装 pre-commit 并通过代码检查：
 
 ```shell
-pip install .[local,dev]
+pip install .[standard,dev]
 pip install nonebot2[fastapi]
 
 pre-commit install
 ```
 
 目前代码检查的工具有：flake8 PEP风格检查、mypy 类型检查、black 风格检查，使用 isort 和 trailing-whitespace 优化代码
+
+在本地运行 pre-commit 不是必须的，尤其是在环境包过大的情况下，但我们还是推荐您这么做
 
 代码提交后请静待工作流运行结果，若 pre-commit 出现问题请尽量先自行解决后再次提交
 
