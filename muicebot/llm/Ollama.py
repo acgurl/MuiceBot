@@ -151,8 +151,8 @@ class Ollama(BasicModel):
                     messages.append(chunk.message)  # type:ignore
                     messages.append({"role": "tool", "content": str(function_return), "name": tool.function.name})
 
-                    async for chunk in self._ask_stream(messages):
-                        yield chunk
+                    async for content in self._ask_stream(messages):
+                        yield content
 
         except ollama.ResponseError as e:
             logger.error(f"模型调用错误: {e.error}")

@@ -222,8 +222,8 @@ class Azure(BasicModel):
                     # Append the function call result fo the chat history
                     messages.append(ToolMessage(tool_call_id=tool_call_id, content=function_return))
 
-                    async for chunk in self._ask_stream(messages):
-                        yield chunk
+                    async for content in self._ask_stream(messages):
+                        yield content
 
                     return
 

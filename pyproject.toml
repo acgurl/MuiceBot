@@ -39,9 +39,6 @@ dev = [
     "black>=25.1.0",
     "types-PyYAML",
 ]
-test = [
-    "nonebug>=0.4.3",
-]
 
 [tool.nonebot]
 adapters = [
