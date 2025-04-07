@@ -16,6 +16,7 @@ from nonebot_plugin_alconna import (
     on_alconna,
 )
 from nonebot_plugin_alconna.uniseg import Image, UniMsg
+from nonebot_plugin_session import SessionIdType, extract_session
 
 from .config import plugin_config
 from .muice import Muice
@@ -58,7 +59,7 @@ async def load_bot():
 
 
 @driver.on_bot_connect
-async def bot_conncted():
+async def bot_connected():
     logger.success("Bot 已连接，消息处理进程开始运行✨")
 
 
@@ -253,12 +254,16 @@ async def handle_command_load(config: Match[str] = AlconnaMatch("config_name")):
 
 
 @command_whoami.handle()
-async def handle_command_whoami(event: Event):
-    await command_whoami.finish(f"用户 ID: {event.get_user_id()}\n" f"当前会话信息：{event.get_session_id()}")
+async def handle_command_whoami(bot: Bot, event: Event):
+    user_id = event.get_user_id()
+    session = extract_session(bot, event)
+    group_id = session.get_id(SessionIdType.GROUP)
+    session_id = event.get_session_id()
+    await UniMessage(f"用户 ID: {user_id}\n群组 ID: {group_id}\n当前会话信息: {session_id}").finish()
 
 
 @command_start.handle()
-async def handle_command_strt():
+async def handle_command_start():
     pass
 
 
