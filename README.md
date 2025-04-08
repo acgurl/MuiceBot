@@ -14,7 +14,7 @@
   <img src="https://wakatime.com/badge/user/637d5886-8b47-4b82-9264-3b3b9d6add67/project/a4557f7b-4d26-4105-842a-7a783cbad588.svg" alt="wakatime">
   <img src="https://img.shields.io/badge/ModelScope-Dataset-644cfd?link=https://www.modelscope.cn/datasets/Moemuu/Muice-Dataset" alt="ModelScope">
   <img src="https://img.shields.io/badge/HuggingFace-Dataset-yellow?link=https%3A%2F%2Fhuggingface.co%2Fdatasets%2FMoemu%2FMuice-Dataset" alt="HuggingFace">
-  <a href='https://pd.qq.com/s/d4n2xp45i'><img src="https://img.shields.io/badge/QQ频道-沐雪的小屋-blue" alt="QQ频道"></a>
+  <a href='https://qm.qq.com/q/lhUBw6Gcdq'><img src="https://img.shields.io/badge/QQ群-MuikaHouse-blue" alt="QQ群组"></a>
 </div>
 <div align=center>
   <a href="https://bot.snowy.moe">📃使用文档</a>
@@ -134,7 +134,9 @@ BSD 3 许可证同样适用于沐雪的系统提示词，沐雪的文字人设�
 
 基于 OneBot V11 的原始实现：[Moemu/Muice-Chatbot](https://github.com/Moemu/Muice-Chatbot)
 
-官方唯一频道：[沐雪的小屋](https://pd.qq.com/s/d4n2xp45i)
+QQ群：[Muika House](https://pd.qq.com/s/d4n2xp45i)
+
+Telegram群组： [@MuikaWorld](https://t.me/muikaworld)
 
 <a href="https://www.afdian.com/a/Moemu" target="_blank"><img src="https://pic1.afdiancdn.com/static/img/welcome/button-sponsorme.png" alt="afadian" style="height: 45px !important;width: 163px !important;"></a>
 <a href="https://www.buymeacoffee.com/Moemu" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" style="height: 45px !important;width: 163px !important;" ></a>
