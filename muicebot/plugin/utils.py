@@ -10,11 +10,17 @@ def path_to_module_name(module_path: Path) -> str:
     """
     获取模块包名的方法
     """
-    rel_path = module_path.resolve().relative_to(Path.cwd().resolve())
-    if rel_path.stem == "__init__":
-        return ".".join(rel_path.parts[:-1])
-    else:
-        return ".".join(rel_path.parts[:-1] + (rel_path.stem,))
+    try:
+        rel_path = module_path.resolve().relative_to(Path.cwd().resolve())
+        return ".".join(rel_path.parts)
+    except ValueError:
+        # fallback: 从实际路径生成 module name（比如 muicebot.builtin_plugins.xxx）
+        parts = module_path.resolve().parts
+        if "muicebot" in parts:  # 这里假设 site-packages 中实际路径包含 'muicebot'，可以动态查找
+            index = parts.index("muicebot")
+            return ".".join(parts[index:])
+        else:
+            return module_path.stem  # fallback 最底线：用文件名作为模块名（不一定能 import 成功）
 
 
 def is_coroutine_callable(call: Callable[..., Any]) -> bool:
