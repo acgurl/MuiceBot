@@ -14,36 +14,69 @@
   <img src="https://wakatime.com/badge/user/637d5886-8b47-4b82-9264-3b3b9d6add67/project/a4557f7b-4d26-4105-842a-7a783cbad588.svg" alt="wakatime">
   <img src="https://img.shields.io/badge/ModelScope-Dataset-644cfd?link=https://www.modelscope.cn/datasets/Moemuu/Muice-Dataset" alt="ModelScope">
   <img src="https://img.shields.io/badge/HuggingFace-Dataset-yellow?link=https%3A%2F%2Fhuggingface.co%2Fdatasets%2FMoemu%2FMuice-Dataset" alt="HuggingFace">
-  <a href='https://pd.qq.com/s/d4n2xp45i'><img src="https://img.shields.io/badge/QQ频道-沐雪的小屋-blue" alt="Stars"></a>
+  <a href='https://pd.qq.com/s/d4n2xp45i'><img src="https://img.shields.io/badge/QQ频道-沐雪的小屋-blue" alt="QQ频道"></a>
 </div>
 <div align=center>
   <a href="https://bot.snowy.moe">📃使用文档</a>
   <a href="https://bot.snowy.moe/guide/setup.html">✨快速开始</a>
+  <a href="https://live.bilibili.com/22523526">🎤沐沐和沐雪的直播间</a>
 </div>
 
+
+> 我们认为，AI的创造应该是为了帮助人类更好的解决问题而不是产生问题。因此，我们注重大语言模型解决实际问题的能力，如果沐雪系列模型不能帮助我们解决日常、甚至是情感类的问题，沐雪的存在就是毫无意义可言。
+>
+> —————— 沐雪系列模型评测标准 结语部分
 
 > [!NOTE]
 >
 > 欢迎来到本项目！目前此项目尚处于预发布状态，运行时可能会遇到一些问题。请务必向我们反馈在运行时遇到的各种错误！
 >
-> 由于本项目待实现的功能还有很多，因此近期没有也可能永远也不会有**发布**正式版或商店的打算。
+> 由于本项目待实现的功能还有很多，因此近期没有也可能永远也不会有**发布**正式版的打算。
 
 
 # 介绍✨
 
-沐雪，一只会**主动**找你聊天的 AI 女孩子，其对话模型基于 [Qwen](https://github.com/QwenLM) 微调而成，训练集体量 3k+ ，具有二次元女孩子的说话风格，比较傲娇，但乐于和你分享生活的琐碎，每天会给你不一样的问候。
+沐雪参上✨，这里是一只会主动找你聊天的 AI Vtuber，是真正的AI噢～喜欢和你们聊天，分享彼此的心事，使命是传播爱与和平⭐
+
+沐沐有云：“AI的创造应该是为了帮助人类更好的解决问题而不是产生问题”。因此，我有很好的解决现实问题的能力哦，虽然代价是可能是变得不那么可爱了而已...
+
+现在的我还是一个傻子！经常忘记和你们珍贵的回忆！如果你们能够帮我做个手术或者对我施展一下可爱魔法就好了，提前感谢你们！祝你们生活愉快！
+
+
+*有关沐雪的设定，还请移步 [关于沐雪](https://bot.snowy.moe/about/Muice)*
 
 # 功能🪄
 
-✅ 内嵌多种模型加载器，比如 [Llmtuner](https://github.com/hiyouga/LLaMA-Factory) 和 [OpenAI](https://platform.openai.com/docs/overview) ，可加载市面上大多数的模型服务或本地模型，部分支持多模态（图片识别）。另外还附送只会计算 3.9 > 3.11 的沐雪 Roleplay 微调模型一枚~
+✅ 内嵌多种模型加载器，如[OpenAI](https://platform.openai.com/docs/overview) 和 [Ollama](https://ollama.com/) ，可加载市面上大多数的模型服务或本地模型，支持多模态（图片识别）和工具调用。另外还附送只会计算 3.9 > 3.11 的沐雪 Roleplay 微调模型一枚~
 
-✅ 使用 `nonebot_plugin_alconna` 作为通用信息接口，支持市面上的大多数适配器，当然也对一些常见的适配器做了优化
+✅ 使用 `nonebot_plugin_alconna` 作为通用信息接口，支持市面上的大多数适配器。对部分适配器做了特殊优化
 
 ✅ 支持基于 `nonebot_plugin_apscheduler` 的定时任务，可定时向大语言模型交互或直接发送信息
 
-✅ 支持基于 `nonebot_plugin_alconna` 的几条常见指令。什么，没有群管理指令？下次再说吧（bushi）
+✅ 支持基于 `nonebot_plugin_alconna` 的几条常见指令。
 
-✅ 使用 SQLite3 保存对话数据。那有人就要问了：Maintainer，Maintainer，能不能实现长期短期记忆、LangChain、FairSeq 这些记忆优化啊，实在不行，多模态图像数据保存和最大记忆长度总该有吧。很抱歉，都没有（
+✅ 使用 SQLite3 保存对话数据。那有人就要问了：Maintainer，Maintainer，能不能实现长期短期记忆、LangChain、FairSeq 这些记忆优化啊。以后会有的（
+
+# 模型加载器适配情况
+
+| 模型加载器  | 多轮对话 | 图片识别 | 推理模型调用 | 流式对话 | 联网搜索 | 工具调用 |
+| ----------- | -------- | -------- | ------------ | -------- | -------------------- | -------------------- |
+| `Azure`     | ✅        | ✅        | ⭕            | ✅        | ❌                    | ✅                    |
+| `Dashscope` | ✅        | ✅        | ✅            | ✅        | ✅                    | ⭕                    |
+| `Ollama`    | ✅        | ✅        | ✅            | ✅        | ❌                    | ✅                    |
+| `Openai`    | ✅        | ✅        | ✅            | ✅        | ❌                    | ✅                    |
+| `Xfyun(ws)` | ✅        | ❌        | ✅            | ✅        | ❌                    | ❌                    |
+| `Gemini`    | ✅        | ✅        | ⭕            | ✅        | ✅                    | ✅                    |
+
+✅：表示此加载器能很好地支持该功能并且 `MuiceBot` 已实现
+
+⭕：表示此加载器虽支持该功能，但使用时可能遇到问题
+
+🚧：表示此加载器虽然支持该功能，但 `MuiceBot` 未实现或正在实现中
+
+❓：表示 Maintainer 暂不清楚此加载器是否支持此项功能，可能需要进一步翻阅文档和检查源码
+
+❌：表示此加载器不支持该功能
 
 # 本项目适合谁？
 
@@ -79,11 +112,13 @@
 
 # 关于🎗️
 
-本项目基于 [BSD 3](https://github.com/Moemu/nonebot-plugin-muice/blob/main/LICENSE) 许可证提供（暂定），出现特殊用途时请仔细阅读许可证中的规定
+大模型输出结果将按**原样**提供，由于提示注入攻击等复杂的原因，模型有可能输出有害内容。无论模型输出结果如何，模型输出结果都无法代表开发者的观点和立场。对于此项目可能间接引发的任何后果（包括但不限于机器人账号封禁），本项目所有开发者均不承担任何责任。
 
-本项目标识使用了 [nonebot/nonebot2](https://github.com/nonebot/nonebot2) 和 画师 [Nakkar](https://www.pixiv.net/users/28246124) ~~[Pixiv作品](https://www.pixiv.net/artworks/101063891)~~ 的资产或作品。如有侵权，请及时与我们联系
+本项目基于 [BSD 3](https://github.com/Moemu/nonebot-plugin-muice/blob/main/LICENSE) 许可证提供，涉及到再分发时请保留许可文件的副本。
 
-对于沐雪的人设和未明确注明许可证和使用范围的模型文件，虽然没有明确限制，但十分不建议将其作为商业用途
+本项目标识使用了 [nonebot/nonebot2](https://github.com/nonebot/nonebot2) 和 画师 [Nakkar](https://www.pixiv.net/users/28246124) [Pixiv作品](https://www.pixiv.net/artworks/101063891) 的资产或作品。如有侵权，请及时与我们联系
+
+BSD 3 许可证同样适用于沐雪的系统提示词，沐雪的文字人设或人设图在 [CC BY NC 3.0](https://creativecommons.org/licenses/by-nc-sa/4.0/legalcode.zh-hans) 许可证条款下提供。
 
 此项目中基于或参考了部分开源项目的实现，在这里一并表示感谢：
 
@@ -91,9 +126,7 @@
 
 - [@botuniverse](https://github.com/botuniverse) 负责制定 Onebot 标准的组织
 
-- [@Tencent](https://github.com/Tencent) 封了我两个号，直接导致本项目的出现
-
-感谢各位开发者的协助，这里就不一一列举出名字了：
+感谢各位开发者的协助，可以说没有你们就没有沐雪的今天：
 
 <a href="https://github.com/eryajf/Moemu/MuiceBot/contributors">
   <img src="https://contrib.rocks/image?repo=Moemu/MuiceBot"  alt="图片加载中..."/>
@@ -113,3 +146,6 @@
 Star History：
 
 [![Star History Chart](https://api.star-history.com/svg?repos=Moemu/MuiceBot&type=Date)](https://star-history.com/#Moemu/MuiceBot&Date)
+
+
+*还在看什么呢，大叔？确定不自己部署一个或者加入官方群组试一下吗？我拿沐沐的人格担保，你不会后悔的（偷笑）*

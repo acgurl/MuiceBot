@@ -1,8 +1,24 @@
 # 插件开发
 
-## 开发 Nonebot2 插件
+## 使用 Nonebot2 插件
 
-本项目完全兼容基于原生 Nonebot2 开发的插件，您只需要将编写好的插件放入 `muicebot/plugins` 中即可，Bot 启动时会自动加载其中的插件。
+本项目完全兼容基于原生 Nonebot2 开发的插件，您只需要按照 `nb plugin install` 的正常方式安装插件即可
+
+## 使用 Muicebot 插件
+
+你可以通过以下方式加载/使用 Muicebot 插件
+
+编辑 `.env` 文件，写入自定义插件加载目录：
+
+```dotenv
+PLUGINS_DIR=["./plugins"]
+```
+
+Muicebot 时会自动查找 `plugins` 文件夹下的插件并加载
+
+对于依赖 `nonebot_plugin_localstore` 的插件，我们并不建议通过此方式加载，因为 `get_plugin_data_dir` 函数可能会返回一个非预期的插件目录
+
+以后我们有可能会规范 Muicebot 插件数据目录
 
 ## 开发 Function Call 插件
 
@@ -43,7 +59,7 @@ async def get_weather(location: str) -> str:
 
 - 通过装饰器的 `params` 方法定义函数参数（可选）
 
-- **必须** 使用异步函数作为被修饰函数，无论是否有异步调用
+- **十分建议** 使用异步函数作为被修饰函数，无论是否有异步调用
 
 ### 依赖注入
 
@@ -52,6 +68,7 @@ MuiceBot 的 Function_call 插件支持 NoneBot2 原生的会话上下文依赖�
 - Event 及其子类实例
 - Bot 及其子类实例
 - Matcher 及其子类实例
+- Muice 类（TODO）
 
 下面让我们使用依赖注入来给我们的 `weather.py` 添加一个简单获取用户名的功能
 
@@ -107,13 +124,13 @@ class Config(BaseModel):
     weather: ScopeConfig
 ```
 
-MuiceBot 的插件配置模型写法和 Nonebot 模型写法是一样的，但这里我们使用了 scope 配置。事实上，对于 MuiceBot ，我们推荐使用 scope 配置而避免在配置项前填写长长的插件前缀。
+MuiceBot 的插件配置模型写法和 Nonebot 模型写法是一样的，但这里我们使用了 scope 配置。事实上，对于 MuiceBot ，我们推荐使用 scope 写法从而避免在配置项前填写长长的插件前缀。
 
-理由很简单，参见：[配置文件](/guide/configuration)
+但最重要的理由是，我们推荐使用 YAML 语法填写 MuiceBot 的插件配置，参见：[配置文件](/guide/configuration)
 
 然后像正常的 Nonebot 插件一样，加载插件配置即可。
 
-参考 openweathermap 的接口文档，在 weather.py 中写入：
+参考 openweathermap 的接口文档，在 `weather.py` 中写入：
 
 ```python
 from muicebot.plugin import on_function_call, String

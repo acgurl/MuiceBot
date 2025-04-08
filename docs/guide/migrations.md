@@ -6,7 +6,8 @@
 
 ## 实现差异
 
-Muice-Chatbot 通过搭建 Onebot V11 反向 WebSocket 服务实现机器人服务，代码可读性差，在部分 Onebot 实现上容易出现问题；但 MuiceBot 基于 Nonebot 机器人框架，通过多种适配器实现完美兼容各类聊天平台，具体服务实现隐藏在适配器代码中，让开发者专注于聊天交互逻辑处理，代码鲁棒性好，不容易抛出错误。
+Muice-Chatbot 通过搭建 Onebot V11 反向 WebSocket 服务实现机器人服务，代码可读性差，不容易扩展，在部分 Onebot 实现上容易出现问题；
+但 MuiceBot 基于 Nonebot 机器人框架，通过多种适配器实现完美兼容各类聊天平台，具体服务实现隐藏在适配器代码中，让开发者专注于聊天交互逻辑处理，代码鲁棒性好，不容易抛出错误。
 
 ## 尚未实现的功能
 
@@ -14,13 +15,15 @@ Muice-Chatbot 通过搭建 Onebot V11 反向 WebSocket 服务实现机器人服�
 
 | 特性           | Muice-Chabot | MuiceBot                                      |
 | -------------- | ------------ | --------------------------------------------- |
-| 适配器支持     | Onebot V11   | 支持包括 Onebot 协议在内的多种 Nonebot 适配器 |
-| 模型加载器实现 | 本地+远程    | 仅支持远程                             |
+| 适配器支持      | Onebot V11   | 支持包括 Onebot 协议在内的多种 Nonebot 适配器 |
+| 模型加载器实现  | 本地+远程    | 本地(ollama)+远程                             |
 | 主动对话       | 支持         | 支持                                          |
 | 指令           | 支持         | 部分移除                                      |
 | OFA 图像识别   | 支持         | 尚未支持                                      |
 | 语音合成       | fish-speech  | 尚未支持                                      |
 | Faiss 记忆模块 | 支持         | 尚未支持                                      |
+
+请注意: 由于依赖树太大，我们移除了 `llmtuner` 模型加载器，请使用 `ollama` 或换用在线 API 作为替代
 
 ## 环境迁移
 
@@ -36,13 +39,13 @@ Muice-Chatbot 通过搭建 Onebot V11 反向 WebSocket 服务实现机器人服�
 >
 > 本篇教程不适用于 Faiss 向量记忆的数据库迁移，因为 MuiceBot 尚未实现（
 
-首先运行一次 MuiceBot ，获取数据库路径：
+按照 [快速开始](/guide/setup) 配置好 Muicebot 后，首先运行一次 MuiceBot ，获取数据库路径：
 
 ```shell
 03-18 09:56:50 [INFO] Muice | 数据库路径: C:\Users\Muika\AppData\Local\nonebot2\Muice\ChatHistory.db
 ```
 
-找到 Muice-Chatbot 的 `memory` 文件夹，复制文件路径：
+然后找到 Muice-Chatbot 的 `memory` 文件夹，复制文件路径：
 
 ```
 D:\Muice-Chatbot\memory

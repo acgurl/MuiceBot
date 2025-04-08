@@ -21,7 +21,7 @@ PLUGINS_CONFIG_PATH = Path("configs/plugins.yml").resolve()
 class PluginConfig(BaseModel):
     log_level: str = "INFO"
     """日志等级"""
-    muice_nicknames: list = []
+    muice_nicknames: list = ["muice"]
     """沐雪的自定义昵称，作为消息前缀条件响应信息事件"""
     telegram_proxy: str | None = None
     """telegram代理，这个配置项用于获取图片时使用"""

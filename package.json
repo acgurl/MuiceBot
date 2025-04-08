@@ -1,6 +1,6 @@
 {
-  "name": "muicebot_doc",
-  "version": "0.2.1",
+  "name": "muicebot",
+  "version": "0.2.2",
   "private": true,
   "scripts": {
     "build": "rspress build",
