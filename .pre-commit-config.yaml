@@ -8,7 +8,7 @@ ci:
 
 repos:
   - repo: https://github.com/pycqa/flake8
-    rev: 7.1.0
+    rev: 7.2.0
     hooks:
       - id: flake8  # 代码风格检查
         args: ["--max-line-length=120", "--extend-ignore=W503,E203"]
@@ -27,7 +27,7 @@ repos:
         args: ["--config=./pyproject.toml"]
 
   - repo: https://github.com/PyCQA/isort
-    rev: 6.0.0
+    rev: 6.0.1
     hooks:
       - id: isort
         args: ["--profile", "black"]
