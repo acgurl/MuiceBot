@@ -25,7 +25,7 @@ async def get_username(bot: Bot, event: Event) -> str:
 
     elif Onebotv11Bot and isinstance(bot, Onebotv11Bot):
         userinfo = await bot.get_stranger_info(user_id=int(userid))
-        username = userinfo.get("user_displayname", userid)
+        username = userinfo.get("nickname", userid)
 
     elif TelegramEvent and isinstance(event, TelegramEvent):
         username = event.chat.username  # type: ignore

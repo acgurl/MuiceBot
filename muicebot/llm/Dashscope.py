@@ -79,6 +79,52 @@ class Dashscope(BasicModel):
 
         return messages
 
+    async def _tool_calls_handle_sync(self, messages: List, response: GenerationResponse) -> str:
+        tool_call = response.output.choices[0].message.tool_calls[0]
+        tool_call_id = tool_call["id"]
+        function_name = tool_call["function"]["name"]
+        function_args = json.loads(tool_call["function"]["arguments"])
+
+        logger.info(f"function call 请求 {function_name}, 参数: {function_args}")
+        function_return = await function_call_handler(function_name, function_args)
+        logger.success(f"Function call 成功，返回: {function_return}")
+
+        messages.append(response.output.choices[0].message)
+        messages.append({"role": "tool", "content": function_return, "tool_call_id": tool_call_id})
+
+        return await self._ask_sync(messages)
+
+    async def _tool_calls_handle_stream(
+        self, messages: List, tool_call_id: str, function_name: str, function_args_delta: str
+    ) -> AsyncGenerator[str, None]:
+        function_args = json.loads(function_args_delta)
+
+        logger.info(f"function call 请求 {function_name}, 参数: {function_args}")
+        function_return = await function_call_handler(function_name, function_args)  # type:ignore
+        logger.success(f"Function call 成功，返回: {function_return}")
+
+        messages.append(
+            {
+                "role": "assistant",
+                "content": "",
+                "tool_calls": [
+                    {
+                        "id": tool_call_id,
+                        "function": {
+                            "arguments": function_args_delta,
+                            "name": function_name,
+                        },
+                        "type": "function",
+                        "index": 0,
+                    }
+                ],
+            }
+        )
+        messages.append({"role": "tool", "content": function_return, "tool_call_id": tool_call_id})
+
+        async for chunk in self._ask_stream(messages):
+            yield chunk
+
     async def _ask_sync(self, messages: list) -> str:
         loop = asyncio.get_event_loop()
 
@@ -116,19 +162,7 @@ class Dashscope(BasicModel):
         if message_content:
             return message_content if isinstance(message_content, str) else "".join(message_content)
 
-        tool_call = response.output.choices[0].message.tool_calls[0]
-        tool_call_id = tool_call["id"]
-        function_name = tool_call["function"]["name"]
-        function_args = json.loads(tool_call["function"]["arguments"])
-
-        logger.info(f"function call 请求 {function_name}, 参数: {function_args}")
-        function_return = await function_call_handler(function_name, function_args)
-        logger.success(f"Function call 成功，返回: {function_return}")
-
-        messages.append(response.output.choices[0].message)
-        messages.append({"role": "tool", "content": function_return, "tool_call_id": tool_call_id})
-
-        return await self._ask_sync(messages)
+        return await self._tool_calls_handle_sync(messages, response)
 
     async def _ask_stream(self, messages: list) -> AsyncGenerator[str, None]:
         loop = asyncio.get_event_loop()
@@ -175,7 +209,7 @@ class Dashscope(BasicModel):
                 self.succeed = False
                 return
 
-            if chunk.output.choices and chunk.output.choices[0].message.get("tool_calls", []):
+            elif chunk.output.choices and chunk.output.choices[0].message.get("tool_calls", []):
                 tool_calls = chunk.output.choices[0].message.tool_calls
                 tool_call = tool_calls[0]
                 if tool_call.get("id", ""):
@@ -188,20 +222,21 @@ class Dashscope(BasicModel):
                 is_function_call = True
                 continue
 
-            if hasattr(chunk.output, "text") and chunk.output.text:  # 傻逼 Dashscope 为什么不统一接口？
+            elif hasattr(chunk.output, "text") and chunk.output.text:  # 傻逼 Dashscope 为什么不统一接口？
                 yield chunk.output.text
                 continue
 
-            if chunk.output.choices is None:
+            elif chunk.output.choices is None:
                 continue
 
             answer_content = chunk.output.choices[0].message.content
             reasoning_content = chunk.output.choices[0].message.get("reasoning_content", "")
+            reasoning_content = reasoning_content.replace("\n</think>", "") if reasoning_content else ""
 
             if answer_content == "" and reasoning_content == "":
                 continue
 
-            if reasoning_content != "" and answer_content == "":
+            elif reasoning_content != "" and answer_content == "":
                 yield (reasoning_content if is_insert_think_label else "<think>" + reasoning_content)  # type:ignore
                 is_insert_think_label = True
 
@@ -211,38 +246,11 @@ class Dashscope(BasicModel):
                 yield (answer_content if not is_insert_think_label else "</think>" + answer_content)
                 is_insert_think_label = False
 
-        if not is_function_call:
-            return
-
-        function_args = json.loads(function_args_delta)
-
-        logger.info(f"function call 请求 {function_name}, 参数: {function_args}")
-        function_return = await function_call_handler(function_name, function_args)  # type:ignore
-        logger.success(f"Function call 成功，返回: {function_return}")
-
-        messages.append(
-            {
-                "role": "assistant",
-                "content": "",
-                "tool_calls": [
-                    {
-                        "id": tool_call_id,
-                        "function": {
-                            "arguments": function_args_delta,
-                            "name": function_name,
-                        },
-                        "type": "function",
-                        "index": 0,
-                    }
-                ],
-            }
-        )
-        messages.append({"role": "tool", "content": function_return, "tool_call_id": tool_call_id})
-
-        async for chunk in self._ask_stream(messages):
-            yield chunk
-
-        return
+        if is_function_call:
+            async for final_chunk in self._tool_calls_handle_stream(
+                messages, tool_call_id, function_name, function_args_delta
+            ):
+                yield final_chunk
 
     async def _ask_vision_sync(self, messages: list) -> str:
         loop = asyncio.get_event_loop()
