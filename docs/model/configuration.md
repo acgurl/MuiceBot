@@ -34,6 +34,26 @@ repetition_penalty: 1.2 # 模型生成的重复惩罚（可选）
 stream: false # 流式对话
 online_search: false # 联网搜索（目前仅支持 qwen-max/plus/turbo 系列模型）
 function_call: false # 是否启用工具调用（可选。需要编写 function call 插件并启用）
+content_security: false # 内容安全（可选。需要开通内容审核服务。不支持 Qwen-VL、Qwen-Audio 系列模型）
+```
+
+## Gemini (Google)
+
+```yaml
+loader: Gemini # 使用 Dashscope 加载器（必须）
+model_name: gemini-2.0-flash # 模型名称（必须）
+multimodal: false # 是否启用多模态（可选。注意：使用的模型必须是多模态的）
+api_key: xxxxxx # API 密钥（必须）
+max_tokens: 1024 # 模型生成的最大 token 数（可选，默认为 1024）
+temperature: 0.7 #  模型生成的温度参数（可选，默认为 0.7）
+top_p: 0.95 # 模型生成的 Top_p 参数（可选）
+top_k: 3 # 模型生成的 Top_k 参数（可选）
+presence_penalty: 1.5 # 存在惩罚系数，用于调整已出现的词的概率
+frequency_penalty: 1.0 # 频率惩罚系数，用于调整频繁出现的词的概率
+stream: false # 流式对话
+online_search: false # 联网搜索
+function_call: false # 是否启用工具调用（可选。需要编写 function call 插件并启用）
+content_security: false # 内容安全（可选。默认为中级及以上）
 ```
 
 ## Llmtuner (LLama-Factory)

@@ -35,6 +35,11 @@ class Dashscope(BasicModel):
         self.enable_search = self.config.online_search
 
         self._tools: List[dict] = []
+
+        self.extra_headers = (
+            {"X-DashScope-DataInspection": '{"input":"cip","output":"cip"}'} if self.config.content_security else {}
+        )
+
         self.stream = False
         self.succeed = True
 
@@ -232,6 +237,7 @@ class Dashscope(BasicModel):
                     parallel_tool_calls=True,
                     enable_search=self.enable_search,
                     incremental_output=True,
+                    headers=self.extra_headers,
                 ),
             )
         else:

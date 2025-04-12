@@ -42,6 +42,8 @@ class ModelConfig(BaseModel):
     """是否启用联网搜索（原生实现）"""
     function_call: bool = False
     """是否启用工具调用"""
+    content_security: bool = False
+    """是否启用内容安全"""
 
     model_path: str = ""
     """本地模型路径"""

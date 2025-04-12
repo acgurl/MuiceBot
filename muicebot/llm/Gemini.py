@@ -7,7 +7,10 @@ from google.genai.types import (
     ContentOrDict,
     GenerateContentConfig,
     GoogleSearch,
+    HarmBlockThreshold,
+    HarmCategory,
     Part,
+    SafetySetting,
     Tool,
 )
 from nonebot import logger
@@ -26,6 +29,7 @@ class Gemini(BasicModel):
         self.enable_search = self.config.online_search
 
         self.client = genai.Client(api_key=self.api_key)
+
         self.gemini_config = GenerateContentConfig(
             temperature=self.config.temperature,
             top_p=self.config.top_p,
@@ -33,6 +37,28 @@ class Gemini(BasicModel):
             max_output_tokens=self.config.max_tokens,
             presence_penalty=self.config.presence_penalty,
             frequency_penalty=self.config.frequency_penalty,
+            safety_settings=(
+                [
+                    SafetySetting(
+                        category=HarmCategory.HARM_CATEGORY_HARASSMENT,
+                        threshold=HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
+                    ),
+                    SafetySetting(
+                        category=HarmCategory.HARM_CATEGORY_HATE_SPEECH,
+                        threshold=HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
+                    ),
+                    SafetySetting(
+                        category=HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
+                        threshold=HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
+                    ),
+                    SafetySetting(
+                        category=HarmCategory.HARM_CATEGORY_CIVIC_INTEGRITY,
+                        threshold=HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
+                    ),
+                ]
+                if self.config.content_security
+                else []
+            ),
         )
 
         self.model = self.client.chats.create(model=self.model_name, config=self.gemini_config)
