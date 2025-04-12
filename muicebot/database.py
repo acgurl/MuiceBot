@@ -39,12 +39,14 @@ class Database:
         :param fetchall: 是否获取所有结果
         """
         async with self.__connect() as conn:
+            conn.row_factory = aiosqlite.Row
             cursor = await conn.cursor()
             await cursor.execute(query, params)
             if fetchone:
                 return await cursor.fetchone()  # type: ignore
             if fetchall:
-                return await cursor.fetchall()  # type: ignore
+                rows = await cursor.fetchall()
+                return [{k.lower(): v for k, v in zip(row.keys(), row)} for row in rows]
             await conn.commit()
 
         return None
@@ -108,7 +110,7 @@ class Database:
             query = "SELECT * FROM MSG WHERE HISTORY = 1 AND USERID = ?"
         rows = await self.execute(query, (userid,), fetchall=True)
 
-        return [Message(*row) for row in rows] if rows else []
+        return [Message(**dict(row)) for row in rows] if rows else []
 
     async def get_group_history(self, groupid: str, limit: int = 0) -> list[Message]:
         """
@@ -123,7 +125,7 @@ class Database:
             query = "SELECT * FROM MSG WHERE HISTORY = 1 AND GROUPID = ?"
         rows = await self.execute(query, (groupid,), fetchall=True)
 
-        return [Message(*row) for row in rows] if rows else []
+        return [Message(**dict(row)) for row in rows] if rows else []
 
     async def remove_last_item(self, userid: str):
         """
