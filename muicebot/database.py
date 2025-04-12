@@ -110,7 +110,10 @@ class Database:
             query = "SELECT * FROM MSG WHERE HISTORY = 1 AND USERID = ?"
         rows = await self.execute(query, (userid,), fetchall=True)
 
-        return [Message(**dict(row)) for row in rows] if rows else []
+        result = [Message(**dict(row)) for row in rows] if rows else []
+        result.reverse()
+
+        return result
 
     async def get_group_history(self, groupid: str, limit: int = 0) -> list[Message]:
         """
@@ -125,7 +128,10 @@ class Database:
             query = "SELECT * FROM MSG WHERE HISTORY = 1 AND GROUPID = ?"
         rows = await self.execute(query, (groupid,), fetchall=True)
 
-        return [Message(**dict(row)) for row in rows] if rows else []
+        result = [Message(**dict(row)) for row in rows] if rows else []
+        result.reverse()
+
+        return result
 
     async def remove_last_item(self, userid: str):
         """
