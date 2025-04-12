@@ -143,7 +143,7 @@ class Muice:
         logger.info("正在调用模型...")
 
         prompt = self._prepare_prompt(message)
-        history = await self.database.get_history(userid, self.max_history_epoch) if enable_history else []
+        history = await self.database.get_user_history(userid, self.max_history_epoch) if enable_history else []
         tools = get_tools() if self.model_config.function_call else []
         system = self.system_prompt if self.system_prompt else None
 
@@ -181,7 +181,7 @@ class Muice:
         logger.info("正在调用模型...")
 
         prompt = self._prepare_prompt(message)
-        history = await self.database.get_history(userid, self.max_history_epoch)
+        history = await self.database.get_user_history(userid, self.max_history_epoch)
         tools = get_tools() if self.model_config.function_call else []
         system = self.system_prompt if self.system_prompt else None
 
@@ -218,7 +218,7 @@ class Muice:
         """
         logger.info(f"用户 {userid} 请求刷新")
 
-        last_item = await self.database.get_history(userid, limit=1)
+        last_item = await self.database.get_user_history(userid, limit=1)
         last_item = last_item[0]
 
         if not last_item:
