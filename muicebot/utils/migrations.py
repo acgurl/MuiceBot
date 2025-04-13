@@ -16,15 +16,17 @@ class MigrationManager:
         self.db = db
         self.path: Path = db.DB_PATH
 
+        self.migrations = {
+            0: self._migrate_v0_to_v1,
+        }
+
+        self.latest_version = max(self.migrations.keys()) + 1
+
     async def migrate_if_needed(self):
         await self.__init_version_table()
         current_version = await self.__get_version()
 
-        migrations = {
-            0: self._migrate_v0_to_v1,
-        }
-
-        while current_version in migrations:
+        while current_version in self.migrations:
             logger.info(f"检测到数据库更新，当前版本 v{current_version}...")
             backup_path = self.path.with_suffix(f".backup.v{current_version}.db")
             shutil.copyfile(self.path, backup_path)
@@ -32,7 +34,7 @@ class MigrationManager:
             try:
                 async with self.db.connect() as conn:
                     await conn.execute("BEGIN")
-                    await migrations[current_version](conn)
+                    await self.migrations[current_version](conn)
                     await conn.commit()
                 current_version += 1
                 await self.__set_version(current_version)
@@ -52,8 +54,9 @@ class MigrationManager:
         """
         )
         result = await self.db.execute("SELECT COUNT(*) FROM schema_version", fetchone=True)
-        if not result or result[0] == 0:
+        if not result or result[0] == 0:  # 只有 v0.2.x 的数据库没有版本号
             await self.db.execute("INSERT INTO schema_version (version) VALUES (0)")
+            logger.info("数据库无版本记录，可能是v0版本的数据库，设为v0")
 
     async def __get_version(self) -> int:
         """

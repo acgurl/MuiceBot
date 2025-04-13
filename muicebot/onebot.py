@@ -227,13 +227,13 @@ async def handle_command_status():
     scheduler_status = "运行中" if scheduler and scheduler.running else "未启动"
 
     await command_status.finish(
-        f"框架已运行： {str(uptime)}\n"
+        f"框架已运行: {str(uptime)}\n"
         f"bot已稳定连接: {str(bot_uptime)}\n"
         f"\n"
         f"模型加载器状态: {model_status}\n"
-        f"模型用量: 今日 {today_usage} 次 (总 {total_usage} 次)\n "
+        f"今日模型用量: {today_usage} tokens (总 {total_usage} tokens)\n "
         f"\n"
-        f"定时任务调度器状态：{scheduler_status}\n"
+        f"定时任务调度器状态: {scheduler_status}\n"
     )
 
 

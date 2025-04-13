@@ -15,6 +15,7 @@ from .utils.migrations import MigrationManager
 class Database:
     def __init__(self) -> None:
         self.DB_PATH = store.get_plugin_data_dir().joinpath("ChatHistory.db").resolve()
+        self.migrations = MigrationManager(self)
 
         asyncio.run(self.init_db())
 
@@ -26,7 +27,7 @@ class Database:
             logger.info("数据库不存在，正在创建...")
             await self.__create_database()
 
-        await MigrationManager(self).migrate_if_needed()
+        await self.migrations.migrate_if_needed()
 
     def __connect(self) -> aiosqlite.Connection:
         return aiosqlite.connect(self.DB_PATH)
@@ -69,6 +70,13 @@ class Database:
             IMAGES TEXT NOT NULL DEFAULT "[]",
             TOTALTOKENS INTEGER NOT NULL DEFAULT (-1));"""
         )
+        await self.execute(
+            """
+            CREATE TABLE schema_version (
+                version INTEGER NOT NULL
+            );"""
+        )
+        await self.execute("INSERT INTO schema_version (version) VALUES (?);", (str(self.migrations.latest_version)))
 
     def connect(self) -> aiosqlite.Connection:
         return aiosqlite.connect(self.DB_PATH)
@@ -145,7 +153,7 @@ class Database:
 
         # 查询总用量（排除 TOTALTOKENS = -1）
         total_result = await self.execute("SELECT SUM(TOTALTOKENS) FROM MSG WHERE TOTALTOKENS != -1", fetchone=True)
-        total_usage = total_result[0] if total_result else 0
+        total_usage = total_result[0] if total_result and total_result[0] is not None else 0
 
         # 查询今日用量（按日期前缀匹配 TIME）
         today_result = await self.execute(
@@ -153,7 +161,7 @@ class Database:
             (f"{today_str}%",),
             fetchone=True,
         )
-        today_usage = today_result[0] if today_result else 0
+        today_usage = today_result[0] if today_result and today_result[0] is not None else 0
 
         return today_usage, total_usage
 
