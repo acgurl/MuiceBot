@@ -1,8 +1,16 @@
 import re
+import time
+from datetime import timedelta
 from pathlib import Path
 
 from arclet.alconna import Alconna, AllParam, Args
-from nonebot import get_adapters, get_bot, get_driver, logger, on_message
+from nonebot import (
+    get_adapters,
+    get_bot,
+    get_driver,
+    logger,
+    on_message,
+)
 from nonebot.adapters import Bot, Event
 from nonebot.matcher import Matcher
 from nonebot.permission import SUPERUSER
@@ -22,10 +30,14 @@ from .config import plugin_config
 from .muice import Muice
 from .plugin import get_plugins, load_plugins, set_ctx
 from .scheduler import setup_scheduler
-from .utils.utils import legacy_get_images, save_image_as_file
+from .utils.utils import get_version, legacy_get_images, save_image_as_file
+
+COMMAND_PREFIXES = [".", "/"]
 
 muice = Muice()
 scheduler = None
+START_TIME = time.time()
+connect_time = 0.0
 
 muice_nicknames = plugin_config.muice_nicknames
 regex_patterns = [f"^{re.escape(nick)}\\s*" for nick in muice_nicknames]
@@ -61,41 +73,50 @@ async def load_bot():
 @driver.on_bot_connect
 async def bot_connected():
     logger.success("Bot 已连接，消息处理进程开始运行✨")
+    global connect_time
+    if not connect_time:
+        connect_time = time.time()
 
+
+command_about = on_alconna(
+    Alconna(COMMAND_PREFIXES, "about", meta=CommandMeta("输出关于信息")),
+    priority=90,
+    block=True,
+)
 
 command_help = on_alconna(
-    Alconna([".", "/"], "help", meta=CommandMeta("输出帮助信息")),
+    Alconna(COMMAND_PREFIXES, "help", meta=CommandMeta("输出帮助信息")),
     priority=90,
     block=True,
 )
 
 command_status = on_alconna(
-    Alconna([".", "/"], "status", meta=CommandMeta("显示当前状态")),
+    Alconna(COMMAND_PREFIXES, "status", meta=CommandMeta("显示当前状态")),
     priority=90,
     block=True,
 )
 
 command_reset = on_alconna(
-    Alconna([".", "/"], "reset", meta=CommandMeta("清空对话记录")),
+    Alconna(COMMAND_PREFIXES, "reset", meta=CommandMeta("清空对话记录")),
     priority=10,
     block=True,
 )
 
 command_refresh = on_alconna(
-    Alconna([".", "/"], "refresh", meta=CommandMeta("刷新模型输出")),
+    Alconna(COMMAND_PREFIXES, "refresh", meta=CommandMeta("刷新模型输出")),
     priority=10,
     block=True,
 )
 
 command_undo = on_alconna(
-    Alconna([".", "/"], "undo", meta=CommandMeta("撤回上一个对话")),
+    Alconna(COMMAND_PREFIXES, "undo", meta=CommandMeta("撤回上一个对话")),
     priority=10,
     block=True,
 )
 
 command_load = on_alconna(
     Alconna(
-        [".", "/"],
+        COMMAND_PREFIXES,
         "load",
         Args["config_name", str, ""],
         meta=CommandMeta("加载模型", usage="load <config_name>", example="load model.deepseek"),
@@ -106,20 +127,20 @@ command_load = on_alconna(
 )
 
 command_schedule = on_alconna(
-    Alconna([".", "/"], "schedule", meta=CommandMeta("加载定时任务")),
+    Alconna(COMMAND_PREFIXES, "schedule", meta=CommandMeta("加载定时任务")),
     priority=10,
     block=True,
     permission=SUPERUSER,
 )
 
 command_start = on_alconna(
-    Alconna([".", "/"], "start", meta=CommandMeta("Telegram 的启动指令")),
+    Alconna(COMMAND_PREFIXES, "start", meta=CommandMeta("Telegram 的启动指令")),
     priority=10,
     block=True,
 )
 
 command_whoami = on_alconna(
-    Alconna([".", "/"], "whoami", meta=CommandMeta("输出当前用户信息")),
+    Alconna(COMMAND_PREFIXES, "whoami", meta=CommandMeta("输出当前用户信息")),
     priority=90,
     block=True,
 )
@@ -164,38 +185,55 @@ async def handle_command_help():
     )
 
 
-@command_status.handle()
-async def handle_command_status():
+@command_about.handle()
+async def handle_command_about():
+    logger.info(f"MuiceBot 版本: {get_version()}")
     model_loader = muice.model_loader
-    model_status = "运行中" if muice.model and muice.model.is_running else "未启动"
-    multimodal_enable = "是" if muice.multimodal else "否"
+    # plugins_list = ", ".join(get_available_plugin_names())
+    mplugins_list = ", ".join(get_plugins())
 
-    scheduler_status = "运行中" if scheduler and scheduler.running else "未启动"
+    model_name = muice.model_config.model_name if muice.model_config.model_name else "Unknown"
+    is_multimodal = "是" if muice.multimodal else "否"
+
     if scheduler and scheduler.running:
         job_ids = [job.id for job in scheduler.get_jobs()]
         if job_ids:
-            current_scheduler = "、".join(job_ids)
+            current_scheduler = ", ".join(job_ids)
         else:
-            current_scheduler = "暂无运行中的调度器"
+            current_scheduler = "无"
     else:
-        current_scheduler = "调度器引擎未启动！"
+        current_scheduler = "无(调度器未启动)"
 
-    plugins_list = get_plugins()
-    if plugins_list:
-        plugin_names = plugins_list.keys()
-        plugins_list = "、".join(plugin_names)
-    else:
-        plugins_list = "暂无已加载的插件"
+    await command_about.finish(
+        f"框架版本: {get_version()}\n"
+        f"已加载的 Muicebot 插件: {mplugins_list}\n"
+        f"\n"
+        f"模型: {model_name}({model_loader})\n"
+        f"多模态: {is_multimodal}\n"
+        f"\n"
+        f"定时任务: {current_scheduler}"
+    )
+
+
+@command_status.handle()
+async def handle_command_status():
+    now = time.time()
+    uptime = timedelta(seconds=int(now - START_TIME))
+    bot_uptime = timedelta(seconds=int(now - connect_time))
+
+    model_status = "运行中" if muice.model and muice.model.is_running else "未启动"
+    today_usage, total_usage = await muice.database.get_model_usage()
+
+    scheduler_status = "运行中" if scheduler and scheduler.running else "未启动"
 
     await command_status.finish(
-        f"当前模型加载器：{model_loader}\n"
-        f"模型加载器状态：{model_status}\n"
-        f"多模态模型: {multimodal_enable}\n"
+        f"框架已运行： {str(uptime)}\n"
+        f"bot已稳定连接: {str(bot_uptime)}\n"
         f"\n"
-        f"定时任务调度器引擎状态：{scheduler_status}\n"
-        f"运行中的运行任务调度器：{current_scheduler}\n"
+        f"模型加载器状态: {model_status}\n"
+        f"模型用量: 今日 {today_usage} 次 (总 {total_usage} 次)\n "
         f"\n"
-        f"插件列表: {plugins_list}\n"
+        f"定时任务调度器状态：{scheduler_status}\n"
     )
 
 

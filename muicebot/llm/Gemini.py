@@ -111,6 +111,9 @@ class Gemini(BasicModel):
             chat = self.client.aio.chats.create(model=self.model_name, config=self.gemini_config, history=messages[:-1])
             message = messages[-1].parts  # type:ignore
             response = await chat.send_message(message=message)  # type:ignore
+            if response.usage_metadata:
+                total_token_count = response.usage_metadata.total_token_count
+                self.total_tokens = total_token_count if total_token_count else -1
 
             if response.text:
                 return response.text
@@ -150,6 +153,11 @@ class Gemini(BasicModel):
             ):  # type:ignore
                 if chunk.text:
                     yield chunk.text
+
+                if chunk.usage_metadata:
+                    self.total_tokens += (
+                        chunk.usage_metadata.total_token_count - self.total_tokens
+                    )  # 这样做的目的是为了合并工具调用的用量
 
                 if chunk.function_calls:
                     function_call = chunk.function_calls[0]
@@ -214,6 +222,7 @@ class Gemini(BasicModel):
         **kwargs,
     ) -> Union[AsyncGenerator[str, None], str]:
         self.succeed = True
+        self.total_tokens = 0
         self.__build_tools_list(tools)
         self.gemini_config.system_instruction = system
 

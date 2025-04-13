@@ -154,15 +154,19 @@ class Muice:
 
         reply.strip()
         end_time = time.perf_counter()
+        token_usage = self.model.total_tokens
+
         if self.model.succeed:
             logger.success(f"模型调用成功: {reply}")
-        logger.debug(f"模型调用时长: {end_time - start_time} s")
+        logger.debug(f"模型调用时长: {end_time - start_time} s (token用量: {token_usage})")
 
         thought, result = process_thoughts(reply, self.think)  # type: ignore
         reply = "\n\n".join([thought, result])
 
         if self.model.succeed:
-            message_object = Message(userid=userid, message=message, respond=result, images=image_paths)
+            message_object = Message(
+                userid=userid, message=message, respond=result, images=image_paths, totaltokens=token_usage
+            )
             await self.database.add_item(message_object)
 
         return reply
@@ -201,13 +205,16 @@ class Muice:
                 reply += chunk
 
         end_time = time.perf_counter()
+        token_usage = self.model.total_tokens
         logger.success(f"已完成流式回复: {reply}")
-        logger.debug(f"模型调用时长: {end_time - start_time} s")
+        logger.debug(f"模型调用时长: {end_time - start_time} s (token用量: {token_usage})")
 
         _, result = process_thoughts(reply, self.think)  # type: ignore
 
         if self.model.succeed:
-            message_object = Message(userid=userid, message=message, respond=result, images=image_paths)
+            message_object = Message(
+                userid=userid, message=message, respond=result, images=image_paths, totaltokens=token_usage
+            )
             await self.database.add_item(message_object)
 
     async def refresh(self, userid: str) -> Union[AsyncGenerator[str, None], str]:

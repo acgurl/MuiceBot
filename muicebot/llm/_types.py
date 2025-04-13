@@ -104,6 +104,8 @@ class BasicModel(metaclass=ABCMeta):
         """模型状态"""
         self.succeed = True
         """模型是否成功返回结果"""
+        self.total_tokens = -1
+        """本次请求使用的总token数。当此值设为-1时，表明此模型加载器不支持该功能"""
 
     def _require(self, *require_fields: str):
         """

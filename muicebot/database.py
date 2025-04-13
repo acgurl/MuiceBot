@@ -1,6 +1,8 @@
 import asyncio
 import json
 import os
+from datetime import datetime
+from typing import Tuple
 
 import aiosqlite
 import nonebot_plugin_localstore as store
@@ -132,6 +134,28 @@ class Database:
         result.reverse()
 
         return result
+
+    async def get_model_usage(self) -> Tuple[int, int]:
+        """
+        获取模型用量数据（今日用量，总用量）
+
+        :return: today_usage, total_usage
+        """
+        today_str = datetime.now().strftime("%Y.%m.%d")
+
+        # 查询总用量（排除 TOTALTOKENS = -1）
+        total_result = await self.execute("SELECT SUM(TOTALTOKENS) FROM MSG WHERE TOTALTOKENS != -1", fetchone=True)
+        total_usage = total_result[0] if total_result else 0
+
+        # 查询今日用量（按日期前缀匹配 TIME）
+        today_result = await self.execute(
+            "SELECT SUM(TOTALTOKENS) FROM MSG WHERE TOTALTOKENS != -1 AND TIME LIKE ?",
+            (f"{today_str}%",),
+            fetchone=True,
+        )
+        today_usage = today_result[0] if today_result else 0
+
+        return today_usage, total_usage
 
     async def remove_last_item(self, userid: str):
         """

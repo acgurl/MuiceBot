@@ -67,9 +67,6 @@ def setup_scheduler(muice: Muice, bot: Bot) -> AsyncIOScheduler:
     jobs = get_schedule_configs()
     scheduler = AsyncIOScheduler()
 
-    if not jobs:
-        jobs = []
-
     for job in jobs:
         job_id = job.id
         job_type = "send_message" if job.say else "model_ask"
@@ -110,5 +107,6 @@ def setup_scheduler(muice: Muice, bot: Bot) -> AsyncIOScheduler:
 
         logger.success(f"已注册定时任务: {job_id}")
 
-    scheduler.start()
+    if jobs:
+        scheduler.start()
     return scheduler

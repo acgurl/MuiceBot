@@ -3,6 +3,7 @@ from typing import AsyncGenerator, List, Literal, Optional, Union, overload
 
 import openai
 from nonebot import logger
+from openai import NOT_GIVEN
 from openai.types.chat import ChatCompletionMessage, ChatCompletionToolParam
 
 from ._types import BasicModel, Message, ModelConfig, function_call_handler
@@ -45,7 +46,7 @@ class Openai(BasicModel):
             for index, item in enumerate(history):
                 user_content = (
                     {"role": "user", "content": item.message}
-                    if not item.images
+                    if not all([item.images, self.config.multimodal])
                     else self.__build_image_message(item.message, item.images)
                 )
 
@@ -88,6 +89,7 @@ class Openai(BasicModel):
 
             result = ""
             message = response.choices[0].message  # type:ignore
+            self.total_tokens += response.usage.total_tokens if response.usage else -1
 
             if (
                 hasattr(message, "reasoning_content")  # type:ignore
@@ -140,29 +142,32 @@ class Openai(BasicModel):
                 max_tokens=self.max_tokens,
                 temperature=self.temperature,
                 stream=True,
+                stream_options={"include_usage": True},
                 tools=self._tools,
             )
 
             is_insert_think_label = False
-            final_tool_calls = {}
+            function_id = ""
+            function_name = ""
+            function_arguments = ""
 
             async for chunk in response:
                 # 处理 Function call
+                if chunk.usage:
+                    self.total_tokens += chunk.usage.total_tokens
+
                 if not chunk.choices:
                     continue
 
                 if chunk.choices[0].delta.tool_calls:
                     tool_call = chunk.choices[0].delta.tool_calls[0]
-                    final_tool_calls.update(
-                        {
-                            "id": tool_call.id,
-                            "function": {
-                                "name": tool_call.function.name,  # type:ignore
-                                "arguments": tool_call.function.arguments,  # type:ignore
-                            },
-                        }
-                    )
-                    break
+                    if tool_call.id:
+                        function_id = tool_call.id
+                    if tool_call.function:
+                        if tool_call.function.name:
+                            function_name += tool_call.function.name
+                        if tool_call.function.arguments:
+                            function_arguments += tool_call.function.arguments
 
                 delta = chunk.choices[0].delta
                 answer_content = delta.content
@@ -179,12 +184,9 @@ class Openai(BasicModel):
                     yield (answer_content if not is_insert_think_label else "</think>" + answer_content)
                     is_insert_think_label = False
 
-            if final_tool_calls:
-                tool_call_id = final_tool_calls["id"]
-                function_name = final_tool_calls["function"]["name"]
-                arguments = final_tool_calls["function"]["arguments"]
-                logger.info(f"function call 请求 {function_name}, 参数: {arguments}")
-                function_return = await function_call_handler(function_name, arguments)
+            if function_id:
+                logger.info(f"function call 请求 {function_name}, 参数: {function_arguments}")
+                function_return = await function_call_handler(function_name, json.loads(function_arguments))
                 logger.success(f"Function call 成功，返回: {function_return}")
                 messages.append(
                     {
@@ -192,16 +194,16 @@ class Openai(BasicModel):
                         "content": None,
                         "tool_calls": [
                             {
-                                "id": tool_call_id,
+                                "id": function_id,
                                 "type": "function",
-                                "function": {"name": function_name, "arguments": json.dumps(arguments)},
+                                "function": {"name": function_name, "arguments": function_arguments},
                             }
                         ],
                     }
                 )
                 messages.append(
                     {
-                        "tool_call_id": tool_call_id,
+                        "tool_call_id": function_id,
                         "role": "tool",
                         "content": function_return,
                     }
@@ -256,7 +258,8 @@ class Openai(BasicModel):
         **kwargs,
     ) -> Union[AsyncGenerator[str, None], str]:
         self.succeed = True
-        self._tools = tools  # type:ignore
+        self._tools = tools if tools else NOT_GIVEN  # type:ignore
+        self.total_tokens = 0
 
         messages = self._build_messages(prompt, history, images, system)
 
