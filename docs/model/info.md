@@ -29,7 +29,7 @@
 | `Dashscope` | ✅        | ✅        | ✅            | ✅        | ✅                    | ⭕                    |
 | `Ollama`    | ✅        | ✅        | ✅            | ✅        | ❌                    | ✅                    |
 | `Openai`    | ✅        | ✅        | ✅            | ✅        | ❌                    | ✅                    |
-| `Xfyun(ws)` | ✅        | ❌        | ✅            | ✅        | ❌                    | ❌                    |
+| `Xfyun(ws)` | ✅        | ❌        | ⭕            | ✅        | ⭕                    | ❌                    |
 | `Gemini`    | ✅        | ✅        | ⭕            | ✅        | ✅                    | ✅                    |
 
 ✅：表示此加载器能很好地支持该功能并且 `MuiceBot` 已实现
@@ -49,10 +49,10 @@
 
 2. `Dashscope` 的联网搜索功能疑似存在问题，要么不承认自己会联网搜索，要么生成到一半然后胡言乱语； Function Call 疑似与该功能冲突
 
-3. `Dashscope` 的多模态模型无法使用 function_calls
+3. `Dashscope` 因内部API原因，使用 `qvq-32b` 会出现思考死循环
 
-4. 目前只有 `Dashscope` 可以通过添加请求头 `enable_search=True` 从而实现原生支持的联网搜索，通过 Function Call 方式实现的联网搜索不算在内。
+4. `Gemini` 无法返回思考过程
 
-5. `Gemini` 根据官方文档，尚不建议使用 `OpenAI` 加载器；该加载器无法返回思考过程
+5. 对于 `Openai` 和 `Gemini` 加载器，如需使用代理，请配置 `HTTP_PROXY` 和 `HTTPS_PROXY` 变量
 
-6. 对于 `Openai` 和 `Gemini` 加载器，如需使用代理，请配置 `HTTP_PROXY` 和 `HTTPS_PROXY` 变量
+6. `Xfyun(ws)` 对于 DeepSeek 系列模型，不支持过滤思考过程，支持联网搜索；其他模型暂不支持联网搜索

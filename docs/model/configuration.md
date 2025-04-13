@@ -115,4 +115,6 @@ max_tokens: 1024 # 模型生成的最大 token 数（可选，默认为 2048）
 temperature: 0.75 # 模型生成的温度参数（可选，默认为 0.5）
 top_p: 0.95 # 模型生成的 Top_p 参数（可选，默认为 4）
 stream: false # 流式对话
+online_search: false # 联网搜索（仅支持DeepSeek系列模型）
+think: 1 # 此配置对 DeepSeek 系列模型无效
 ```
