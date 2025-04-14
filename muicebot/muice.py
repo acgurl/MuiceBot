@@ -8,9 +8,10 @@ from ._types import Message
 from .config import ModelConfig, get_model_config, model_config_manager, plugin_config
 from .database import Database
 from .llm import MODEL_DEPENDENCY_MAP, BasicModel, get_missing_dependencies
-from .llm.utils.auto_system_prompt import auto_system_prompt
+from .llm.utils.muice_prompt import GROUP_SYSTEM_PROMPT, PRIVATE_SYSTEM_PROMPT
 from .llm.utils.thought import process_thoughts, stream_process_thoughts
 from .plugin import get_tools
+from .utils.utils import get_username
 
 
 class Muice:
@@ -29,7 +30,7 @@ class Muice:
         self.system_prompt: str = self.model_config.system_prompt
         self.user_instructions = self.model_config.user_instructions
 
-        self.__load_model()
+        self._init_model()
 
         model_config_manager.register_listener(self._on_config_changed)
 
@@ -40,7 +41,7 @@ class Muice:
         except Exception:
             pass
 
-    def __load_model(self) -> None:
+    def _init_model(self) -> None:
         """
         初始化模型类
         """
@@ -88,7 +89,7 @@ class Muice:
         self.user_instructions = new_config.user_instructions
 
         # 重新加载模型
-        self.__load_model()
+        self._init_model()
         self.load_model()
         logger.success(f"模型自动重载完成: {old_config.loader} -> {new_config.loader}")
 
@@ -103,47 +104,85 @@ class Muice:
         self.think = self.model_config.think
         self.model_loader = self.model_config.loader
         self.multimodal = self.model_config.multimodal
-        self.__load_model()
+        self._init_model()
         self.load_model()
 
         return f"已成功加载 {config_name}" if config_name else "未指定模型配置名，已加载默认模型配置"
 
-    def _prepare_prompt(self, message: str) -> str:
+    async def _prepare_prompt(self, message: str, is_private: bool) -> str:
         """
-        准备提示词
+        准备提示词(包含系统提示)
+
+        :param message: 消息主体
+        :param is_private: 是否为私聊信息
+        :return: 最终模型提示词
         """
+        muice_prompt = PRIVATE_SYSTEM_PROMPT if is_private else GROUP_SYSTEM_PROMPT
+
         if self.model_config.auto_system_prompt:
-            self.system_prompt = auto_system_prompt(message)
-
+            self.system_prompt = muice_prompt
         elif self.model_config.auto_user_instructions:
-            self.user_instructions = auto_system_prompt(message)
+            self.user_instructions = muice_prompt
 
-        return f"{self.user_instructions}\n\n{message}" if self.user_instructions else message
+        if is_private:
+            return f"{self.user_instructions}\n\n{message}" if self.user_instructions else message
+
+        group_prompt = f"<{await get_username()}> {message}"
+
+        return f"{self.user_instructions}\n\n{group_prompt}" if self.user_instructions else group_prompt
+
+    async def _prepare_history(self, userid: str, groupid: str = "-1", enable_history: bool = True) -> list[Message]:
+        """
+        准备对话历史
+
+        :param userid: 用户名
+        :param groupid: 群组ID等(私聊时此值为-1)
+        :param enable_history: 是否启用历史记录
+        :return: 最终模型提示词
+        """
+        user_history = await self.database.get_user_history(userid, self.max_history_epoch) if enable_history else []
+
+        if groupid == "-1":
+            return user_history[-self.max_history_epoch :]
+
+        group_history = await self.database.get_group_history(groupid, self.max_history_epoch)
+
+        # 群聊历史构建成 <Username> Message 的格式，避免上下文混乱
+        for item in group_history:
+            user_name = await get_username(item.userid)
+            item.message = f"<{user_name}> {item.message}"
+
+        final_history = list(set(user_history + group_history))
+
+        return final_history[-self.max_history_epoch :]
 
     async def ask(
         self,
         message: str,
         userid: str,
+        groupid: str = "-1",
         image_paths: list = [],
         enable_history: bool = True,
     ) -> str:
         """
         调用模型
 
-        :param message: 消息内容
-        :param image_paths: 图片URL列表（仅在多模态启用时生效）
+        :param message: 消息文本
         :param user_id: 用户ID
-        :param enable_history: 启用历史记录
+        :param group_id: 群组ID等(私聊时此值为-1)
+        :param image_paths: 图片URL列表（仅在多模态启用时生效）
+        :param enable_history: 是否启用历史记录
         :return: 模型回复
         """
         if not (self.model and self.model.is_running):
             logger.error("模型未加载")
             return "(模型未加载)"
 
+        is_private = groupid == "-1"
         logger.info("正在调用模型...")
 
-        prompt = self._prepare_prompt(message)
-        history = await self.database.get_user_history(userid, self.max_history_epoch) if enable_history else []
+        prompt = await self._prepare_prompt(message, is_private)
+        history = await self._prepare_history(userid, groupid, enable_history) if enable_history else []
         tools = get_tools() if self.model_config.function_call else []
         system = self.system_prompt if self.system_prompt else None
 
@@ -165,27 +204,45 @@ class Muice:
 
         if self.model.succeed:
             message_object = Message(
-                userid=userid, message=message, respond=result, images=image_paths, totaltokens=token_usage
+                userid=userid,
+                groupid=groupid,
+                message=message,
+                respond=result,
+                images=image_paths,
+                totaltokens=token_usage,
             )
             await self.database.add_item(message_object)
 
         return reply
 
     async def ask_stream(
-        self, message: str, userid: str, image_paths: list = [], enable_history: bool = True
+        self,
+        message: str,
+        userid: str,
+        groupid: str = "-1",
+        image_paths: list = [],
+        enable_history: bool = True,
     ) -> AsyncGenerator[str, None]:
         """
-        以流式方式调用模型并逐步返回输出
+        流式方式调用模型
+
+        :param message: 消息文本
+        :param user_id: 用户ID
+        :param group_id: 群组ID等(私聊时此值为-1)
+        :param image_paths: 图片URL列表（仅在多模态启用时生效）
+        :param enable_history: 是否启用历史记录
+        :return: 模型回复
         """
         if not (self.model and self.model.is_running):
             logger.error("模型未加载")
             yield "(模型未加载)"
             return
 
+        is_private = groupid == "-1"
         logger.info("正在调用模型...")
 
-        prompt = self._prepare_prompt(message)
-        history = await self.database.get_user_history(userid, self.max_history_epoch)
+        prompt = await self._prepare_prompt(message, is_private)
+        history = await self._prepare_history(userid, groupid, enable_history) if enable_history else []
         tools = get_tools() if self.model_config.function_call else []
         system = self.system_prompt if self.system_prompt else None
 
@@ -213,7 +270,12 @@ class Muice:
 
         if self.model.succeed:
             message_object = Message(
-                userid=userid, message=message, respond=result, images=image_paths, totaltokens=token_usage
+                userid=userid,
+                groupid=groupid,
+                message=message,
+                respond=result,
+                images=image_paths,
+                totaltokens=token_usage,
             )
             await self.database.add_item(message_object)
 
@@ -226,22 +288,24 @@ class Muice:
         logger.info(f"用户 {userid} 请求刷新")
 
         last_item = await self.database.get_user_history(userid, limit=1)
-        last_item = last_item[0]
 
         if not last_item:
             logger.warning("用户对话数据不存在，拒绝刷新")
             return "你都还没和我说过一句话呢，得和我至少聊上一段才能刷新哦"
 
+        last_item = last_item[0]
+
         userid = last_item.userid
+        groupid = last_item.groupid
         message = last_item.message
         image_paths = last_item.images
 
         await self.database.remove_last_item(userid)
 
         if not self.model_config.stream:
-            return await self.ask(message, userid, image_paths)
+            return await self.ask(message, userid, groupid, image_paths)
 
-        return self.ask_stream(message, userid, image_paths)
+        return self.ask_stream(message, userid, groupid, image_paths)
 
     async def reset(self, userid: str) -> str:
         """

@@ -40,6 +40,9 @@ class Message:
         return datetime.strptime(self.time, "%Y.%m.%d %H:%M:%S")
 
     # 又臭又长的比较函数
+    def __hash__(self) -> int:
+        return hash(self.id)
+
     def __lt__(self, other: "Message") -> bool:
         return self.format_time < other.format_time
 

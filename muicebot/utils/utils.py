@@ -8,11 +8,13 @@ from typing import Optional
 
 import httpx
 import nonebot_plugin_localstore as store
-from nonebot import get_bot, logger
+from nonebot import logger
 from nonebot.adapters import Event, MessageSegment
 from nonebot.log import default_filter, logger_id
+from nonebot_plugin_userinfo import get_user_info
 
 from ..config import plugin_config
+from ..plugin.context import get_bot, get_event
 from .adapters import ADAPTER_CLASSES
 
 IMG_DIR = store.get_plugin_data_dir() / ".cache" / "images"
@@ -172,3 +174,14 @@ def get_version() -> str:
 
     except (FileNotFoundError, KeyError, ModuleNotFoundError):
         return "Unknown"
+
+
+async def get_username(user_id: Optional[str] = None) -> str:
+    """
+    获取当前对话的用户名，如果失败就返回用户id
+    """
+    bot = get_bot()
+    event = get_event()
+    user_id = user_id if user_id else event.get_user_id()
+    user_info = await get_user_info(bot, event, user_id)
+    return user_info.user_name if user_info else user_id

@@ -20,6 +20,7 @@ from nonebot_plugin_alconna import (
     AlconnaMatch,
     CommandMeta,
     Match,
+    MsgTarget,
     UniMessage,
     on_alconna,
 )
@@ -307,10 +308,17 @@ async def handle_command_start():
 
 @at_event.handle()
 @nickname_event.handle()
-async def handle_supported_adapters(message: UniMsg, event: Event, bot: Bot, state: T_State, matcher: Matcher):
+async def handle_supported_adapters(
+    message: UniMsg, event: Event, bot: Bot, state: T_State, matcher: Matcher, target: MsgTarget
+):
     message_text = message.extract_plain_text()
     message_images = message.get(Image)
     userid = event.get_user_id()
+    if not target.private:
+        session = extract_session(bot, event)
+        group_id = session.get_id(SessionIdType.GROUP)
+    else:
+        group_id = "-1"
 
     image_paths = []
 
@@ -327,15 +335,16 @@ async def handle_supported_adapters(message: UniMsg, event: Event, bot: Bot, sta
 
     logger.info(f"收到消息: {message_text}")
 
-    if not (message_text or image_paths):
+    if not any((message_text, image_paths)):
         return
 
     set_ctx(bot, event, state, matcher)  # 注册上下文信息以供模型调用
 
+    # Stream
     if muice.model_config.stream:
         current_paragraph = ""
 
-        async for chunk in muice.ask_stream(message_text, userid, image_paths=image_paths):
+        async for chunk in muice.ask_stream(message_text, userid, group_id, image_paths=image_paths):
             current_paragraph += chunk
             paragraphs = current_paragraph.split("\n\n")
 
@@ -352,7 +361,8 @@ async def handle_supported_adapters(message: UniMsg, event: Event, bot: Bot, sta
 
         return
 
-    response = await muice.ask(message_text, userid, image_paths=image_paths)
+    # non-stream
+    response = await muice.ask(message_text, userid, group_id, image_paths=image_paths)
     response = response.strip()
 
     logger.info(f"生成最终回复: {response}")
@@ -365,24 +375,3 @@ async def handle_supported_adapters(message: UniMsg, event: Event, bot: Bot, sta
         if index == len(paragraphs) - 1:
             await UniMessage(paragraph).finish()
         await UniMessage(paragraph).send()
-
-
-# @at_event.handle()
-# @nickname_event.handle()
-# async def handle_universal_adapters(event: Event):
-#     message = event.get_plaintext()
-#     user_id = event.get_user_id()
-#     logger.info(f"Received a message: {message}")
-
-#     if not message:
-#         return
-
-#     response = await muice.ask(message, user_id)
-#     response.strip()
-
-#     paragraphs = response.split("\n")
-
-#     for index, paragraph in enumerate(paragraphs):
-#         if index == len(paragraphs) - 1:
-#             await UniMessage(paragraph).finish()
-#         await UniMessage(paragraph).send()

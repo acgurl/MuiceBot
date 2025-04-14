@@ -111,7 +111,7 @@ class Database:
         """
         获取用户的所有对话历史，返回一个列表，无结果时返回None
 
-        :userid: 用户id
+        :param userid: 用户名
         :limit: (可选) 返回的最大长度，当该变量设为0时表示全部返回
         """
         if limit:
