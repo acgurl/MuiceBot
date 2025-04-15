@@ -27,9 +27,7 @@ User_Agent = (
 )
 
 
-async def save_image_as_file(
-    image_url: str, file_name: str = str(time.time_ns()) + ".jpg", proxy: Optional[str] = None
-) -> str:
+async def save_image_as_file(image_url: str, file_name: Optional[str] = None, proxy: Optional[str] = None) -> str:
     """
     保存图片至本地目录
 
@@ -41,6 +39,7 @@ async def save_image_as_file(
     """
     ssl_context = ssl.create_default_context()
     ssl_context.set_ciphers("DEFAULT")
+    file_name = file_name if file_name else str(time.time_ns()) + ".jpg"
 
     async with httpx.AsyncClient(proxy=proxy, verify=ssl_context) as client:
         r = await client.get(image_url, headers={"User-Agent": User_Agent})
@@ -101,8 +100,8 @@ async def legacy_get_images(message: MessageSegment, event: Event) -> str:
             if not file.file_path:
                 return ""
             url = f"https://api.telegram.org/file/bot{bot.bot_config.token}/{file.file_path}"  # type: ignore
-            filename = file.file_path.split("/")[1]
-            return await save_image_as_file(url, filename, proxy=plugin_config.telegram_proxy)
+            # filename = file.file_path.split("/")[1]
+            return await save_image_as_file(url, proxy=plugin_config.telegram_proxy)
 
     return ""
 
