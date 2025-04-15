@@ -1,7 +1,7 @@
 import asyncio
 import json
-import pathlib
 from functools import partial
+from pathlib import Path
 from typing import (
     AsyncGenerator,
     Generator,
@@ -46,10 +46,8 @@ class Dashscope(BasicModel):
     def __build_image_message(self, prompt: str, image_paths: List[str]) -> dict:
         image_contents = []
         for image_path in image_paths:
-            if not (image_path.startswith("http") or image_path.startswith("file")):
-                abs_path = pathlib.Path(image_path).resolve()
-                image_path = abs_path.as_uri()
-                image_path = image_path.replace("file:///", "file://")
+            if not (image_path.startswith("http") or image_path.startswith("file:")):
+                image_path = str(Path(image_path).resolve())
 
             image_contents.append({"image": image_path})
 
