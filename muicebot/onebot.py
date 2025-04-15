@@ -3,6 +3,7 @@ import time
 from datetime import timedelta
 from pathlib import Path
 
+import nonebot_plugin_localstore as store
 from arclet.alconna import Alconna, AllParam, Args
 from nonebot import (
     get_adapters,
@@ -52,6 +53,8 @@ adapters = get_adapters()
 
 @driver.on_startup
 async def load_bot():
+    logger.info(f"MuiceBot 版本: {get_version()}")
+    logger.info(f"MuiceBot 数据目录: {store.get_plugin_data_dir().resolve()}")
     logger.info("加载 MuiceBot 框架...")
 
     logger.info(f"加载模型适配器: {muice.model_loader} ...")
@@ -179,6 +182,7 @@ async def on_bot_disconnect():
 async def handle_command_help():
     await command_help.finish(
         "基本命令：\n"
+        "about 获取关于信息\n"
         "help 输出此帮助信息\n"
         "status 显示当前状态\n"
         "refresh 刷新模型输出\n"
@@ -192,7 +196,6 @@ async def handle_command_help():
 
 @command_about.handle()
 async def handle_command_about():
-    logger.info(f"MuiceBot 版本: {get_version()}")
     model_loader = muice.model_loader
     # plugins_list = ", ".join(get_available_plugin_names())
     mplugins_list = ", ".join(get_plugins())
