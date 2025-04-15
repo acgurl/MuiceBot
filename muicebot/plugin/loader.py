@@ -41,7 +41,7 @@ def load_plugin(plugin_path: Path | str, base_path=Path.cwd()) -> Optional[Plugi
             plugin_path = path_to_module_name(plugin_path, base_path)
 
         if plugin_path in _declared_plugins:
-            ValueError(f"插件 {plugin_path} 包名出现冲突！")
+            raise ValueError(f"插件 {plugin_path} 包名出现冲突！")
         _declared_plugins.add(plugin_path)
 
         module = importlib.import_module(plugin_path)
