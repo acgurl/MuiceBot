@@ -6,21 +6,24 @@ from typing import Any, Callable
 from .typing import ASYNC_FUNCTION_CALL_FUNC, SYNC_FUNCTION_CALL_FUNC
 
 
-def path_to_module_name(module_path: Path) -> str:
+def path_to_module_name(module_path: Path, base_path: Path) -> str:
     """
-    获取模块包名的方法
+    动态计算模块名，基于明确的基准路径
     """
     try:
-        rel_path = module_path.resolve().relative_to(Path.cwd().resolve())
-        return ".".join(rel_path.parts)
+        rel_path = module_path.resolve().relative_to(base_path.resolve())
     except ValueError:
-        # fallback: 从实际路径生成 module name（比如 muicebot.builtin_plugins.xxx）
-        parts = module_path.resolve().parts
-        if "muicebot" in parts:  # 这里假设 site-packages 中实际路径包含 'muicebot'，可以动态查找
-            index = parts.index("muicebot")
-            return ".".join(parts[index:])
-        else:
-            return module_path.stem  # fallback 最底线：用文件名作为模块名（不一定能 import 成功）
+        # 处理绝对路径与相对路径的兼容性问题
+        rel_path = module_path.resolve()
+
+    if rel_path.stem == "__init__":
+        parts = rel_path.parts[:-1]
+    else:
+        parts = rel_path.parts
+
+    # 过滤空字符串和无效部分
+    module_names = [p for p in parts if p not in ("", ".", "..")]
+    return ".".join(module_names)
 
 
 def is_coroutine_callable(call: Callable[..., Any]) -> bool:

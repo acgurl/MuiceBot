@@ -64,7 +64,9 @@ async def load_bot():
 
     if plugin_config.enable_builtin_plugins:
         logger.info("加载 MuiceBot 内嵌插件...")
-        load_plugins(Path(__file__).parent / "builtin_plugins")
+        builtin_plugins_path = Path(__file__).parent / "builtin_plugins"
+        muicebot_plugins_path = Path(__file__).resolve().parent.parent
+        load_plugins(builtin_plugins_path, base_path=muicebot_plugins_path)
 
     logger.success("插件加载完成⭐")
 
