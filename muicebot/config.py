@@ -33,6 +33,8 @@ class PluginConfig(BaseModel):
     """最大历史轮数"""
     enable_adapters: list = ["nonebot.adapters.onebot.v11", "nonebot.adapters.onebot.v12"]
     """启用的 Nonebot 适配器"""
+    input_timeout: int = 0
+    """输入等待时间"""
 
 
 plugin_config = get_plugin_config(PluginConfig)

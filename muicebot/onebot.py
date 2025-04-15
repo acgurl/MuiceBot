@@ -31,6 +31,7 @@ from .config import plugin_config
 from .muice import Muice
 from .plugin import get_plugins, load_plugins, set_ctx
 from .scheduler import setup_scheduler
+from .utils.SessionManager import SessionManager
 from .utils.utils import get_version, legacy_get_images, save_image_as_file
 
 COMMAND_PREFIXES = [".", "/"]
@@ -39,6 +40,7 @@ muice = Muice()
 scheduler = None
 START_TIME = time.time()
 connect_time = 0.0
+session_manager = SessionManager()
 
 muice_nicknames = plugin_config.muice_nicknames
 regex_patterns = [f"^{re.escape(nick)}\\s*" for nick in muice_nicknames]
@@ -313,8 +315,13 @@ async def handle_command_start():
 async def handle_supported_adapters(
     message: UniMsg, event: Event, bot: Bot, state: T_State, matcher: Matcher, target: MsgTarget
 ):
-    message_text = message.extract_plain_text()
-    message_images = message.get(Image)
+    if not (merged_message := await session_manager.put_and_wait(event, message)):
+        matcher.skip()
+        return  # 防止类型检查器错误推断 merged_message 类型
+
+    message_text = merged_message.extract_plain_text()
+    message_images = merged_message.get(Image)
+
     userid = event.get_user_id()
     if not target.private:
         session = extract_session(bot, event)
@@ -322,25 +329,28 @@ async def handle_supported_adapters(
     else:
         group_id = "-1"
 
-    image_paths = []
+    set_ctx(bot, event, state, matcher)  # 注册上下文信息以供插件、传统图片获取器使用
 
-    if muice.multimodal:
-        for img in message_images:
+    images_set = set()
 
+    for img in message_images if muice.model_config.multimodal else []:
+        try:
             if not img.url:
-                # 部分 Onebot 适配器实现无法直接获取url，尝试回退至传统获取方式
                 logger.warning("无法通过通用方式获取图片URL，回退至传统方式...")
-                image_paths = list(set([await legacy_get_images(img.origin, event) for img in message_images]))
-                break
+                legacy_path = await legacy_get_images(img.origin, event)
+                images_set.add(legacy_path)
+            else:
+                path = await save_image_as_file(img.url, img.name)
+                images_set.add(path)
+        except Exception as e:
+            logger.error(f"处理图片失败: {e}")
 
-            image_paths.append(await save_image_as_file(img.url, img.name))
+    image_paths = list(images_set)
 
-    logger.info(f"收到消息: {message_text}")
+    logger.info(f"收到消息文本: {message_text} 图片体: {image_paths}")
 
     if not any((message_text, image_paths)):
         return
-
-    set_ctx(bot, event, state, matcher)  # 注册上下文信息以供模型调用
 
     # Stream
     if muice.model_config.stream:
