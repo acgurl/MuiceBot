@@ -42,6 +42,8 @@ class ModelConfig(BaseModel):
     """是否启用联网搜索（原生实现）"""
     function_call: bool = False
     """是否启用工具调用"""
+    content_security: bool = False
+    """是否启用内容安全"""
 
     model_path: str = ""
     """本地模型路径"""
@@ -102,6 +104,8 @@ class BasicModel(metaclass=ABCMeta):
         """模型状态"""
         self.succeed = True
         """模型是否成功返回结果"""
+        self.total_tokens = -1
+        """本次请求使用的总token数。当此值设为-1时，表明此模型加载器不支持该功能"""
 
     def _require(self, *require_fields: str):
         """

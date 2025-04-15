@@ -1,7 +1,7 @@
 import asyncio
 import json
-import pathlib
 from functools import partial
+from pathlib import Path
 from typing import (
     AsyncGenerator,
     Generator,
@@ -36,13 +36,18 @@ class Dashscope(BasicModel):
 
         self._tools: List[dict] = []
 
+        self.extra_headers = (
+            {"X-DashScope-DataInspection": '{"input":"cip","output":"cip"}'} if self.config.content_security else {}
+        )
+
+        self.stream = False
+        self.succeed = True
+
     def __build_image_message(self, prompt: str, image_paths: List[str]) -> dict:
         image_contents = []
         for image_path in image_paths:
-            if not (image_path.startswith("http") or image_path.startswith("file")):
-                abs_path = pathlib.Path(image_path).resolve()
-                image_path = abs_path.as_uri()
-                image_path = image_path.replace("file:///", "file://")
+            if not (image_path.startswith("http") or image_path.startswith("file:")):
+                image_path = str(Path(image_path).resolve())
 
             image_contents.append({"image": image_path})
 
@@ -64,9 +69,9 @@ class Dashscope(BasicModel):
 
         for msg in history:
             user_msg = (
-                {"role": "user", "content": msg.message}
-                if not msg.images
-                else self.__build_image_message(msg.message, msg.images)
+                self.__build_image_message(msg.message, msg.images)
+                if all((self.config.multimodal, msg.images))
+                else {"role": "user", "content": msg.message}
             )
             messages.append(user_msg)
             messages.append({"role": "assistant", "content": msg.respond})
@@ -79,7 +84,106 @@ class Dashscope(BasicModel):
 
         return messages
 
-    async def _tool_calls_handle_sync(self, messages: List, response: GenerationResponse) -> str:
+    async def _GenerationResponse_handle(
+        self, messages: list, response: GenerationResponse | MultiModalConversationResponse
+    ) -> str:
+        if response.status_code != 200:
+            self.succeed = False
+            logger.error(f"模型调用失败: {response.status_code}({response.code})")
+            logger.error(f"{response.message}")
+            return f"模型调用失败: {response.status_code}({response.code})"
+
+        self.total_tokens += int(response.usage.total_tokens)
+
+        if response.output.text:
+            return response.output.text
+
+        message_content = response.output.choices[0].message.content
+        if message_content:
+            return message_content if isinstance(message_content, str) else message_content[0].get("text")
+
+        return await self._tool_calls_handle_sync(messages, response)
+
+    async def _Generator_handle(
+        self,
+        messages: list,
+        response: Generator[GenerationResponse, None, None] | Generator[MultiModalConversationResponse, None, None],
+    ) -> AsyncGenerator[str, None]:
+        is_insert_think_label = False
+        is_function_call = False
+
+        tool_call_id: str = ""
+        function_name: str = ""
+        function_args_delta: str = ""
+
+        for chunk in response:
+            logger.debug(chunk)
+
+            if chunk.status_code != 200:
+                logger.error(f"模型调用失败: {chunk.status_code}({chunk.code})")
+                logger.error(f"{chunk.message}")
+                yield f"模型调用失败: {chunk.status_code}({chunk.code})"
+                self.succeed = False
+                return
+
+            # 更新 token 消耗
+            self.total_tokens += chunk.usage.total_tokens - self.total_tokens
+
+            # 优先判断是否是工具调用（OpenAI-style function calling）
+            if chunk.output.choices and chunk.output.choices[0].message.get("tool_calls", []):
+                tool_calls = chunk.output.choices[0].message.tool_calls
+                tool_call = tool_calls[0]
+                if tool_call.get("id", ""):
+                    tool_call_id = tool_call["id"]
+                if tool_call.get("function", {}).get("name", ""):
+                    function_name = tool_call.get("function").get("name")
+                function_arg = tool_call.get("function", {}).get("arguments", "")
+                if function_arg and function_args_delta != function_arg:
+                    function_args_delta += function_arg
+                is_function_call = True
+                # 工具调用也可能在输出文本之后发生
+
+            # DashScope 的 text 模式（非标准接口）
+            if hasattr(chunk.output, "text") and chunk.output.text:
+                yield chunk.output.text
+                continue
+
+            if chunk.output.choices is None:
+                continue
+
+            choice = chunk.output.choices[0].message
+            answer_content = choice.content
+            reasoning_content = choice.get("reasoning_content", "")
+            reasoning_content = reasoning_content.replace("\n</think>", "") if reasoning_content else ""
+
+            # 处理模型可能输出的 reasoning（思考内容）
+            if reasoning_content:
+                if not is_insert_think_label:
+                    yield f"<think>{reasoning_content}"
+                    is_insert_think_label = True
+                else:
+                    yield reasoning_content
+
+            # 处理模型输出的 answer（最终回复）
+            if answer_content:
+                if isinstance(answer_content, list):
+                    answer_content = answer_content[0].get("text", "")
+                if is_insert_think_label:
+                    yield f"</think>{answer_content}"
+                    is_insert_think_label = False
+                else:
+                    yield answer_content
+
+        # 流式处理工具调用响应
+        if is_function_call:
+            async for final_chunk in await self._tool_calls_handle_stream(
+                messages, tool_call_id, function_name, function_args_delta
+            ):
+                yield final_chunk
+
+    async def _tool_calls_handle_sync(
+        self, messages: List, response: GenerationResponse | MultiModalConversationResponse
+    ) -> str:
         tool_call = response.output.choices[0].message.tool_calls[0]
         tool_call_id = tool_call["id"]
         function_name = tool_call["function"]["name"]
@@ -92,7 +196,7 @@ class Dashscope(BasicModel):
         messages.append(response.output.choices[0].message)
         messages.append({"role": "tool", "content": function_return, "tool_call_id": tool_call_id})
 
-        return await self._ask_sync(messages)
+        return await self._ask(messages)  # type:ignore
 
     async def _tool_calls_handle_stream(
         self, messages: List, tool_call_id: str, function_name: str, function_args_delta: str
@@ -122,206 +226,54 @@ class Dashscope(BasicModel):
         )
         messages.append({"role": "tool", "content": function_return, "tool_call_id": tool_call_id})
 
-        async for chunk in self._ask_stream(messages):
-            yield chunk
+        return await self._ask(messages)  # type:ignore
 
-    async def _ask_sync(self, messages: list) -> str:
+    async def _ask(self, messages: list) -> Union[AsyncGenerator[str, None], str]:
         loop = asyncio.get_event_loop()
 
-        response = await loop.run_in_executor(
-            None,
-            partial(
-                dashscope.Generation.call,
-                api_key=self.api_key,
-                model=self.model,
-                messages=messages,
-                tools=self._tools,
-                max_tokens=self.max_tokens,
-                temperature=self.temperature,
-                top_p=self.top_p,
-                repetition_penalty=self.repetition_penalty,
-                stream=False,
-                enable_search=self.enable_search,
-            ),
-        )
+        if not self.config.multimodal:
+            response = await loop.run_in_executor(
+                None,
+                partial(
+                    dashscope.Generation.call,
+                    api_key=self.api_key,
+                    model=self.model,
+                    messages=messages,
+                    max_tokens=self.max_tokens,
+                    temperature=self.temperature,
+                    top_p=self.top_p,
+                    repetition_penalty=self.repetition_penalty,
+                    stream=self.stream,
+                    tools=self._tools,
+                    parallel_tool_calls=True,
+                    enable_search=self.enable_search,
+                    incremental_output=self.stream,  # 给他调成一样的：这个参数只支持流式调用时设置为True
+                    headers=self.extra_headers,
+                ),
+            )
+        else:
+            response = await loop.run_in_executor(
+                None,
+                partial(
+                    dashscope.MultiModalConversation.call,
+                    api_key=self.api_key,
+                    model=self.model,
+                    messages=messages,
+                    max_tokens=self.max_tokens,
+                    temperature=self.temperature,
+                    top_p=self.top_p,
+                    repetition_penalty=self.repetition_penalty,
+                    stream=self.stream,
+                    tools=self._tools,
+                    parallel_tool_calls=True,
+                    enable_search=self.enable_search,
+                    incremental_output=self.stream,
+                ),
+            )
 
-        if not isinstance(response, GenerationResponse):
-            self.succeed = False
-            return "(模型内部错误：在流关闭的情况下返回了 Generator)"
-
-        if response.status_code != 200:
-            self.succeed = False
-            logger.error(f"模型调用失败: {response.status_code}({response.code})")
-            logger.error(f"{response.message}")
-            return f"模型调用失败: {response.status_code}({response.code})"
-
-        if response.output.text:
-            return response.output.text
-
-        message_content = response.output.choices[0].message.content
-        if message_content:
-            return message_content if isinstance(message_content, str) else "".join(message_content)
-
-        return await self._tool_calls_handle_sync(messages, response)
-
-    async def _ask_stream(self, messages: list) -> AsyncGenerator[str, None]:
-        loop = asyncio.get_event_loop()
-
-        response = await loop.run_in_executor(
-            None,
-            partial(
-                dashscope.Generation.call,
-                api_key=self.api_key,
-                model=self.model,
-                messages=messages,
-                max_tokens=self.max_tokens,
-                temperature=self.temperature,
-                top_p=self.top_p,
-                repetition_penalty=self.repetition_penalty,
-                stream=True,
-                tools=self._tools,
-                parallel_tool_calls=True,
-                enable_search=self.enable_search,
-                incremental_output=True,
-            ),
-        )
-
-        if isinstance(response, GenerationResponse):
-            self.succeed = False
-            logger.warning("模型内部错误：在流开启的情况下返回了 GenerationResponse")
-            yield response.output.text
-            return
-
-        is_insert_think_label = False
-        is_function_call = False
-
-        tool_call_id: str = ""
-        function_name: str = ""
-        function_args_delta: str = ""
-
-        for chunk in response:
-            logger.debug(chunk)
-
-            if chunk.status_code != 200:
-                logger.error(f"模型调用失败: {chunk.status_code}({chunk.code})")
-                logger.error(f"{chunk.message}")
-                yield f"模型调用失败: {chunk.status_code}({chunk.code})"
-                self.succeed = False
-                return
-
-            elif chunk.output.choices and chunk.output.choices[0].message.get("tool_calls", []):
-                tool_calls = chunk.output.choices[0].message.tool_calls
-                tool_call = tool_calls[0]
-                if tool_call.get("id", ""):
-                    tool_call_id = tool_call["id"]
-                if tool_call.get("function", {}).get("name", ""):
-                    function_name = tool_call.get("function").get("name")
-                function_arg = tool_call.get("function", {}).get("arguments", "")
-                if function_arg and function_args_delta != function_arg:
-                    function_args_delta += function_arg
-                is_function_call = True
-                continue
-
-            elif hasattr(chunk.output, "text") and chunk.output.text:  # 傻逼 Dashscope 为什么不统一接口？
-                yield chunk.output.text
-                continue
-
-            elif chunk.output.choices is None:
-                continue
-
-            answer_content = chunk.output.choices[0].message.content
-            reasoning_content = chunk.output.choices[0].message.get("reasoning_content", "")
-            reasoning_content = reasoning_content.replace("\n</think>", "") if reasoning_content else ""
-
-            if answer_content == "" and reasoning_content == "":
-                continue
-
-            elif reasoning_content != "" and answer_content == "":
-                yield (reasoning_content if is_insert_think_label else "<think>" + reasoning_content)  # type:ignore
-                is_insert_think_label = True
-
-            elif answer_content != "":
-                if isinstance(answer_content, list):
-                    answer_content = "".join(answer_content)  # 不知道为什么会是list
-                yield (answer_content if not is_insert_think_label else "</think>" + answer_content)
-                is_insert_think_label = False
-
-        if is_function_call:
-            async for final_chunk in self._tool_calls_handle_stream(
-                messages, tool_call_id, function_name, function_args_delta
-            ):
-                yield final_chunk
-
-    async def _ask_vision_sync(self, messages: list) -> str:
-        loop = asyncio.get_event_loop()
-
-        response = await loop.run_in_executor(
-            None,
-            partial(
-                dashscope.MultiModalConversation.call,
-                api_key=self.api_key,
-                model=self.model,
-                messages=messages,
-                stream=False,
-            ),
-        )
-
-        if isinstance(response, Generator):
-            self.succeed = False
-            return "(模型内部错误: 在流关闭的情况下返回了 Generator)"
-
-        if response.status_code != 200:
-            self.succeed = False
-            logger.error(f"模型调用失败: {response.status_code}({response.code})")
-            logger.error(f"{response.message}")
-            return f"模型调用失败: {response.status_code}({response.code})"
-
-        if isinstance(response.output.choices[0].message.content, str):
-            return response.output.choices[0].message.content
-
-        return response.output.choices[0].message.content[0]["text"]  # type: ignore
-
-    async def _ask_vision_stream(self, messages: list) -> AsyncGenerator[str, None]:
-        loop = asyncio.get_event_loop()
-
-        response = await loop.run_in_executor(
-            None,
-            partial(
-                dashscope.MultiModalConversation.call,
-                api_key=self.api_key,
-                model=self.model,
-                messages=messages,
-                stream=True,
-            ),
-        )
-
-        if isinstance(response, MultiModalConversationResponse):
-            self.succeed = False
-            logger.warning("模型内部错误：在流开启的情况下返回了 MultiModalConversationResponse")
-            if isinstance(response.output.choices[0].message.content, str):
-                yield response.output.choices[0].message.content
-            else:
-                yield response.output.choices[0].message.content[0]["text"]
-            return
-
-        size = 0
-
-        for chunk in response:
-            logger.debug(chunk)
-            if chunk.status_code != 200:
-                self.succeed = False
-                logger.error(f"模型调用失败: {chunk.status_code}({chunk.code})")
-                logger.error(f"{chunk.message}")
-                yield f"模型调用失败: {chunk.status_code}({chunk.code})"
-                return
-
-            content_body = chunk.output.choices[0].message.content
-            if isinstance(content_body, str):
-                yield content_body[size:]
-                size = len(content_body)
-            else:
-                yield content_body[0]["text"][size:]
-                size = len(content_body[0]["text"])
+        if isinstance(response, GenerationResponse) or isinstance(response, MultiModalConversationResponse):
+            return await self._GenerationResponse_handle(messages, response)
+        return self._Generator_handle(messages, response)
 
     @overload
     async def ask(
@@ -361,15 +313,10 @@ class Dashscope(BasicModel):
         因为 Dashscope 对于多模态模型的接口不同，所以这里不能统一函数
         """
         self.succeed = True
+        self.total_tokens = 0
+        self.stream = stream if stream is not None else False
 
         self._tools = tools if tools else []
         messages = self._build_messages(prompt, history, images, system)
 
-        if stream:
-            if self.config.multimodal:
-                return self._ask_vision_stream(messages)
-            return self._ask_stream(messages)
-
-        if self.config.multimodal:
-            return await self._ask_vision_sync(messages)
-        return await self._ask_sync(messages)
+        return await self._ask(messages)

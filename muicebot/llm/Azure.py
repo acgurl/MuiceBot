@@ -123,20 +123,24 @@ class Azure(BasicModel):
                 tools=self._tools,
             )
             finish_reason = response.choices[0].finish_reason
+            self.total_tokens += response.usage.total_tokens
 
             if finish_reason == CompletionsFinishReason.STOPPED:
                 return response.choices[0].message.content  # type: ignore
 
             elif finish_reason == CompletionsFinishReason.CONTENT_FILTERED:
+                self.succeed = False
                 return "(模型内部错误: 被内容过滤器阻止)"
 
             elif finish_reason == CompletionsFinishReason.TOKEN_LIMIT_REACHED:
+                self.succeed = False
                 return "(模型内部错误: 达到了最大 token 限制)"
 
             elif finish_reason == CompletionsFinishReason.TOOL_CALLS:
                 tool_calls = response.choices[0].message.tool_calls
                 messages.append(AssistantMessage(tool_calls=tool_calls))
                 if not self._tool_messages_precheck(tool_calls=tool_calls):
+                    self.succeed = False
                     return "(模型内部错误: tool_calls 内容为空)"
 
                 tool_call = tool_calls[0]  # type:ignore
@@ -172,8 +176,9 @@ class Azure(BasicModel):
                 top_p=self.top_p,
                 frequency_penalty=self.frequency_penalty,
                 presence_penalty=self.presence_penalty,
-                stream=True,  # 这里强制流式
+                stream=True,
                 tools=self._tools,
+                model_extras={"stream_options": {"include_usage": True}},  # 需要显式声明获取用量
             )
 
             tool_call_id: str = ""
@@ -181,6 +186,12 @@ class Azure(BasicModel):
             function_args: str = ""
 
             async for chunk in response:
+                if chunk:  # chunk.usage 只会在最后一个包中被提供，此时choices为空
+                    self.total_tokens += chunk.usage.total_tokens if chunk.usage else 0
+
+                if not chunk.choices:
+                    continue
+
                 finish_reason = chunk.choices[0].finish_reason
 
                 if chunk.choices and chunk.choices[0].get("delta", {}).get("content", ""):
@@ -198,9 +209,11 @@ class Azure(BasicModel):
                     continue
 
                 elif finish_reason == CompletionsFinishReason.CONTENT_FILTERED:
+                    self.succeed = False
                     yield "(模型内部错误: 被内容过滤器阻止)"
 
                 elif finish_reason == CompletionsFinishReason.TOKEN_LIMIT_REACHED:
+                    self.succeed = False
                     yield "(模型内部错误: 达到了最大 token 限制)"
 
                 elif finish_reason == CompletionsFinishReason.TOOL_CALLS:
@@ -270,6 +283,7 @@ class Azure(BasicModel):
         **kwargs,
     ) -> Union[AsyncGenerator[str, None], str]:
         self.succeed = True
+        self.total_tokens = 0
 
         messages = self._build_messages(prompt, history, images, system)
 

@@ -15,6 +15,8 @@ class Message:
     """
     userid: str = ""
     """Nonebot 的用户id"""
+    groupid: str = "-1"
+    """群组id，私聊设为-1"""
     message: str = ""
     """消息主体"""
     respond: str = ""
@@ -23,6 +25,8 @@ class Message:
     """消息是否可用于对话历史中，以整数形式映射布尔值"""
     images: List[str] = field(default_factory=list)
     """多模态中使用的图像，默认为空列表"""
+    totaltokens: int = -1
+    """使用的总 tokens, 若模型加载器不支持则设为-1"""
 
     def __post_init__(self):
         if isinstance(self.images, str):
@@ -36,6 +40,9 @@ class Message:
         return datetime.strptime(self.time, "%Y.%m.%d %H:%M:%S")
 
     # 又臭又长的比较函数
+    def __hash__(self) -> int:
+        return hash(self.id)
+
     def __lt__(self, other: "Message") -> bool:
         return self.format_time < other.format_time
 

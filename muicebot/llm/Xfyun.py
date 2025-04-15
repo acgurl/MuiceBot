@@ -130,6 +130,8 @@ class Xfyun(BasicModel):
             self.response += content
             if self.stream:
                 self.stream_queue.put_nowait(content)
+            if "usage" in response["payload"]:
+                self.total_tokens = response["payload"]["usage"]["text"]["total_tokens"]  # 只返回一次，且在中途返回
 
         if response["header"]["status"] == 2:
             if self.stream:
@@ -153,6 +155,7 @@ class Xfyun(BasicModel):
                     "temperature": self.temperature,
                     "top_k": self.top_k,
                     "max_tokens": self.max_tokens,
+                    "search_disable": not self.config.online_search,
                 }
             },
             "payload": {"message": {"text": self.messages}},

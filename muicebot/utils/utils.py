@@ -8,11 +8,13 @@ from typing import Optional
 
 import httpx
 import nonebot_plugin_localstore as store
-from nonebot import get_bot, logger
+from nonebot import logger
 from nonebot.adapters import Event, MessageSegment
 from nonebot.log import default_filter, logger_id
+from nonebot_plugin_userinfo import get_user_info
 
 from ..config import plugin_config
+from ..plugin.context import get_bot, get_event
 from .adapters import ADAPTER_CLASSES
 
 IMG_DIR = store.get_plugin_data_dir() / ".cache" / "images"
@@ -25,9 +27,7 @@ User_Agent = (
 )
 
 
-async def save_image_as_file(
-    image_url: str, file_name: str = str(time.time_ns()) + ".jpg", proxy: Optional[str] = None
-) -> str:
+async def save_image_as_file(image_url: str, file_name: Optional[str] = None, proxy: Optional[str] = None) -> str:
     """
     保存图片至本地目录
 
@@ -39,6 +39,7 @@ async def save_image_as_file(
     """
     ssl_context = ssl.create_default_context()
     ssl_context.set_ciphers("DEFAULT")
+    file_name = file_name if file_name else str(time.time_ns()) + ".jpg"
 
     async with httpx.AsyncClient(proxy=proxy, verify=ssl_context) as client:
         r = await client.get(image_url, headers={"User-Agent": User_Agent})
@@ -99,8 +100,8 @@ async def legacy_get_images(message: MessageSegment, event: Event) -> str:
             if not file.file_path:
                 return ""
             url = f"https://api.telegram.org/file/bot{bot.bot_config.token}/{file.file_path}"  # type: ignore
-            filename = file.file_path.split("/")[1]
-            return await save_image_as_file(url, filename, proxy=plugin_config.telegram_proxy)
+            # filename = file.file_path.split("/")[1]
+            return await save_image_as_file(url, proxy=plugin_config.telegram_proxy)
 
     return ""
 
@@ -172,3 +173,14 @@ def get_version() -> str:
 
     except (FileNotFoundError, KeyError, ModuleNotFoundError):
         return "Unknown"
+
+
+async def get_username(user_id: Optional[str] = None) -> str:
+    """
+    获取当前对话的用户名，如果失败就返回用户id
+    """
+    bot = get_bot()
+    event = get_event()
+    user_id = user_id if user_id else event.get_user_id()
+    user_info = await get_user_info(bot, event, user_id)
+    return user_info.user_name if user_info else user_id
