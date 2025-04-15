@@ -340,7 +340,7 @@ async def handle_supported_adapters(
                 legacy_path = await legacy_get_images(img.origin, event)
                 images_set.add(legacy_path)
             else:
-                path = await save_image_as_file(img.url, img.name)
+                path = await save_image_as_file(img.url)
                 images_set.add(path)
         except Exception as e:
             logger.error(f"处理图片失败: {e}")
