@@ -1,4 +1,5 @@
 import importlib
+import os
 import time
 from typing import AsyncGenerator, Optional, Union
 
@@ -141,11 +142,17 @@ class Muice:
         :return: 最终模型提示词
         """
         user_history = await self.database.get_user_history(userid, self.max_history_epoch) if enable_history else []
+        # 验证图片路径是否可用
+        for item in user_history:
+            item.images = [img_path for img_path in item.images if os.path.isfile(img_path)]
 
         if groupid == "-1":
             return user_history[-self.max_history_epoch :]
 
         group_history = await self.database.get_group_history(groupid, self.max_history_epoch)
+
+        for item in group_history:
+            item.images = [img_path for img_path in item.images if os.path.isfile(img_path)]
 
         # 群聊历史构建成 <Username> Message 的格式，避免上下文混乱
         for item in group_history:
