@@ -39,8 +39,8 @@ class Muice:
         # 注销监听器
         try:
             model_config_manager.unregister_listener(self._on_config_changed)
-        except Exception:
-            pass
+        except (AttributeError, RuntimeError) as e:
+            logger.debug(f"Muice __del__ 清理失败: {e}")
 
     def _init_model(self) -> None:
         """

@@ -65,7 +65,7 @@ def get_schedule_configs() -> List[Schedule]:
         return []
 
     with open(SCHEDULES_CONFIG_PATH, "r", encoding="utf-8") as f:
-        configs = yaml_.load(f, Loader=yaml_.FullLoader)
+        configs = yaml_.safe_load(f)
 
     if not configs:
         return []
@@ -131,7 +131,7 @@ class ModelConfigManager:
             raise FileNotFoundError("configs/models.yml 不存在！请先创建")
 
         with open(MODELS_CONFIG_PATH, "r", encoding="utf-8") as f:
-            configs_dict = yaml_.load(f, Loader=yaml_.FullLoader)
+            configs_dict = yaml_.safe_load(f)
 
         if not configs_dict:
             raise ValueError("configs/models.yml 为空，请先至少定义一个模型配置")
