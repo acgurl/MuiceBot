@@ -9,30 +9,31 @@
 """
 
 import inspect
-from typing import Any, get_type_hints
+from typing import Any, Optional, get_type_hints
 
 from nonebot import logger
 from nonebot.adapters import Bot, Event
 from nonebot.matcher import Matcher
+from nonebot.rule import Rule
+from nonebot.typing import T_State
 
 from ..context import get_bot, get_event, get_mather
 from ..typing import ASYNC_FUNCTION_CALL_FUNC, F
 from ..utils import async_wrap, is_coroutine_callable
 from .parameter import Parameter
 
-# from nonebot.typing import T_State
-
-
 _caller_data: dict[str, "Caller"] = {}
 """函数注册表，存储所有注册的函数"""
 
 
 class Caller:
-    def __init__(self, description: str):
+    def __init__(self, description: str, rule: Optional[Rule] = None):
         self._name: str = ""
         """函数名称"""
         self._description: str = description
         """函数描述"""
+        self._rule: Optional[Rule] = rule
+        """启用规则"""
         self._parameters: dict[str, Parameter] = {}
         """函数参数字典"""
         self.function: ASYNC_FUNCTION_CALL_FUNC
@@ -144,16 +145,16 @@ class Caller:
         }
 
 
-def on_function_call(description: str) -> Caller:
+def on_function_call(description: str, rule: Optional[Rule] = None) -> Caller:
     """
     返回一个Caller类，可用于装饰一个函数，使其注册为一个可被AI调用的function call函数
 
-    :description: 函数描述，若为None则从函数的docstring中获取
+    :param description: 函数描述，若为None则从函数的docstring中获取
+    :param rule: 启用规则。不满足规则则不启用此 function call
 
     :return: Caller对象
     """
-
-    caller = Caller(description=description)
+    caller = Caller(description=description, rule=rule)
     return caller
 
 
@@ -166,15 +167,19 @@ def get_function_calls() -> dict[str, Caller]:
     return _caller_data
 
 
-def get_tools() -> list[dict[str, dict]]:
+async def get_tools() -> list[dict[str, dict]]:
     """
     获取所有已注册的function call函数，并转换为工具格式
 
     :return: 所有已注册的function call函数列表
     """
     tools: list[dict[str, dict]] = []
+    bot: Bot = get_bot()
+    event: Event = get_event()
+    state: T_State = {}
 
     for name, caller in _caller_data.items():
-        tools.append(caller.data())
+        if caller._rule is None or await caller._rule(bot, event, state):
+            tools.append(caller.data())
 
     return tools

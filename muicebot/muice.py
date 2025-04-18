@@ -190,7 +190,7 @@ class Muice:
 
         prompt = await self._prepare_prompt(message, is_private)
         history = await self._prepare_history(userid, groupid, enable_history) if enable_history else []
-        tools = get_tools() if self.model_config.function_call else []
+        tools = await get_tools() if self.model_config.function_call else []
         system = self.system_prompt if self.system_prompt else None
 
         start_time = time.perf_counter()
@@ -250,7 +250,7 @@ class Muice:
 
         prompt = await self._prepare_prompt(message, is_private)
         history = await self._prepare_history(userid, groupid, enable_history) if enable_history else []
-        tools = get_tools() if self.model_config.function_call else []
+        tools = await get_tools() if self.model_config.function_call else []
         system = self.system_prompt if self.system_prompt else None
 
         start_time = time.perf_counter()
