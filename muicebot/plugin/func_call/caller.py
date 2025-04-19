@@ -79,13 +79,13 @@ class Caller:
         for name, param in sig.parameters.items():
             param_type = hints.get(name, None)
 
-            if param_type and issubclass(param_type, Bot):
+            if param_type and isinstance(param_type, type) and issubclass(param_type, Bot):
                 inject_args[name] = get_bot()
 
-            elif param_type and issubclass(param_type, Event):
+            elif param_type and isinstance(param_type, type) and issubclass(param_type, Event):
                 inject_args[name] = get_event()
 
-            elif param_type and issubclass(param_type, Matcher):
+            elif param_type and isinstance(param_type, type) and issubclass(param_type, Matcher):
                 inject_args[name] = get_mather()
 
             # elif param_type and issubclass(param_type, T_State):
@@ -101,7 +101,7 @@ class Caller:
 
         return inject_args
 
-    def params(self, **kwargs: Any) -> "Caller":
+    def params(self, **kwargs: Parameter) -> "Caller":
         self._parameters.update(kwargs)
         return self
 
