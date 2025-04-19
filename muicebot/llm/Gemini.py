@@ -13,6 +13,7 @@ from google.genai.types import (
     SafetySetting,
     Tool,
 )
+from httpx import ConnectError
 from nonebot import logger
 
 from ._types import BasicModel, Message, ModelConfig, function_call_handler
@@ -148,6 +149,8 @@ class Gemini(BasicModel):
 
     async def _ask_stream(self, messages: list, **kwargs) -> AsyncGenerator[str, None]:
         try:
+            total_tokens = 0
+
             async for chunk in await self.client.aio.models.generate_content_stream(
                 model=self.model_name, contents=messages, config=self.gemini_config
             ):  # type:ignore
@@ -155,9 +158,7 @@ class Gemini(BasicModel):
                     yield chunk.text
 
                 if chunk.usage_metadata:
-                    self.total_tokens += (
-                        chunk.usage_metadata.total_token_count - self.total_tokens
-                    )  # 这样做的目的是为了合并工具调用的用量
+                    total_tokens = chunk.usage_metadata.total_token_count
 
                 if chunk.function_calls:
                     function_call = chunk.function_calls[0]
@@ -179,10 +180,19 @@ class Gemini(BasicModel):
                     async for chunk in self._ask_stream(messages):
                         yield chunk
 
+            self.total_tokens += total_tokens
+
         except errors.APIError as e:
             error_message = f"API 状态异常: {e.code}({e.response})"
             logger.error(error_message)
             logger.error(e.message)
+            self.succeed = False
+            yield error_message
+            return
+
+        except ConnectError:
+            error_message = "模型加载器连接超时"
+            logger.error(error_message)
             self.succeed = False
             yield error_message
             return

@@ -111,7 +111,7 @@ class Dashscope(BasicModel):
     ) -> AsyncGenerator[str, None]:
         is_insert_think_label = False
         is_function_call = False
-
+        total_tokens: int = 0
         tool_call_id: str = ""
         function_name: str = ""
         function_args_delta: str = ""
@@ -126,8 +126,7 @@ class Dashscope(BasicModel):
                 self.succeed = False
                 return
 
-            # 更新 token 消耗
-            self.total_tokens += chunk.usage.total_tokens - self.total_tokens
+            total_tokens = chunk.usage.total_tokens
 
             # 优先判断是否是工具调用（OpenAI-style function calling）
             if chunk.output.choices and chunk.output.choices[0].message.get("tool_calls", []):
@@ -173,6 +172,9 @@ class Dashscope(BasicModel):
                     is_insert_think_label = False
                 else:
                     yield answer_content
+
+        # 更新 token 消耗
+        self.total_tokens += total_tokens
 
         # 流式处理工具调用响应
         if is_function_call:
