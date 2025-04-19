@@ -12,7 +12,7 @@ from nonebot import (
     logger,
     on_message,
 )
-from nonebot.adapters import Bot, Event
+from nonebot.adapters import Bot, Event, Message
 from nonebot.matcher import Matcher
 from nonebot.permission import SUPERUSER
 from nonebot.rule import to_me
@@ -25,7 +25,7 @@ from nonebot_plugin_alconna import (
     UniMessage,
     on_alconna,
 )
-from nonebot_plugin_alconna.uniseg import Image, UniMsg
+from nonebot_plugin_alconna.uniseg import Image, Reply, UniMsg
 from nonebot_plugin_session import SessionIdType, extract_session
 
 from .config import plugin_config
@@ -318,6 +318,16 @@ async def handle_command_start():
 async def handle_supported_adapters(
     message: UniMsg, event: Event, bot: Bot, state: T_State, matcher: Matcher, target: MsgTarget
 ):
+    # 先拿到引用消息并合并到 message (如果有)
+    message_reply = message.get(Reply, 1)
+    if message_reply:
+        reply_message = message_reply[0].msg
+        if isinstance(reply_message, Message):
+            message += UniMessage("\n被引用的消息: ") + await UniMessage.generate(message=reply_message)
+        else:
+            message += UniMessage(f"\n被引用的消息: {reply_message}")
+
+    # 然后等待新消息插入
     if not (merged_message := await session_manager.put_and_wait(event, message)):
         matcher.skip()
         return  # 防止类型检查器错误推断 merged_message 类型
