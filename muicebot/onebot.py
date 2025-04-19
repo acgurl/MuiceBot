@@ -10,7 +10,6 @@ from nonebot import (
     get_bot,
     get_driver,
     logger,
-    on_message,
 )
 from nonebot.adapters import Bot, Event, Message
 from nonebot.matcher import Matcher
@@ -25,7 +24,8 @@ from nonebot_plugin_alconna import (
     UniMessage,
     on_alconna,
 )
-from nonebot_plugin_alconna.uniseg import Image, Reply, UniMsg
+from nonebot_plugin_alconna.builtins.extensions import ReplyRecordExtension
+from nonebot_plugin_alconna.uniseg import Image, UniMsg
 from nonebot_plugin_session import SessionIdType, extract_session
 
 from .config import plugin_config
@@ -63,7 +63,7 @@ async def load_bot():
         exit(1)
     logger.success(f"模型适配器加载成功: {muice.model_loader} ⭐")
 
-    logger.info("加载 MuiceBot 插件...")
+    logger.info("加载外部插件...")
     for plugin_dir in plugin_config.plugins_dir:
         load_plugins(plugin_dir)
 
@@ -157,9 +157,16 @@ nickname_event = on_alconna(
     Alconna(re.compile(combined_regex), Args["text?", AllParam], separators=""),
     priority=99,
     block=True,
+    extensions=[ReplyRecordExtension()],
 )
 
-at_event = on_message(priority=100, rule=to_me(), block=True)
+at_event = on_alconna(
+    Alconna(re.compile(".+"), Args["text?", AllParam], separators=""),
+    priority=100,
+    rule=to_me(),
+    block=True,
+    extensions=[ReplyRecordExtension()],
+)
 
 
 @driver.on_bot_connect
@@ -316,12 +323,17 @@ async def handle_command_start():
 @at_event.handle()
 @nickname_event.handle()
 async def handle_supported_adapters(
-    message: UniMsg, event: Event, bot: Bot, state: T_State, matcher: Matcher, target: MsgTarget
+    message: UniMsg,
+    event: Event,
+    bot: Bot,
+    state: T_State,
+    matcher: Matcher,
+    target: MsgTarget,
+    ext: ReplyRecordExtension,
 ):
     # 先拿到引用消息并合并到 message (如果有)
-    message_reply = message.get(Reply, 1)
-    if message_reply:
-        reply_message = message_reply[0].msg
+    if message_reply := ext.get_reply(message.get_message_id()):
+        reply_message = message_reply.msg
         if isinstance(reply_message, Message):
             message += UniMessage("\n被引用的消息: ") + await UniMessage.generate(message=reply_message)
         else:
