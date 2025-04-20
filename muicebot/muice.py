@@ -170,6 +170,7 @@ class Muice:
         groupid: str = "-1",
         image_paths: list = [],
         enable_history: bool = True,
+        enable_plugins: bool = True,
     ) -> str:
         """
         调用模型
@@ -179,6 +180,7 @@ class Muice:
         :param group_id: 群组ID等(私聊时此值为-1)
         :param image_paths: 图片URL列表（仅在多模态启用时生效）
         :param enable_history: 是否启用历史记录
+        :param enable_plugins: 是否启用工具插件
         :return: 模型回复
         """
         if not (self.model and self.model.is_running):
@@ -190,7 +192,7 @@ class Muice:
 
         prompt = await self._prepare_prompt(message, is_private)
         history = await self._prepare_history(userid, groupid, enable_history) if enable_history else []
-        tools = await get_tools() if self.model_config.function_call else []
+        tools = await get_tools() if self.model_config.function_call and enable_plugins else []
         system = self.system_prompt if self.system_prompt else None
 
         start_time = time.perf_counter()

@@ -51,8 +51,10 @@ class Schedule(BaseModel):
     """直接输出的信息"""
     args: dict[str, int]
     """调度器参数"""
-    target: dict
-    """指定发送信息的目标用户/群聊"""
+    target: str
+    """目标id；若为群聊则为 group_id 或者 channel_id，若为私聊则为 user_id"""
+    probability: int = 1
+    """触发几率"""
 
 
 def get_schedule_configs() -> List[Schedule]:

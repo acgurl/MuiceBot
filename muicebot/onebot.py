@@ -7,7 +7,6 @@ import nonebot_plugin_localstore as store
 from arclet.alconna import Alconna, AllParam, Args
 from nonebot import (
     get_adapters,
-    get_bot,
     get_driver,
     logger,
 )
@@ -174,7 +173,7 @@ at_event = on_alconna(
 async def on_bot_connect():
     global scheduler
     if not scheduler:
-        scheduler = setup_scheduler(muice, get_bot())
+        scheduler = setup_scheduler(muice)
 
 
 @driver.on_bot_disconnect

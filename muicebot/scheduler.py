@@ -3,62 +3,52 @@ import random
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 from apscheduler.triggers.interval import IntervalTrigger
-from nonebot import logger
-from nonebot.adapters import Bot
-from nonebot.adapters.onebot.v12 import Message
+from nonebot import get_bot, logger
+from nonebot_plugin_alconna.uniseg import Target, UniMessage
 
 from .config import get_schedule_configs
 from .muice import Muice
 
 
-async def send_message(bot: Bot, message: str, **kwargs):
+async def send_message(target_id: str, message: str, probability: float = 1):
     """
     定时任务：发送信息
 
-    :param bot: 适配器提供的 Bot 类
-    **kwargs 中与 bot 交互所需要的参数可参见 https://onebot.adapters.nonebot.dev/docs/api/v12/bot#Bot-send
+    :param target_id: 目标id；若为群聊则为 group_id 或者 channel_id，若为私聊则为 user_id
+    :param message: 要发送的消息
+    :param probability: 发送几率
     """
-    probability = kwargs.get("random", 1)
     if not (random.random() < probability):
         return
 
     logger.info(f"定时任务: send_message: {message}")
 
-    kwargs.update({"message": Message(message)})
-    await bot.call_api("send_message", **kwargs)
+    target = Target(target_id)
+    await UniMessage(message).send(target=target, bot=get_bot())
 
 
-async def model_ask(muice_app: Muice, bot: Bot, prompt: str, **kwargs):
+async def model_ask(muice_app: Muice, target_id: str, prompt: str, probability: float = 1):
     """
     定时任务：向模型发送消息
 
     :param muice_app: 沐雪核心类，用于与大语言模型交互
-    :param bot: 适配器提供的 Bot 类
+    :param target_id: 目标id；若为群聊则为 group_id 或者 channel_id，若为私聊则为 user_id
     :param prompt: 模型提示词
-
-    **kwargs 中与 bot 交互所需要的参数可参见 https://onebot.adapters.nonebot.dev/docs/api/v12/bot#Bot-send
+    :param probability: 发送几率
     """
-    probability = kwargs.get("random", 1)
     if not (random.random() < probability):
         return
 
     logger.info(f"定时任务: model_ask: {prompt}")
-    self_info = await bot.call_api("get_self_info")
-    self_id = self_info["user_id"]
 
     if muice_app.model and muice_app.model.is_running:
-        message = await muice_app.ask(
-            prompt,
-            self_id,
-            enable_history=False,
-        )
+        message = await muice_app.ask(prompt, f"(bot_ask){target_id}", enable_history=False, enable_plugins=False)
 
-    kwargs.update({"message": Message(message)})
-
-    await bot.call_api("send_message", **kwargs)
+    target = Target(target_id)
+    await UniMessage(message).send(target=target, bot=get_bot())
 
 
-def setup_scheduler(muice: Muice, bot: Bot) -> AsyncIOScheduler:
+def setup_scheduler(muice: Muice) -> AsyncIOScheduler:
     """
     设置任务调度器
 
@@ -72,7 +62,6 @@ def setup_scheduler(muice: Muice, bot: Bot) -> AsyncIOScheduler:
         job_type = "send_message" if job.say else "model_ask"
         trigger_type = job.trigger
         trigger_args = job.args
-        bot_args = job.target
 
         # 解析触发器
         if trigger_type == "cron":
@@ -92,8 +81,7 @@ def setup_scheduler(muice: Muice, bot: Bot) -> AsyncIOScheduler:
                 trigger,
                 id=job_id,
                 replace_existing=True,
-                args=[bot, job.say],
-                kwargs=bot_args,
+                args=[job.target, job.say, job.probability],
             )
         else:
             scheduler.add_job(
@@ -101,8 +89,7 @@ def setup_scheduler(muice: Muice, bot: Bot) -> AsyncIOScheduler:
                 trigger,
                 id=job_id,
                 replace_existing=True,
-                args=[muice, bot, job.ask],
-                kwargs=bot_args,
+                args=[muice, job.target, job.ask, job.probability],
             )
 
         logger.success(f"已注册定时任务: {job_id}")
