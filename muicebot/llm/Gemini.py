@@ -147,6 +147,12 @@ class Gemini(BasicModel):
             self.succeed = False
             return error_message
 
+        except ConnectError:
+            error_message = "模型加载器连接超时"
+            logger.error(error_message)
+            self.succeed = False
+            return error_message
+
     async def _ask_stream(self, messages: list, **kwargs) -> AsyncGenerator[str, None]:
         try:
             total_tokens = 0
