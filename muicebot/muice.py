@@ -20,7 +20,18 @@ class Muice:
     Muice交互类
     """
 
+    _instance = None
+
+    def __new__(cls):
+        if cls._instance is None:
+            cls._instance = super().__new__(cls)
+            cls._instance._initialized = False
+        return cls._instance
+
     def __init__(self):
+        if self._initialized:
+            return
+
         self.model_config = get_model_config()
         self.think = self.model_config.think
         self.model_loader = self.model_config.loader
@@ -34,6 +45,8 @@ class Muice:
         self._init_model()
 
         model_config_manager.register_listener(self._on_config_changed)
+
+        self._initialized = True
 
     def __del__(self):
         # 注销监听器
