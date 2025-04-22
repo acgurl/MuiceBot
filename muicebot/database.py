@@ -165,6 +165,26 @@ class Database:
 
         return today_usage, total_usage
 
+    async def get_conv_count(self) -> Tuple[int, int]:
+        """
+        获取对话次数（今日次数，总次数）
+
+        :return: today_count, total_count
+        """
+        today_str = datetime.now().strftime("%Y.%m.%d")
+
+        total_result = await self.execute("SELECT COUNT(*) FROM MSG WHERE TOTALTOKENS != -1", fetchone=True)
+        total_count = total_result[0] if total_result and total_result[0] is not None else 0
+
+        today_result = await self.execute(
+            "SELECT COUNT(*) FROM MSG WHERE TOTALTOKENS != -1 AND TIME LIKE ?",
+            (f"{today_str}%",),
+            fetchone=True,
+        )
+        today_count = today_result[0] if today_result and today_result[0] is not None else 0
+
+        return today_count, total_count
+
     async def remove_last_item(self, userid: str):
         """
         删除用户的最新一条对话历史
