@@ -259,8 +259,11 @@ async def handle_command_reset(event: Event):
 
 
 @command_refresh.handle()
-async def handle_command_refresh(event: Event):
+async def handle_command_refresh(bot: Bot, event: Event, state: T_State, matcher: Matcher):
     userid = event.get_user_id()
+
+    set_ctx(bot, event, state, matcher)
+
     response = await muice.refresh(userid)
 
     if isinstance(response, str):
