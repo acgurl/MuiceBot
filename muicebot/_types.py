@@ -8,7 +8,7 @@ from typing import List
 class Message:
     id: int | None = None
     """每条消息的唯一ID"""
-    time: str = datetime.strftime(datetime.now(), "%Y.%m.%d %H:%M:%S")
+    time: str = field(default_factory=lambda: datetime.strftime(datetime.now(), "%Y.%m.%d %H:%M:%S"))
     """
     字符串形式的时间数据：%Y.%m.%d %H:%M:%S
     若要获取格式化的 datetime 对象，请使用 format_time
