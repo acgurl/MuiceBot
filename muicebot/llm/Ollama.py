@@ -1,11 +1,18 @@
-from typing import AsyncGenerator, List, Literal, Optional, Union, overload
+from typing import AsyncGenerator, List, Literal, Union, overload
 
 import ollama
 from nonebot import logger
 from ollama import ResponseError
 
-from ._types import BasicModel, Message, ModelConfig, function_call_handler
-from .utils.images import get_image_base64
+from ._types import (
+    BasicModel,
+    ModelCompletions,
+    ModelConfig,
+    ModelRequest,
+    ModelStreamCompletions,
+    function_call_handler,
+)
+from .utils.images import get_file_base64
 
 
 class Ollama(BasicModel):
@@ -39,37 +46,41 @@ class Ollama(BasicModel):
         finally:
             return self.is_running
 
-    def __build_image_message(self, prompt: str, image_paths: Optional[List[str]] = []) -> dict:
+    def __build_multi_messages(self, request: ModelRequest) -> dict:
+        """
+        构建多模态类型
+
+        当前模型加载器支持的多模态类型: `image`
+        """
         images = []
 
-        if image_paths:
-            for image_path in image_paths:
-                image_base64 = get_image_base64(local_path=image_path)
-                images.append(image_base64)
+        for resource in request.resources:
+            image_base64 = get_file_base64(local_path=resource.url)
+            images.append(image_base64)
 
-        message = {"role": "user", "content": prompt, "images": images}
+        message = {"role": "user", "content": request.prompt, "images": images}
 
         return message
 
-    def _build_messages(
-        self, prompt: str, history: List[Message], image_paths: Optional[List[str]] = [], system: Optional[str] = None
-    ) -> list:
+    def _build_messages(self, request: ModelRequest) -> list:
         messages = []
 
-        if system:
-            messages.append({"role": "system", "content": system})
+        if request.system:
+            messages.append({"role": "system", "content": request.system})
 
-        for index, item in enumerate(history):
-            messages.append(self.__build_image_message(item.message, image_paths))
+        for index, item in enumerate(request.history):
+            messages.append(self.__build_multi_messages(ModelRequest(item.message, resources=item.resources)))
             messages.append({"role": "assistant", "content": item.respond})
 
-        message = self.__build_image_message(prompt, image_paths)
+        message = self.__build_multi_messages(request)
 
         messages.append(message)
 
         return messages
 
-    async def _ask_sync(self, messages: list) -> str:
+    async def _ask_sync(self, messages: list) -> ModelCompletions:
+        completions = ModelCompletions()
+
         try:
             response = await self.client.chat(
                 model=self.model,
@@ -89,7 +100,8 @@ class Ollama(BasicModel):
             tool_calls = response.message.tool_calls
 
             if not tool_calls:
-                return response.message.content if response.message.content else "(警告：模型无返回)"
+                completions.text = response.message.content or "(警告：模型无返回)"
+                return completions
 
             for tool in tool_calls:
                 function_name = tool.function.name
@@ -103,15 +115,18 @@ class Ollama(BasicModel):
                 messages.append({"role": "tool", "content": str(function_return), "name": tool.function.name})
                 return await self._ask_sync(messages)
 
+            completions.text = "模型调用错误：未知错误"
+            completions.succeed = False
+            return completions
+
         except ollama.ResponseError as e:
-            logger.error(f"模型调用错误: {e.error}")
-            self.succeed = False
-            return f"模型调用错误: {e.error}"
+            error_info = f"模型调用错误: {e.error}"
+            logger.error(error_info)
+            completions.succeed = False
+            completions.text = error_info
+            return completions
 
-        self.succeed = False
-        return "模型调用错误: 未知错误"
-
-    async def _ask_stream(self, messages: list) -> AsyncGenerator[str, None]:
+    async def _ask_stream(self, messages: list) -> AsyncGenerator[ModelStreamCompletions, None]:
         try:
             response = await self.client.chat(
                 model=self.model,
@@ -129,12 +144,13 @@ class Ollama(BasicModel):
             )
 
             async for chunk in response:
-                logger.debug(chunk)
+                stream_completions = ModelStreamCompletions()
 
                 tool_calls = chunk.message.tool_calls
 
                 if chunk.message.content:
-                    yield chunk.message.content
+                    stream_completions.chunk = chunk.message.content
+                    yield stream_completions
                     continue
 
                 if not tool_calls:
@@ -155,48 +171,27 @@ class Ollama(BasicModel):
                         yield content
 
         except ollama.ResponseError as e:
-            logger.error(f"模型调用错误: {e.error}")
-            yield f"模型调用错误: {e.error}"
-            self.succeed = False
+            stream_completions = ModelStreamCompletions()
+            error_info = f"模型调用错误: {e.error}"
+            logger.error(error_info)
+            stream_completions.chunk = error_info
+            stream_completions.succeed = False
+            yield stream_completions
             return
 
     @overload
-    async def ask(
-        self,
-        prompt: str,
-        history: List[Message],
-        images: Optional[List[str]] = [],
-        tools: Optional[List[dict]] = [],
-        stream: Literal[False] = False,
-        system: Optional[str] = None,
-        **kwargs,
-    ) -> str: ...
+    async def ask(self, request: ModelRequest, *, stream: Literal[False] = False) -> ModelCompletions: ...
 
     @overload
     async def ask(
-        self,
-        prompt: str,
-        history: List[Message],
-        images: Optional[List[str]] = [],
-        tools: Optional[List[dict]] = [],
-        stream: Literal[True] = True,
-        system: Optional[str] = None,
-        **kwargs,
-    ) -> AsyncGenerator[str, None]: ...
+        self, request: ModelRequest, *, stream: Literal[True] = True
+    ) -> AsyncGenerator[ModelStreamCompletions, None]: ...
 
     async def ask(
-        self,
-        prompt: str,
-        history: List[Message],
-        images: Optional[List[str]] = [],
-        tools: Optional[List[dict]] = [],
-        stream: Optional[bool] = False,
-        system: Optional[str] = None,
-        **kwargs,
-    ) -> Union[AsyncGenerator[str, None], str]:
-        self.succeed = True
-        self._tools = tools if tools else []
-        messages = self._build_messages(prompt, history, images, system)
+        self, request: ModelRequest, *, stream: bool = False
+    ) -> Union[ModelCompletions, AsyncGenerator[ModelStreamCompletions, None]]:
+        self._tools = request.tools if request.tools else []
+        messages = self._build_messages(request)
 
         if stream:
             return self._ask_stream(messages)

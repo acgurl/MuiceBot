@@ -1,10 +1,11 @@
 from abc import ABCMeta, abstractmethod
+from dataclasses import dataclass, field
 from importlib.util import find_spec
 from typing import Any, AsyncGenerator, List, Literal, Optional, Union, overload
 
 from pydantic import BaseModel, field_validator
 
-from .._types import Message
+from .._types import Message, Resource
 from ..plugin import get_function_calls
 
 
@@ -34,7 +35,7 @@ class ModelConfig(BaseModel):
     """模型的存在惩罚"""
     repetition_penalty: float = 1.0
     """模型的重复惩罚"""
-    think: Literal[0, 1, 2] = 1
+    think: Literal[0, 1, 2] = 2
     """针对 Deepseek-R1 等思考模型的思考过程提取模式"""
     stream: bool = False
     """是否使用流式输出"""
@@ -102,10 +103,8 @@ class BasicModel(metaclass=ABCMeta):
         """模型配置"""
         self.is_running = False
         """模型状态"""
-        self.succeed = True
-        """模型是否成功返回结果"""
-        self.total_tokens = -1
-        """本次请求使用的总token数。当此值设为-1时，表明此模型加载器不支持该功能"""
+        self._total_tokens = -1
+        """本次总请求（包括工具调用）使用的总token数。当此值设为-1时，表明此模型加载器不支持该功能"""
 
     def _require(self, *require_fields: str):
         """
@@ -117,11 +116,11 @@ class BasicModel(metaclass=ABCMeta):
         if missing_fields:
             raise ValueError(f"对于 {self.config.loader} 以下配置是必需的: {', '.join(missing_fields)}")
 
-    def _build_messages(self, prompt: str, history: List[Message]):
+    def _build_messages(self, request: "ModelRequest") -> list:
         """
         构建对话上下文历史的函数
         """
-        pass
+        raise NotImplementedError
 
     def load(self) -> bool:
         """
@@ -145,53 +144,63 @@ class BasicModel(metaclass=ABCMeta):
         pass
 
     @overload
-    async def ask(
-        self,
-        prompt: str,
-        history: List[Message],
-        images: Optional[List[str]] = [],
-        tools: Optional[List[dict]] = [],
-        stream: Literal[False] = False,
-        system: Optional[str] = None,
-        **kwargs,
-    ) -> str: ...
+    async def ask(self, request: "ModelRequest", *, stream: Literal[False] = False) -> "ModelCompletions": ...
 
     @overload
     async def ask(
-        self,
-        prompt: str,
-        history: List[Message],
-        images: Optional[List[str]] = [],
-        tools: Optional[List[dict]] = [],
-        stream: Literal[True] = True,
-        system: Optional[str] = None,
-        **kwargs,
-    ) -> AsyncGenerator[str, None]: ...
+        self, request: "ModelRequest", *, stream: Literal[True] = True
+    ) -> AsyncGenerator["ModelStreamCompletions", None]: ...
 
     @abstractmethod
     async def ask(
-        self,
-        prompt: str,
-        history: List[Message],
-        images: Optional[List[str]] = [],
-        tools: Optional[List[dict]] = [],
-        stream: Optional[bool] = False,
-        system: Optional[str] = None,
-        **kwargs,
-    ) -> Union[AsyncGenerator[str, None], str]:
+        self, request: "ModelRequest", *, stream: bool = False
+    ) -> Union["ModelCompletions", AsyncGenerator["ModelStreamCompletions", None]]:
         """
         模型交互询问
 
-        :param prompt: 询问的内容
-        :param history: 询问历史记录
-        :param images: 本地图片路径列表
-        :param tools: 工具列表
-        :param stream: 是否使用流式输出
-        :param system: 系统提示
+        :param request: 模型调用请求体
+        :param stream: 是否开启流式对话
 
-        :return: 模型回复
+        :return: 模型输出体
         """
         pass
+
+
+@dataclass
+class ModelRequest:
+    """
+    模型调用请求
+    """
+
+    prompt: str
+    history: List[Message] = field(default_factory=list)
+    resources: List[Resource] = field(default_factory=list)
+    tools: Optional[List[dict]] = field(default_factory=list)
+    system: Optional[str] = None
+
+
+@dataclass
+class ModelCompletions:
+    """
+    模型输出
+    """
+
+    text: str = ""
+    usage: int = -1
+    resources: List[Resource] = field(default_factory=list)
+    succeed: Optional[bool] = True
+
+
+@dataclass
+class ModelStreamCompletions:
+    """
+    模型流式输出
+    """
+
+    chunk: str = ""
+    usage: int = -1
+    resources: Optional[List[Resource]] = field(default_factory=list)
+    succeed: Optional[bool] = True
 
 
 class FunctionCallRequest(BaseModel):

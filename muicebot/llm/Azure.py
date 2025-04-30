@@ -5,6 +5,7 @@ from typing import AsyncGenerator, List, Literal, Optional, Union, overload
 from azure.ai.inference.aio import ChatCompletionsClient
 from azure.ai.inference.models import (
     AssistantMessage,
+    AudioContentItem,
     ChatCompletionsToolCall,
     ChatCompletionsToolDefinition,
     ChatRequestMessage,
@@ -15,6 +16,7 @@ from azure.ai.inference.models import (
     ImageContentItem,
     ImageDetailLevel,
     ImageUrl,
+    InputAudio,
     SystemMessage,
     TextContentItem,
     ToolMessage,
@@ -24,7 +26,14 @@ from azure.core.credentials import AzureKeyCredential
 from azure.core.exceptions import HttpResponseError
 from nonebot import logger
 
-from ._types import BasicModel, Message, ModelConfig, function_call_handler
+from ._types import (
+    BasicModel,
+    ModelCompletions,
+    ModelConfig,
+    ModelRequest,
+    ModelStreamCompletions,
+    function_call_handler,
+)
 
 
 class Azure(BasicModel):
@@ -42,19 +51,33 @@ class Azure(BasicModel):
 
         self._tools: List[ChatCompletionsToolDefinition] = []
 
-    def __build_image_messages(self, prompt: str, image_paths: list) -> UserMessage:
-        image_content_items: List[ContentItem] = []
+    def __build_multi_messages(self, request: ModelRequest) -> UserMessage:
+        """
+        构建多模态类型
 
-        for item in image_paths:
-            image_content_items.append(
-                ImageContentItem(
-                    image_url=ImageUrl.load(
-                        image_file=item, image_format=item.split(".")[-1], detail=ImageDetailLevel.AUTO
+        此模型加载器支持的多模态类型: `audio` `image`
+        """
+        multi_content_items: List[ContentItem] = []
+
+        for resource in request.resources:
+            if resource.type == "audio":
+                multi_content_items.append(
+                    AudioContentItem(
+                        input_audio=InputAudio.load(audio_file=resource.url, audio_format=resource.url.split(".")[-1])
                     )
                 )
-            )
+            elif resource.type == "image":
+                multi_content_items.append(
+                    ImageContentItem(
+                        image_url=ImageUrl.load(
+                            image_file=resource.url,
+                            image_format=resource.url.split(".")[-1],
+                            detail=ImageDetailLevel.AUTO,
+                        )
+                    )
+                )
 
-        content = [TextContentItem(text=prompt)] + image_content_items
+        content = [TextContentItem(text=request.prompt)] + multi_content_items
 
         return UserMessage(content=content)
 
@@ -73,24 +96,22 @@ class Azure(BasicModel):
 
         return tool_definitions
 
-    def _build_messages(
-        self, prompt: str, history: List[Message], image_paths: Optional[List] = None, system: Optional[str] = None
-    ) -> List[ChatRequestMessage]:
+    def _build_messages(self, request: ModelRequest) -> List[ChatRequestMessage]:
         messages: List[ChatRequestMessage] = []
 
-        if system:
-            messages.append(SystemMessage(system))
+        if request.system:
+            messages.append(SystemMessage(request.system))
 
-        for msg in history:
+        for msg in request.history:
             user_msg = (
                 UserMessage(msg.message)
-                if not msg.images
-                else self.__build_image_messages(msg.message, image_paths=msg.images)
+                if not msg.resources
+                else self.__build_multi_messages(ModelRequest(msg.message, resources=msg.resources))
             )
             messages.append(user_msg)
             messages.append(AssistantMessage(msg.respond))
 
-        user_message = UserMessage(prompt) if not image_paths else self.__build_image_messages(prompt, image_paths)
+        user_message = UserMessage(request.prompt) if not request.resources else self.__build_multi_messages(request)
 
         messages.append(user_message)
 
@@ -107,8 +128,10 @@ class Azure(BasicModel):
 
         return False
 
-    async def _ask_sync(self, messages: List[ChatRequestMessage]) -> str:
+    async def _ask_sync(self, messages: List[ChatRequestMessage]) -> ModelCompletions:
         client = ChatCompletionsClient(endpoint=self.endpoint, credential=AzureKeyCredential(self.token))
+
+        completions = ModelCompletions()
 
         try:
             response = await client.complete(
@@ -123,27 +146,28 @@ class Azure(BasicModel):
                 tools=self._tools,
             )
             finish_reason = response.choices[0].finish_reason
-            self.total_tokens += response.usage.total_tokens
+            self._total_tokens += response.usage.total_tokens
 
             if finish_reason == CompletionsFinishReason.STOPPED:
-                return response.choices[0].message.content  # type: ignore
+                completions.text = response.choices[0].message.content
 
             elif finish_reason == CompletionsFinishReason.CONTENT_FILTERED:
-                self.succeed = False
-                return "(模型内部错误: 被内容过滤器阻止)"
+                completions.succeed = False
+                completions.text = "(模型内部错误: 被内容过滤器阻止)"
 
             elif finish_reason == CompletionsFinishReason.TOKEN_LIMIT_REACHED:
-                self.succeed = False
-                return "(模型内部错误: 达到了最大 token 限制)"
+                completions.succeed = False
+                completions.text = "(模型内部错误: 达到了最大 token 限制)"
 
             elif finish_reason == CompletionsFinishReason.TOOL_CALLS:
                 tool_calls = response.choices[0].message.tool_calls
                 messages.append(AssistantMessage(tool_calls=tool_calls))
-                if not self._tool_messages_precheck(tool_calls=tool_calls):
-                    self.succeed = False
-                    return "(模型内部错误: tool_calls 内容为空)"
+                if (tool_calls is None) or (not self._tool_messages_precheck(tool_calls=tool_calls)):
+                    completions.succeed = False
+                    completions.text = "(模型内部错误: tool_calls 内容为空)"
+                    return completions
 
-                tool_call = tool_calls[0]  # type:ignore
+                tool_call = tool_calls[0]
                 function_args = json.loads(tool_call.function.arguments.replace("'", '"'))
                 logger.info(f"function call 请求 {tool_call.function.name}, 参数: {function_args}")
                 function_return = await function_call_handler(tool_call.function.name, function_args)
@@ -154,17 +178,22 @@ class Azure(BasicModel):
 
                 return await self._ask_sync(messages)
 
-            return "(模型内部错误: 未知错误)"
+            else:
+                completions.succeed = False
+                completions.text = "(模型内部错误: 达到了最大 token 限制)"
 
         except HttpResponseError as e:
             logger.error(f"模型响应失败: {e.status_code} ({e.reason})")
             logger.error(f"{e.message}")
-            self.succeed = False
-            return f"模型响应失败: {e.status_code} ({e.reason})"
+            completions.succeed = False
+            completions.text = f"模型响应失败: {e.status_code} ({e.reason})"
+
         finally:
             await client.close()
+            completions.usage = self._total_tokens
+            return completions
 
-    async def _ask_stream(self, messages: List[ChatRequestMessage]) -> AsyncGenerator[str, None]:
+    async def _ask_stream(self, messages: List[ChatRequestMessage]) -> AsyncGenerator[ModelStreamCompletions, None]:
         client = ChatCompletionsClient(endpoint=self.endpoint, credential=AzureKeyCredential(self.token))
 
         try:
@@ -186,17 +215,20 @@ class Azure(BasicModel):
             function_args: str = ""
 
             async for chunk in response:
-                if chunk:  # chunk.usage 只会在最后一个包中被提供，此时choices为空
-                    self.total_tokens += chunk.usage.total_tokens if chunk.usage else 0
+                stream_completions = ModelStreamCompletions()
+
+                if chunk.usage:  # chunk.usage 只会在最后一个包中被提供，此时choices为空
+                    self._total_tokens += chunk.usage.total_tokens if chunk.usage else 0
+                    stream_completions.usage = self._total_tokens
 
                 if not chunk.choices:
+                    yield stream_completions
                     continue
 
                 finish_reason = chunk.choices[0].finish_reason
 
                 if chunk.choices and chunk.choices[0].get("delta", {}).get("content", ""):
-                    yield chunk["choices"][0]["delta"]["content"]
-                    continue
+                    stream_completions.chunk = chunk["choices"][0]["delta"]["content"]
 
                 elif chunk.choices[0].delta.tool_calls is not None:
                     tool_call = chunk.choices[0].delta.tool_calls[0]
@@ -209,12 +241,12 @@ class Azure(BasicModel):
                     continue
 
                 elif finish_reason == CompletionsFinishReason.CONTENT_FILTERED:
-                    self.succeed = False
-                    yield "(模型内部错误: 被内容过滤器阻止)"
+                    stream_completions.succeed = False
+                    stream_completions.chunk = "(模型内部错误: 被内容过滤器阻止)"
 
                 elif finish_reason == CompletionsFinishReason.TOKEN_LIMIT_REACHED:
-                    self.succeed = False
-                    yield "(模型内部错误: 达到了最大 token 限制)"
+                    stream_completions.succeed = False
+                    stream_completions.chunk = "(模型内部错误: 达到了最大 token 限制)"
 
                 elif finish_reason == CompletionsFinishReason.TOOL_CALLS:
                     messages.append(
@@ -240,54 +272,35 @@ class Azure(BasicModel):
 
                     return
 
+                yield stream_completions
+
         except HttpResponseError as e:
             logger.error(f"模型响应失败: {e.status_code} ({e.reason})")
             logger.error(f"{e.message}")
-            yield f"模型响应失败: {e.status_code} ({e.reason})"
-            self.succeed = False
+            stream_completions = ModelStreamCompletions()
+            stream_completions.chunk = "模型响应失败: {e.status_code} ({e.reason})"
+            stream_completions.succeed = False
+            yield stream_completions
+
         finally:
             await client.close()
 
     @overload
-    async def ask(
-        self,
-        prompt: str,
-        history: List[Message],
-        images: Optional[List[str]] = [],
-        tools: Optional[List[dict]] = [],
-        stream: Literal[False] = False,
-        system: Optional[str] = None,
-        **kwargs,
-    ) -> str: ...
+    async def ask(self, request: ModelRequest, *, stream: Literal[False] = False) -> ModelCompletions: ...
 
     @overload
     async def ask(
-        self,
-        prompt: str,
-        history: List[Message],
-        images: Optional[List[str]] = [],
-        tools: Optional[List[dict]] = [],
-        stream: Literal[True] = True,
-        system: Optional[str] = None,
-        **kwargs,
-    ) -> AsyncGenerator[str, None]: ...
+        self, request: ModelRequest, *, stream: Literal[True] = True
+    ) -> AsyncGenerator[ModelStreamCompletions, None]: ...
 
     async def ask(
-        self,
-        prompt: str,
-        history: List[Message],
-        images: Optional[List[str]] = [],
-        tools: Optional[List[dict]] = [],
-        stream: Optional[bool] = False,
-        system: Optional[str] = None,
-        **kwargs,
-    ) -> Union[AsyncGenerator[str, None], str]:
-        self.succeed = True
-        self.total_tokens = 0
+        self, request: ModelRequest, *, stream: bool = False
+    ) -> Union[ModelCompletions, AsyncGenerator[ModelStreamCompletions, None]]:
+        self._total_tokens = 0
 
-        messages = self._build_messages(prompt, history, images, system)
+        messages = self._build_messages(request)
 
-        self._tools = self.__build_tools_definition(tools) if tools else []
+        self._tools = self.__build_tools_definition(request.tools) if request.tools else []
 
         if stream:
             return self._ask_stream(messages)

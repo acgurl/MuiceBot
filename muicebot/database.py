@@ -8,7 +8,7 @@ import aiosqlite
 import nonebot_plugin_localstore as store
 from nonebot import logger
 
-from ._types import Message
+from ._types import Message, Resource
 from .utils.migrations import MigrationManager
 
 
@@ -67,8 +67,8 @@ class Database:
             MESSAGE TEXT NOT NULL,
             RESPOND TEXT NOT NULL,
             HISTORY INTEGER NOT NULL DEFAULT (1),
-            IMAGES TEXT NOT NULL DEFAULT "[]",
-            TOTALTOKENS INTEGER NOT NULL DEFAULT (-1));"""
+            RESOURCES TEXT NOT NULL DEFAULT "[]",
+            USAGE INTEGER NOT NULL DEFAULT (-1));"""
         )
         await self.execute(
             """
@@ -85,16 +85,17 @@ class Database:
         """
         将消息保存到数据库
         """
+        resources_data = [r.__dict__ for r in message.resources]
         params = (
             message.time,
             message.userid,
             message.groupid,
             message.message,
             message.respond,
-            json.dumps(message.images),
-            message.totaltokens,
+            json.dumps(resources_data, ensure_ascii=False),
+            message.usage,
         )
-        query = """INSERT INTO MSG (TIME, USERID, GROUPID, MESSAGE, RESPOND, IMAGES, TOTALTOKENS)
+        query = """INSERT INTO MSG (TIME, USERID, GROUPID, MESSAGE, RESPOND, RESOURCES, USAGE)
                    VALUES (?, ?, ?, ?, ?, ?, ?)"""
         await self.execute(query, params)
 
@@ -106,6 +107,24 @@ class Database:
         """
         query = "UPDATE MSG SET HISTORY = 0 WHERE USERID = ?"
         await self.execute(query, (userid,))
+
+    async def _deserialize_rows(self, rows: list) -> list[Message]:
+        """
+        反序列化数据库返回结果
+        """
+        result = []
+
+        for row in rows:
+            data = dict(row)
+
+            # 反序列化 resources
+            resources = json.loads(data.get("resources", "[]"))
+            data["resources"] = [Resource(**r) for r in resources] if resources else []
+
+            result.append(Message(**data))
+
+        result.reverse()
+        return result
 
     async def get_user_history(self, userid: str, limit: int = 0) -> list[Message]:
         """
@@ -120,8 +139,7 @@ class Database:
             query = "SELECT * FROM MSG WHERE HISTORY = 1 AND USERID = ?"
         rows = await self.execute(query, (userid,), fetchall=True)
 
-        result = [Message(**dict(row)) for row in rows] if rows else []
-        result.reverse()
+        result = await self._deserialize_rows(rows) if rows else []
 
         return result
 
@@ -138,8 +156,7 @@ class Database:
             query = "SELECT * FROM MSG WHERE HISTORY = 1 AND GROUPID = ?"
         rows = await self.execute(query, (groupid,), fetchall=True)
 
-        result = [Message(**dict(row)) for row in rows] if rows else []
-        result.reverse()
+        result = await self._deserialize_rows(rows) if rows else []
 
         return result
 
@@ -151,13 +168,13 @@ class Database:
         """
         today_str = datetime.now().strftime("%Y.%m.%d")
 
-        # 查询总用量（排除 TOTALTOKENS = -1）
-        total_result = await self.execute("SELECT SUM(TOTALTOKENS) FROM MSG WHERE TOTALTOKENS != -1", fetchone=True)
+        # 查询总用量（排除 USAGE = -1）
+        total_result = await self.execute("SELECT SUM(USAGE) FROM MSG WHERE USAGE != -1", fetchone=True)
         total_usage = total_result[0] if total_result and total_result[0] is not None else 0
 
         # 查询今日用量（按日期前缀匹配 TIME）
         today_result = await self.execute(
-            "SELECT SUM(TOTALTOKENS) FROM MSG WHERE TOTALTOKENS != -1 AND TIME LIKE ?",
+            "SELECT SUM(USAGE) FROM MSG WHERE USAGE != -1 AND TIME LIKE ?",
             (f"{today_str}%",),
             fetchone=True,
         )
@@ -173,11 +190,11 @@ class Database:
         """
         today_str = datetime.now().strftime("%Y.%m.%d")
 
-        total_result = await self.execute("SELECT COUNT(*) FROM MSG WHERE TOTALTOKENS != -1", fetchone=True)
+        total_result = await self.execute("SELECT COUNT(*) FROM MSG WHERE USAGE != -1", fetchone=True)
         total_count = total_result[0] if total_result and total_result[0] is not None else 0
 
         today_result = await self.execute(
-            "SELECT COUNT(*) FROM MSG WHERE TOTALTOKENS != -1 AND TIME LIKE ?",
+            "SELECT COUNT(*) FROM MSG WHERE USAGE != -1 AND TIME LIKE ?",
             (f"{today_str}%",),
             fetchone=True,
         )

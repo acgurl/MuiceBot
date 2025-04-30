@@ -1,11 +1,22 @@
-import json
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field
 from datetime import datetime
-from typing import List
+from typing import List, Literal
+
+
+@dataclass
+class Resource:
+    """多模态消息"""
+
+    type: Literal["image", "video", "audio", "file"]
+    """消息类型"""
+    url: str
+    """存储地址"""
 
 
 @dataclass
 class Message:
+    """格式化后的 bot 消息"""
+
     id: int | None = None
     """每条消息的唯一ID"""
     time: str = field(default_factory=lambda: datetime.strftime(datetime.now(), "%Y.%m.%d %H:%M:%S"))
@@ -23,21 +34,22 @@ class Message:
     """模型回复（不包含思维过程）"""
     history: int = 1
     """消息是否可用于对话历史中，以整数形式映射布尔值"""
-    images: List[str] = field(default_factory=list)
-    """多模态中使用的图像，默认为空列表"""
-    totaltokens: int = -1
+    resources: List[Resource] = field(default_factory=list)
+    """多模态消息内容"""
+    usage: int = -1
     """使用的总 tokens, 若模型加载器不支持则设为-1"""
-
-    def __post_init__(self):
-        if isinstance(self.images, str):
-            self.images = json.loads(self.images)
-        elif self.images is None:
-            self.images = []
 
     @property
     def format_time(self) -> datetime:
         """将时间字符串转换为 datetime 对象"""
         return datetime.strptime(self.time, "%Y.%m.%d %H:%M:%S")
+
+    def to_dict(self) -> dict:
+        return asdict(self)
+
+    @staticmethod
+    def from_dict(data: dict) -> "Message":
+        return Message(**data)
 
     # 又臭又长的比较函数
     def __hash__(self) -> int:

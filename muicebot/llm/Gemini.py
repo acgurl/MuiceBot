@@ -16,8 +16,15 @@ from google.genai.types import (
 from httpx import ConnectError
 from nonebot import logger
 
-from ._types import BasicModel, Message, ModelConfig, function_call_handler
-from .utils.images import get_image_base64
+from ._types import (
+    BasicModel,
+    ModelCompletions,
+    ModelConfig,
+    ModelRequest,
+    ModelStreamCompletions,
+    function_call_handler,
+)
+from .utils.images import get_file_base64
 
 
 class Gemini(BasicModel):
@@ -64,14 +71,17 @@ class Gemini(BasicModel):
 
         self.model = self.client.chats.create(model=self.model_name, config=self.gemini_config)
 
-    def __build_user_parts(self, prompt: str, image_paths: Optional[List[str]] = []) -> list[Part]:
-        user_parts: list[Part] = [Part.from_text(text=prompt)]
+    def __build_user_parts(self, request: ModelRequest) -> list[Part]:
+        user_parts: list[Part] = [Part.from_text(text=request.prompt)]
 
-        if not image_paths:
+        if not request.resources:
             return user_parts
 
-        for url in image_paths:
-            user_parts.append(Part.from_bytes(data=get_image_base64(url), mime_type="image/jpeg"))  # type:ignore
+        for resource in request.resources:
+            if resource.type == "image":
+                user_parts.append(
+                    Part.from_bytes(data=get_file_base64(resource.url), mime_type="image/jpeg")  # type:ignore
+                )
 
         return user_parts
 
@@ -93,31 +103,35 @@ class Gemini(BasicModel):
         if tools or self.enable_search:
             self.gemini_config.tools = [function_tools]
 
-    def _build_messages(
-        self, prompt: str, history: List[Message], image_paths: Optional[List[str]] = [], system: Optional[str] = None
-    ) -> list[ContentOrDict]:
+    def _build_messages(self, request: ModelRequest) -> list[ContentOrDict]:
         messages: List[ContentOrDict] = []
 
-        if history:
-            for index, item in enumerate(history):
-                messages.append(Content(role="user", parts=self.__build_user_parts(item.message, item.images)))
+        if request.history:
+            for index, item in enumerate(request.history):
+                messages.append(
+                    Content(
+                        role="user", parts=self.__build_user_parts(ModelRequest(item.message, resources=item.resources))
+                    )
+                )
                 messages.append(Content(role="model", parts=[Part.from_text(text=item.respond)]))
 
-        messages.append(Content(role="user", parts=self.__build_user_parts(prompt, image_paths)))
+        messages.append(Content(role="user", parts=self.__build_user_parts(request)))
 
         return messages
 
-    async def _ask_sync(self, messages: list[ContentOrDict], **kwargs) -> str:
+    async def _ask_sync(self, messages: list[ContentOrDict], **kwargs) -> ModelCompletions:
+        compltions = ModelCompletions()
+
         try:
             chat = self.client.aio.chats.create(model=self.model_name, config=self.gemini_config, history=messages[:-1])
             message = messages[-1].parts  # type:ignore
             response = await chat.send_message(message=message)  # type:ignore
             if response.usage_metadata:
                 total_token_count = response.usage_metadata.total_token_count
-                self.total_tokens = total_token_count if total_token_count else -1
+                self._total_tokens += total_token_count if total_token_count else -1
 
             if response.text:
-                return response.text
+                compltions.text = response.text
 
             if response.function_calls:
                 function_call = response.function_calls[0]
@@ -138,32 +152,39 @@ class Gemini(BasicModel):
 
                 return await self._ask_sync(messages)
 
-            return "（警告：模型无输出！）"
+            compltions.text = compltions.text or "（警告：模型无输出！）"
+            compltions.usage = self._total_tokens
+            return compltions
 
         except errors.APIError as e:
             error_message = f"API 状态异常: {e.code}({e.response})"
+            compltions.text = error_message
+            compltions.succeed = False
             logger.error(error_message)
             logger.error(e.message)
-            self.succeed = False
-            return error_message
+            return compltions
 
         except ConnectError:
             error_message = "模型加载器连接超时"
+            compltions.text = error_message
+            compltions.succeed = False
             logger.error(error_message)
-            self.succeed = False
-            return error_message
+            return compltions
 
-    async def _ask_stream(self, messages: list, **kwargs) -> AsyncGenerator[str, None]:
+    async def _ask_stream(self, messages: list, **kwargs) -> AsyncGenerator[ModelStreamCompletions, None]:
         try:
             total_tokens = 0
-
-            async for chunk in await self.client.aio.models.generate_content_stream(
+            stream = await self.client.aio.models.generate_content_stream(
                 model=self.model_name, contents=messages, config=self.gemini_config
-            ):  # type:ignore
-                if chunk.text:
-                    yield chunk.text
+            )
+            async for chunk in stream:
+                stream_completions = ModelStreamCompletions()
 
-                if chunk.usage_metadata:
+                if chunk.text:
+                    stream_completions.chunk = chunk.text
+                    yield stream_completions
+
+                if chunk.usage_metadata and chunk.usage_metadata.total_token_count:
                     total_tokens = chunk.usage_metadata.total_token_count
 
                 if chunk.function_calls:
@@ -183,68 +204,48 @@ class Gemini(BasicModel):
                     messages.append(Content(role="model", parts=[Part(function_call=function_call)]))
                     messages.append(Content(role="user", parts=[function_response_part]))
 
-                    async for chunk in self._ask_stream(messages):
-                        yield chunk
+                    async for final_chunk in self._ask_stream(messages):
+                        yield final_chunk
 
-            self.total_tokens += total_tokens
+            self._total_tokens += total_tokens
+            stream_completions.usage = self._total_tokens
 
         except errors.APIError as e:
+            stream_completions = ModelStreamCompletions()
             error_message = f"API 状态异常: {e.code}({e.response})"
+            stream_completions.chunk = error_message
             logger.error(error_message)
             logger.error(e.message)
-            self.succeed = False
-            yield error_message
+            stream_completions.succeed = False
+            yield stream_completions
             return
 
         except ConnectError:
             error_message = "模型加载器连接超时"
+            stream_completions.chunk = error_message
             logger.error(error_message)
-            self.succeed = False
-            yield error_message
+            stream_completions.succeed = False
+            yield stream_completions
             return
 
     @overload
-    async def ask(
-        self,
-        prompt: str,
-        history: List[Message],
-        images: Optional[List[str]] = [],
-        tools: Optional[List[dict]] = [],
-        stream: Literal[False] = False,
-        system: Optional[str] = None,
-        **kwargs,
-    ) -> str: ...
+    async def ask(self, request: ModelRequest, *, stream: Literal[False] = False) -> ModelCompletions: ...
 
     @overload
     async def ask(
-        self,
-        prompt: str,
-        history: List[Message],
-        images: Optional[List[str]] = [],
-        tools: Optional[List[dict]] = [],
-        stream: Literal[True] = True,
-        system: Optional[str] = None,
-        **kwargs,
-    ) -> AsyncGenerator[str, None]: ...
+        self, request: ModelRequest, *, stream: Literal[True] = True
+    ) -> AsyncGenerator[ModelStreamCompletions, None]: ...
 
     async def ask(
-        self,
-        prompt: str,
-        history: List[Message],
-        images: Optional[List[str]] = [],
-        tools: Optional[List[dict]] = [],
-        stream: Optional[bool] = False,
-        system: Optional[str] = None,
-        **kwargs,
-    ) -> Union[AsyncGenerator[str, None], str]:
-        self.succeed = True
-        self.total_tokens = 0
-        self.__build_tools_list(tools)
-        self.gemini_config.system_instruction = system
+        self, request: ModelRequest, *, stream: bool = False
+    ) -> Union[ModelCompletions, AsyncGenerator[ModelStreamCompletions, None]]:
+        self._total_tokens = 0
+        self.__build_tools_list(request.tools)
+        self.gemini_config.system_instruction = request.system
 
-        messages = self._build_messages(prompt, history, images, system)
+        messages = self._build_messages(request)
 
         if stream:
             return self._ask_stream(messages)
 
-        return await self._ask_sync(messages)  # type:ignore
+        return await self._ask_sync(messages)

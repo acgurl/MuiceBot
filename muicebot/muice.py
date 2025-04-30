@@ -8,9 +8,16 @@ from nonebot import logger
 from ._types import Message
 from .config import ModelConfig, get_model_config, model_config_manager, plugin_config
 from .database import Database
-from .llm import MODEL_DEPENDENCY_MAP, BasicModel, get_missing_dependencies
+from .llm import (
+    MODEL_DEPENDENCY_MAP,
+    BasicModel,
+    ModelCompletions,
+    ModelRequest,
+    ModelStreamCompletions,
+    get_missing_dependencies,
+)
 from .llm.utils.muice_prompt import GROUP_SYSTEM_PROMPT, PRIVATE_SYSTEM_PROMPT
-from .llm.utils.thought import process_thoughts, stream_process_thoughts
+from .llm.utils.thought import ThoughtProcessor
 from .plugin import get_tools
 from .utils.utils import get_username
 
@@ -155,9 +162,10 @@ class Muice:
         :return: 最终模型提示词
         """
         user_history = await self.database.get_user_history(userid, self.max_history_epoch) if enable_history else []
-        # 验证图片路径是否可用
+
+        # 验证多模态资源路径是否可用
         for item in user_history:
-            item.images = [img_path for img_path in item.images if os.path.isfile(img_path)]
+            item.resources = [resource for resource in item.resources if os.path.isfile(resource.url)]
 
         if groupid == "-1":
             return user_history[-self.max_history_epoch :]
@@ -165,7 +173,7 @@ class Muice:
         group_history = await self.database.get_group_history(groupid, self.max_history_epoch)
 
         for item in group_history:
-            item.images = [img_path for img_path in item.images if os.path.isfile(img_path)]
+            item.resources = [resource for resource in item.resources if os.path.isfile(resource.url)]
 
         # 群聊历史构建成 <Username> Message 的格式，避免上下文混乱
         for item in group_history:
@@ -178,130 +186,107 @@ class Muice:
 
     async def ask(
         self,
-        message: str,
-        userid: str,
-        groupid: str = "-1",
-        image_paths: list = [],
+        message: Message,
         enable_history: bool = True,
         enable_plugins: bool = True,
-    ) -> str:
+    ) -> ModelCompletions:
         """
         调用模型
 
         :param message: 消息文本
-        :param user_id: 用户ID
-        :param group_id: 群组ID等(私聊时此值为-1)
-        :param image_paths: 图片URL列表（仅在多模态启用时生效）
         :param enable_history: 是否启用历史记录
         :param enable_plugins: 是否启用工具插件
         :return: 模型回复
         """
         if not (self.model and self.model.is_running):
             logger.error("模型未加载")
-            return "(模型未加载)"
+            return ModelCompletions("模型未加载")
 
-        is_private = groupid == "-1"
+        is_private = message.groupid == "-1"
         logger.info("正在调用模型...")
 
-        prompt = await self._prepare_prompt(message, is_private)
-        history = await self._prepare_history(userid, groupid, enable_history) if enable_history else []
+        prompt = await self._prepare_prompt(message.message, is_private)
+        history = await self._prepare_history(message.userid, message.groupid, enable_history) if enable_history else []
         tools = await get_tools() if self.model_config.function_call and enable_plugins else []
         system = self.system_prompt if self.system_prompt else None
+
+        model_request = ModelRequest(prompt, history, message.resources, tools, system)
+        thought_processor = ThoughtProcessor(self.think)
 
         start_time = time.perf_counter()
         logger.debug(f"模型调用参数：Prompt: {message}, History: {history}")
 
-        reply = await self.model.ask(prompt, history, image_paths, stream=False, system=system, tools=tools)
+        response = await self.model.ask(model_request, stream=False)
 
-        reply.strip()
         end_time = time.perf_counter()
-        token_usage = self.model.total_tokens
 
-        if self.model.succeed:
-            logger.success(f"模型调用成功: {reply}")
-        logger.debug(f"模型调用时长: {end_time - start_time} s (token用量: {token_usage})")
+        logger.success(f"模型调用成功: {response}")
+        logger.debug(f"模型调用时长: {end_time - start_time} s (token用量: {response.usage})")
 
-        thought, result = process_thoughts(reply, self.think)  # type: ignore
-        reply = "\n\n".join([thought, result])
+        thought, result = thought_processor.process_message(response.text)
+        response.text = "\n\n".join([thought, result]) if thought else result
 
-        if self.model.succeed:
-            message_object = Message(
-                userid=userid,
-                groupid=groupid,
-                message=message,
-                respond=result,
-                images=image_paths,
-                totaltokens=token_usage,
-            )
-            await self.database.add_item(message_object)
+        message.respond = result
 
-        return reply
+        if response.succeed:
+            await self.database.add_item(message)
+
+        return response
 
     async def ask_stream(
         self,
-        message: str,
-        userid: str,
-        groupid: str = "-1",
-        image_paths: list = [],
+        message: Message,
         enable_history: bool = True,
-    ) -> AsyncGenerator[str, None]:
+        enable_plugins: bool = True,
+    ) -> AsyncGenerator[ModelStreamCompletions, None]:
         """
-        流式方式调用模型
+        调用模型
 
         :param message: 消息文本
-        :param user_id: 用户ID
-        :param group_id: 群组ID等(私聊时此值为-1)
-        :param image_paths: 图片URL列表（仅在多模态启用时生效）
         :param enable_history: 是否启用历史记录
+        :param enable_plugins: 是否启用工具插件
         :return: 模型回复
         """
         if not (self.model and self.model.is_running):
             logger.error("模型未加载")
-            yield "(模型未加载)"
+            yield ModelStreamCompletions("模型未加载")
             return
 
-        is_private = groupid == "-1"
+        is_private = message.groupid == "-1"
         logger.info("正在调用模型...")
 
-        prompt = await self._prepare_prompt(message, is_private)
-        history = await self._prepare_history(userid, groupid, enable_history) if enable_history else []
-        tools = await get_tools() if self.model_config.function_call else []
+        prompt = await self._prepare_prompt(message.message, is_private)
+        history = await self._prepare_history(message.userid, message.groupid, enable_history) if enable_history else []
+        tools = await get_tools() if self.model_config.function_call and enable_plugins else []
         system = self.system_prompt if self.system_prompt else None
 
+        model_request = ModelRequest(prompt, history, message.resources, tools, system)
         start_time = time.perf_counter()
         logger.debug(f"模型调用参数：Prompt: {message}, History: {history}")
 
-        response = await self.model.ask(prompt, history, image_paths, stream=True, system=system, tools=tools)
+        response = await self.model.ask(model_request, stream=True)
 
-        reply = ""
+        total_reply = ""
+        thought_processor = ThoughtProcessor(status=self.think)
 
-        if isinstance(response, str):
-            yield response.strip()
-            reply = response
-        else:
-            async for chunk in response:
-                yield (chunk if not self.think else stream_process_thoughts(chunk, self.think))  # type:ignore
-                reply += chunk
+        async for item in response:
+            processed = thought_processor.process_chunk(item.chunk)
+            if processed is not None and processed.strip():
+                total_reply += processed
+                yield ModelStreamCompletions(chunk=processed)
 
         end_time = time.perf_counter()
-        token_usage = self.model.total_tokens
-        logger.success(f"已完成流式回复: {reply}")
-        logger.debug(f"模型调用时长: {end_time - start_time} s (token用量: {token_usage})")
+        logger.success(f"已完成流式回复: {total_reply}")
+        logger.debug(f"模型调用时长: {end_time - start_time} s (token用量: {item.usage})")
 
-        _, result = process_thoughts(reply, self.think)  # type: ignore
+        thought, result = thought_processor.process_message(total_reply)
+        message.respond = result
+        message.usage = item.usage
 
-        if self.model.succeed:
-            message_object = Message(
-                userid=userid,
-                groupid=groupid,
-                message=message,
-                respond=result,
-                images=image_paths,
-                totaltokens=token_usage,
-            )
-            await self.database.add_item(message_object)
+        if item.succeed:
+            await self.database.add_item(message)
 
-    async def refresh(self, userid: str) -> Union[AsyncGenerator[str, None], str]:
+    async def refresh(self, userid: str) -> Union[AsyncGenerator[ModelStreamCompletions, None], ModelCompletions]:
         """
         刷新对话
 
@@ -313,21 +298,16 @@ class Muice:
 
         if not last_item:
             logger.warning("用户对话数据不存在，拒绝刷新")
-            return "你都还没和我说过一句话呢，得和我至少聊上一段才能刷新哦"
+            return ModelCompletions("你都还没和我说过一句话呢，得和我至少聊上一段才能刷新哦")
 
         last_item = last_item[0]
-
-        userid = last_item.userid
-        groupid = last_item.groupid
-        message = last_item.message
-        image_paths = last_item.images
 
         await self.database.remove_last_item(userid)
 
         if not self.model_config.stream:
-            return await self.ask(message, userid, groupid, image_paths)
+            return await self.ask(last_item)
 
-        return self.ask_stream(message, userid, groupid, image_paths)
+        return self.ask_stream(last_item)
 
     async def reset(self, userid: str) -> str:
         """
