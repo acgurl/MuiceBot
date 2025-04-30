@@ -123,8 +123,10 @@ class ConfigFileHandler(FileSystemEventHandler):
 class ModelConfigManager:
     """模型配置管理器"""
 
-    _instance = None
+    _instance: Optional["ModelConfigManager"] = None
     _lock = threading.Lock()
+    _initialized: bool
+    configs: dict[str, ModelConfig]
 
     def __new__(cls):
         """确保实例在单例模式下运行"""
@@ -134,7 +136,7 @@ class ModelConfigManager:
                 cls._instance._initialized = False
             return cls._instance
 
-    def __init__(self):
+    def __init__(self) -> None:
         if self._initialized:
             return
 

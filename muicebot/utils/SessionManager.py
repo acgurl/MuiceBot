@@ -9,7 +9,7 @@ from ..config import plugin_config
 
 
 class SessionManager:
-    def __init__(self):
+    def __init__(self) -> None:
         self.sessions: Dict[str, List[UniMsg]] = {}
         self._lock: asyncio.Lock = asyncio.Lock()
         self._timeout = plugin_config.input_timeout
