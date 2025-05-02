@@ -43,6 +43,7 @@ content_security: false # 内容安全（可选。需要开通内容审核服务
 loader: Gemini # 使用 Dashscope 加载器（必须）
 model_name: gemini-2.0-flash # 模型名称（必须）
 multimodal: false # 是否启用多模态（可选。注意：使用的模型必须是多模态的）
+# modalities: ["text", "image"]  # 启用的返回模态（使用多模态的画图功能时才取消注释此配置项）
 api_key: xxxxxx # API 密钥（必须）
 max_tokens: 1024 # 模型生成的最大 token 数（可选，默认为 1024）
 temperature: 0.7 #  模型生成的温度参数（可选，默认为 0.7）
@@ -90,6 +91,8 @@ max_tokens: 1024 # 模型生成的最大 token 数（可选，默认为 1024）
 temperature: 0.7 #  模型生成的温度参数（可选，默认为 0.7，对R1使用无效）
 stream: false # 流式对话
 multimodal: false # 是否启用多模态（可选。注意：使用的模型必须是多模态的）
+# modalities: ["text", "audio"]  # 启用的返回模态（当使用 qwen-omni 时才取消注释此配置项）
+# audio: {"voice": "Cherry", "format": "wav"}  # 多模态音频配置（当使用 qwen-omni 时才取消注释此配置项）
 function_call: false # 是否启用工具调用（可选。需要编写 function call 插件并启用）
 ```
 
@@ -104,17 +107,4 @@ function_call: false # 是否启用工具调用（可选。需要编写 function
 
 ## Xfyun (星火大模型精调平台)
 
-```yaml
-loader: Xfyun # 使用 Xfyun 加载器
-app_id: xxxxxxx # 服务管控中的 app_id
-api_key: 1dxxxxxx # APIKey
-api_secret: XXXXX # APISecret
-service_id: xqwen257bchat # 服务管控中的 service_id
-resource_id: '123456789' # 服务管控中的 resource_id
-max_tokens: 1024 # 模型生成的最大 token 数（可选，默认为 2048）
-temperature: 0.75 # 模型生成的温度参数（可选，默认为 0.5）
-top_p: 0.95 # 模型生成的 Top_p 参数（可选，默认为 4）
-stream: false # 流式对话
-online_search: false # 联网搜索（仅支持DeepSeek系列模型）
-think: 1 # 此配置对 DeepSeek 系列模型无效
-```
+*请使用 OpenAI 接口替代*
