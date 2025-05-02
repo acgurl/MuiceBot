@@ -1,6 +1,7 @@
 from dataclasses import asdict, dataclass, field
 from datetime import datetime
-from typing import List, Literal
+from io import BytesIO
+from typing import List, Literal, Union
 
 
 @dataclass
@@ -9,8 +10,10 @@ class Resource:
 
     type: Literal["image", "video", "audio", "file"]
     """消息类型"""
-    url: str
+    url: str = ""
     """存储地址"""
+    raw: Union[bytes, BytesIO] = b""
+    """"""
 
 
 @dataclass

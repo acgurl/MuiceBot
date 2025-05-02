@@ -271,9 +271,11 @@ class Muice:
 
         async for item in response:
             processed = thought_processor.process_chunk(item.chunk)
-            if processed is not None and processed.strip():
+            if processed and processed.strip():
                 total_reply += processed
                 yield ModelStreamCompletions(chunk=processed)
+            if item.resources:
+                yield ModelStreamCompletions(resources=item.resources)
 
         end_time = time.perf_counter()
         logger.success(f"已完成流式回复: {total_reply}")

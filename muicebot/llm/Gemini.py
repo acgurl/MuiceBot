@@ -16,6 +16,7 @@ from google.genai.types import (
 from httpx import ConnectError
 from nonebot import logger
 
+from .._types import Resource
 from ._types import (
     BasicModel,
     ModelCompletions,
@@ -45,6 +46,7 @@ class Gemini(BasicModel):
             max_output_tokens=self.config.max_tokens,
             presence_penalty=self.config.presence_penalty,
             frequency_penalty=self.config.frequency_penalty,
+            response_modalities=[m.upper() for m in self.config.modalities if m in {"image", "text"}],
             safety_settings=(
                 [
                     SafetySetting(
@@ -133,6 +135,17 @@ class Gemini(BasicModel):
             if response.text:
                 compltions.text = response.text
 
+            if (
+                response.candidates
+                and response.candidates[0].content
+                and response.candidates[0].content.parts
+                and response.candidates[0].content.parts[0].inline_data
+                and response.candidates[0].content.parts[0].inline_data.data
+            ):
+                compltions.resources = [
+                    Resource(type="image", raw=response.candidates[0].content.parts[0].inline_data.data)
+                ]
+
             if response.function_calls:
                 function_call = response.function_calls[0]
                 function_name = function_call.name
@@ -187,6 +200,18 @@ class Gemini(BasicModel):
                 if chunk.usage_metadata and chunk.usage_metadata.total_token_count:
                     total_tokens = chunk.usage_metadata.total_token_count
 
+                if (
+                    chunk.candidates
+                    and chunk.candidates[0].content
+                    and chunk.candidates[0].content.parts
+                    and chunk.candidates[0].content.parts[0].inline_data
+                    and chunk.candidates[0].content.parts[0].inline_data.data
+                ):
+                    stream_completions.resources = [
+                        Resource(type="image", raw=chunk.candidates[0].content.parts[0].inline_data.data)
+                    ]
+                    yield stream_completions
+
                 if chunk.function_calls:
                     function_call = chunk.function_calls[0]
                     function_name = function_call.name
@@ -209,6 +234,7 @@ class Gemini(BasicModel):
 
             self._total_tokens += total_tokens
             stream_completions.usage = self._total_tokens
+            yield stream_completions
 
         except errors.APIError as e:
             stream_completions = ModelStreamCompletions()

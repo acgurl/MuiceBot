@@ -279,6 +279,10 @@ async def handle_command_refresh(bot: Bot, event: Event, state: T_State, matcher
                 await command_refresh.finish(paragraph)
             await command_refresh.send(paragraph)
 
+        if response.resources:
+            for resource in response.resources:
+                await _send_multi_messages(resource)
+
         return
 
     current_paragraph = ""
@@ -294,6 +298,10 @@ async def handle_command_refresh(bot: Bot, event: Event, state: T_State, matcher
             paragraphs = paragraphs[1:]
 
         current_paragraph = paragraphs[-1].strip()
+
+        if chunk.resources:
+            for resource in chunk.resources:
+                await _send_multi_messages(resource)
 
     if current_paragraph:
         await UniMessage(current_paragraph).finish()
@@ -371,6 +379,22 @@ async def _extract_multi_resources(message: UniMsg, event: Event) -> list[Resour
     return resources
 
 
+async def _send_multi_messages(resource: Resource):
+    """
+    发送多模态文件
+
+    TODO: 我们有可能对发送对象添加文件名吗？
+    """
+    if resource.type == "audio":
+        await UniMessage(uniseg.Voice(raw=resource.raw)).send()
+    elif resource.type == "image":
+        await UniMessage(uniseg.Image(raw=resource.raw)).send()
+    elif resource.type == "video":
+        await UniMessage(uniseg.Video(raw=resource.raw)).send()
+    else:
+        await UniMessage(uniseg.File(raw=resource.raw)).send()
+
+
 @at_event.handle()
 @nickname_event.handle()
 async def handle_supported_adapters(
@@ -393,7 +417,7 @@ async def handle_supported_adapters(
     # 然后等待新消息插入
     if not (merged_message := await session_manager.put_and_wait(event, bot_message)):
         matcher.skip()
-        return  # 防止类型检查器错误推断 merged_message 类型
+        return  # 防止类型检查器错误推断 merged_message 类型)
 
     message_text = merged_message.extract_plain_text()
     message_resource = await _extract_multi_resources(merged_message, event)
@@ -419,6 +443,7 @@ async def handle_supported_adapters(
         current_paragraph = ""
 
         async for chunk in muice.ask_stream(message):
+            logger.debug(chunk)
             current_paragraph += chunk.chunk
             paragraphs = current_paragraph.split("\n\n")
 
@@ -429,6 +454,10 @@ async def handle_supported_adapters(
                 paragraphs = paragraphs[1:]
 
             current_paragraph = paragraphs[-1].strip()
+
+            if chunk.resources:
+                for resource in chunk.resources:
+                    await _send_multi_messages(resource)
 
         if current_paragraph:
             await UniMessage(current_paragraph).finish()
@@ -448,3 +477,7 @@ async def handle_supported_adapters(
         if index == len(paragraphs) - 1:
             await UniMessage(paragraph).finish()
         await UniMessage(paragraph).send()
+
+    if response.resources:
+        for resource in response.resources:
+            await _send_multi_messages(resource)

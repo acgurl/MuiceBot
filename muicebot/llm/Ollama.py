@@ -28,9 +28,9 @@ class Ollama(BasicModel):
         self.top_k = self.config.top_k
         self.top_p = self.config.top_p
         self.temperature = self.config.temperature
-        self.repeat_penalty = self.config.repetition_penalty
-        self.presence_penalty = self.config.presence_penalty
-        self.frequency_penalty = self.config.frequency_penalty
+        self.repeat_penalty = self.config.repetition_penalty or 1
+        self.presence_penalty = self.config.presence_penalty or 0
+        self.frequency_penalty = self.config.frequency_penalty or 1
         self.stream = self.config.stream
 
         self._tools: List[dict] = []

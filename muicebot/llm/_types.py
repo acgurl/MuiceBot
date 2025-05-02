@@ -29,11 +29,11 @@ class ModelConfig(BaseModel):
     """模型的 top_p 系数"""
     top_k: float = 3
     """模型的 top_k 系数"""
-    frequency_penalty: float = 1.0
+    frequency_penalty: Optional[float] = None
     """模型的频率惩罚"""
-    presence_penalty: float = 0.0
+    presence_penalty: Optional[float] = None
     """模型的存在惩罚"""
-    repetition_penalty: float = 1.0
+    repetition_penalty: Optional[float] = None
     """模型的重复惩罚"""
     think: Literal[0, 1, 2] = 2
     """针对 Deepseek-R1 等思考模型的思考过程提取模式"""
@@ -70,7 +70,11 @@ class ModelConfig(BaseModel):
     """xfyun 的 resource_id"""
 
     multimodal: bool = False
-    """是否为多模态模型（注意：对应的加载器必须实现 `ask_vision` 方法）"""
+    """是否为（或启用）多模态模型"""
+    modalities: List[Literal["text", "audio", "image"]] = ["text"]
+    """生成模态"""
+    audio: Optional[Any] = None
+    """多模态音频参数"""
 
     @field_validator("loader")
     @classmethod
