@@ -65,7 +65,7 @@ class Openai(BasicModel):
 
             elif resource.type == "file":
                 file_format = resource.url.split(".")[-1]
-                file_data = f"ata:;base64,{get_file_base64(local_path=resource.url)}"
+                file_data = f"data:;base64,{get_file_base64(local_path=resource.url)}"
                 user_content.append({"type": "file", "file": {"file_data": file_data}})
 
         return {"role": "user", "content": user_content}
