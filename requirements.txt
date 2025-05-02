@@ -1,7 +1,11 @@
 APScheduler==3.11.0
+httpx>=0.27.0
 nonebot2==2.4.1
 nonebot_plugin_alconna==0.54.2
+nonebot_plugin_apscheduler>=0.5.0
 nonebot_plugin_localstore==0.7.3
+nonebot_plugin_session>=0.3.2
+nonebot_plugin_userinfo>=0.2.6
 nonebot_plugin_orm==0.7.6
 openai==1.64.0
 pydantic==2.10.5
