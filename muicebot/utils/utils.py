@@ -65,9 +65,9 @@ async def save_image_as_base64(image_url: str, proxy: Optional[str] = None) -> s
     return image_base64.decode("utf-8")
 
 
-async def legacy_get_images(message: MessageSegment, event: Event) -> str:
+async def legacy_get_images(message: MessageSegment, event: Event) -> Optional[str]:
     """
-    传统模式获取图片
+    (传统兼容模式)获取图片地址并保存到本地
 
     :return: 本地地址
     """
@@ -80,30 +80,35 @@ async def legacy_get_images(message: MessageSegment, event: Event) -> str:
     TelegramFile = ADAPTER_CLASSES["telegram_file"]
 
     if Onebotv12Bot and UnsupportedParam and isinstance(bot, Onebotv12Bot):
-        if message.type == "image":
-            try:
-                image_path = await bot.get_file(type="url", file_id=message.data["file_id"])
-            except UnsupportedParam as e:
-                logger.error(f"Onebot 实现不支持获取文件 URL，图片获取操作失败：{e}")
-                return ""
+        if message.type != "image":
+            return None
 
-            return str(image_path)
+        try:
+            image_path = await bot.get_file(type="url", file_id=message.data["file_id"])
+        except UnsupportedParam as e:
+            logger.error(f"Onebot 实现不支持获取文件 URL，图片获取操作失败：{e}")
+            return None
+
+        return str(image_path)
 
     elif Onebotv11Bot and isinstance(bot, Onebotv11Bot):
         if message.type == "image" and "url" in message.data and "file" in message.data:
             return await save_image_as_file(message.data["url"], message.data["file"])
 
     elif TelegramEvent and TelegramFile and isinstance(event, TelegramEvent):
-        if isinstance(message, TelegramFile):
-            file_id = message.data["file"]
-            file = await bot.get_file(file_id=file_id)
-            if not file.file_path:
-                return ""
-            url = f"https://api.telegram.org/file/bot{bot.bot_config.token}/{file.file_path}"  # type: ignore
-            # filename = file.file_path.split("/")[1]
-            return await save_image_as_file(url, proxy=plugin_config.telegram_proxy)
+        if not isinstance(message, TelegramFile):
+            return None
 
-    return ""
+        file_id = message.data["file"]
+        file = await bot.get_file(file_id=file_id)
+        if not file.file_path:
+            return None
+
+        url = f"https://api.telegram.org/file/bot{bot.bot_config.token}/{file.file_path}"  # type: ignore
+        # filename = file.file_path.split("/")[1]
+        return await save_image_as_file(url, proxy=plugin_config.telegram_proxy)
+
+    return None
 
 
 def init_logger():

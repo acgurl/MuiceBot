@@ -2,7 +2,7 @@ import re
 import time
 from datetime import timedelta
 from pathlib import Path
-from typing import Literal
+from typing import AsyncGenerator, Literal
 
 import nonebot_plugin_localstore as store
 from arclet.alconna import Alconna, AllParam, Args
@@ -32,7 +32,7 @@ from nonebot_plugin_session import SessionIdType, extract_session
 
 from ._types import Message, Resource
 from .config import plugin_config
-from .llm import ModelCompletions
+from .llm import ModelCompletions, ModelStreamCompletions
 from .muice import Muice
 from .plugin import get_plugins, load_plugins, set_ctx
 from .scheduler import setup_scheduler
@@ -271,40 +271,7 @@ async def handle_command_refresh(bot: Bot, event: Event, state: T_State, matcher
 
     response = await muice.refresh(userid)
 
-    if isinstance(response, ModelCompletions):
-        paragraphs = response.text.split("\n\n")
-
-        for index, paragraph in enumerate(paragraphs):
-            if index == len(paragraphs) - 1:
-                await command_refresh.finish(paragraph)
-            await command_refresh.send(paragraph)
-
-        if response.resources:
-            for resource in response.resources:
-                await _send_multi_messages(resource)
-
-        return
-
-    current_paragraph = ""
-
-    async for chunk in response:
-        current_paragraph += chunk.chunk
-        paragraphs = current_paragraph.split("\n\n")
-
-        while len(paragraphs) > 1:
-            current_paragraph = paragraphs[0].strip()
-            if current_paragraph:
-                await UniMessage(current_paragraph).send()
-            paragraphs = paragraphs[1:]
-
-        current_paragraph = paragraphs[-1].strip()
-
-        if chunk.resources:
-            for resource in chunk.resources:
-                await _send_multi_messages(resource)
-
-    if current_paragraph:
-        await UniMessage(current_paragraph).finish()
+    await _send_message(response)
 
 
 @command_undo.handle()
@@ -350,7 +317,9 @@ async def _extract_multi_resource(
                 path = await legacy_get_images(resource.origin, event)
             else:
                 path = await save_image_as_file(resource.url)
-            resources.append(Resource(type, path))
+
+            if path:
+                resources.append(Resource(type, path))
         except Exception as e:
             logger.error(f"处理图片失败: {e}")
 
@@ -393,6 +362,48 @@ async def _send_multi_messages(resource: Resource):
         await UniMessage(uniseg.Video(raw=resource.raw)).send()
     else:
         await UniMessage(uniseg.File(raw=resource.raw)).send()
+
+
+async def _send_message(completions: ModelCompletions | AsyncGenerator[ModelStreamCompletions, None]):
+    # non-stream
+    if isinstance(completions, ModelCompletions):
+        paragraphs = completions.text.split("\n\n")
+
+        for index, paragraph in enumerate(paragraphs):
+            if not paragraph.strip():
+                continue  # 跳过空白文段
+            if index == len(paragraphs) - 1:
+                await UniMessage(paragraph).finish()
+            await UniMessage(paragraph).send()
+
+        if completions.resources:
+            for resource in completions.resources:
+                await _send_multi_messages(resource)
+
+        return
+
+    # stream
+    current_paragraph = ""
+
+    async for chunk in completions:
+        logger.debug(chunk)
+        current_paragraph += chunk.chunk
+        paragraphs = current_paragraph.split("\n\n")
+
+        while len(paragraphs) > 1:
+            current_paragraph = paragraphs[0].strip()
+            if current_paragraph:
+                await UniMessage(current_paragraph).send()
+            paragraphs = paragraphs[1:]
+
+        current_paragraph = paragraphs[-1].strip()
+
+        if chunk.resources:
+            for resource in chunk.resources:
+                await _send_multi_messages(resource)
+
+    if current_paragraph:
+        await UniMessage(current_paragraph).finish()
 
 
 @at_event.handle()
@@ -440,44 +451,13 @@ async def handle_supported_adapters(
 
     # Stream
     if muice.model_config.stream:
-        current_paragraph = ""
-
-        async for chunk in muice.ask_stream(message):
-            logger.debug(chunk)
-            current_paragraph += chunk.chunk
-            paragraphs = current_paragraph.split("\n\n")
-
-            while len(paragraphs) > 1:
-                current_paragraph = paragraphs[0].strip()
-                if current_paragraph:
-                    await UniMessage(current_paragraph).send()
-                paragraphs = paragraphs[1:]
-
-            current_paragraph = paragraphs[-1].strip()
-
-            if chunk.resources:
-                for resource in chunk.resources:
-                    await _send_multi_messages(resource)
-
-        if current_paragraph:
-            await UniMessage(current_paragraph).finish()
-
+        stream_completions = muice.ask_stream(message)
+        await _send_message(stream_completions)
         return
 
     # non-stream
-    response = await muice.ask(message)
+    completions = await muice.ask(message)
 
-    logger.info(f"生成最终回复: {response}")
+    logger.info(f"生成最终回复: {completions}")
 
-    paragraphs = response.text.split("\n\n")
-
-    for index, paragraph in enumerate(paragraphs):
-        if not paragraph.strip():
-            continue  # 跳过空白文段
-        if index == len(paragraphs) - 1:
-            await UniMessage(paragraph).finish()
-        await UniMessage(paragraph).send()
-
-    if response.resources:
-        for resource in response.resources:
-            await _send_multi_messages(resource)
+    await _send_message(completions)
