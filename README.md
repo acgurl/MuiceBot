@@ -5,16 +5,16 @@
 </div>
 <div align=center>
   <img src="https://img.shields.io/github/stars/Moemu/MuiceBot" alt="Stars">
-  <img src="https://img.shields.io/badge/python-3.10+-blue" alt="python">
-  <img src="https://img.shields.io/badge/nonebot-2-red" alt="nonebot2">
+  <a href="https://pypi.org/project/MuiceBot/"><img src="https://img.shields.io/pypi/v/Muicebot" alt="PyPI Version"></a>
+  <a href="https://pypi.org/project/MuiceBot/"><img src="https://img.shields.io/pypi/dm/Muicebot" alt="PyPI Downloads" ></a>
+  <a href="https://nonebot.dev/"><img src="https://img.shields.io/badge/nonebot-2-red" alt="nonebot2"></a>
   <img src="https://img.shields.io/badge/Code%20Style-Black-121110.svg" alt="codestyle">
-  <img src="https://github.com/Moemu/MuiceBot/actions/workflows/pre-commit.yml/badge.svg?branch=main" alt="Pre-commit Checks">
 </div>
 <div align=center>
   <img src="https://wakatime.com/badge/user/637d5886-8b47-4b82-9264-3b3b9d6add67/project/a4557f7b-4d26-4105-842a-7a783cbad588.svg" alt="wakatime">
   <img src="https://img.shields.io/badge/ModelScope-Dataset-644cfd?link=https://www.modelscope.cn/datasets/Moemuu/Muice-Dataset" alt="ModelScope">
   <img src="https://img.shields.io/badge/HuggingFace-Dataset-yellow?link=https%3A%2F%2Fhuggingface.co%2Fdatasets%2FMoemu%2FMuice-Dataset" alt="HuggingFace">
-  <a href='https://qm.qq.com/q/lhUBw6Gcdq'><img src="https://img.shields.io/badge/QQ群-MuikaHouse-blue" alt="QQ群组"></a>
+  <a href='https://qm.qq.com/q/lhUBw6Gcdq'><img src="https://img.shields.io/badge/QQ群-MuiceHouse-blue" alt="QQ群组"></a>
 </div>
 <div align=center>
   <a href="https://bot.snowy.moe">📃使用文档</a>
@@ -89,13 +89,11 @@
 
 - [X] 多模态模型：工具集支持
 
-- [ ] OFA 图像识别。既然都有了多模态为什么还用 OFA？好吧，因为没钱调用接口
-
-- [ ] Faiss 记忆优化。沐雪总记不太清楚上一句话是什么
+- [ ] 插件系统
 
 - [ ] 短期记忆和长期记忆优化。总感觉这是提示工程师该做的事情，~~和 Bot 没太大关系~~
 
-- [ ] （多）对话语音合成器。比如 [GPT-SoVITS](https://github.com/RVC-Boss/GPT-SoVITS) 、[RVC](https://github.com/RVC-Project/Retrieval-based-Voice-Conversion-WebUI)之类的。
+- [ ] 一些神奇的妙妙插件
 
 - [ ] 发布。我知道你很急，但是你先别急。
 
@@ -135,9 +133,7 @@ BSD 3 许可证同样适用于沐雪的系统提示词，沐雪的文字人设�
 
 基于 OneBot V11 的原始实现：[Moemu/Muice-Chatbot](https://github.com/Moemu/Muice-Chatbot)
 
-QQ群：[Muika House](https://pd.qq.com/s/d4n2xp45i)
-
-Telegram群组： [@MuikaWorld](https://t.me/muikaworld)
+QQ群：[Muice House](https://pd.qq.com/s/d4n2xp45i)
 
 <a href="https://www.afdian.com/a/Moemu" target="_blank"><img src="https://pic1.afdiancdn.com/static/img/welcome/button-sponsorme.png" alt="afadian" style="height: 45px !important;width: 163px !important;"></a>
 <a href="https://www.buymeacoffee.com/Moemu" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" style="height: 45px !important;width: 163px !important;" ></a>
@@ -145,6 +141,3 @@ Telegram群组： [@MuikaWorld](https://t.me/muikaworld)
 Star History：
 
 [![Star History Chart](https://api.star-history.com/svg?repos=Moemu/MuiceBot&type=Date)](https://star-history.com/#Moemu/MuiceBot&Date)
-
-
-*还在看什么呢，大叔？确定不自己部署一个或者加入官方群组试一下吗？我拿沐沐的人格担保，你不会后悔的（偷笑）*
