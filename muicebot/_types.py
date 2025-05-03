@@ -13,7 +13,13 @@ class Resource:
     url: str = ""
     """存储地址"""
     raw: Union[bytes, BytesIO] = b""
-    """"""
+    """二进制数据（只使用于模型返回且不保存到数据库中）"""
+
+    def to_dict(self) -> dict:
+        return {
+            "type": self.type,
+            "url": self.url,
+        }
 
 
 @dataclass

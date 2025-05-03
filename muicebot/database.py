@@ -85,7 +85,7 @@ class Database:
         """
         将消息保存到数据库
         """
-        resources_data = [r.__dict__ for r in message.resources]
+        resources_data = [r.to_dict() for r in message.resources]
         params = (
             message.time,
             message.userid,
