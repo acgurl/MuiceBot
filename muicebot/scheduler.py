@@ -6,6 +6,7 @@ from apscheduler.triggers.interval import IntervalTrigger
 from nonebot import get_bot, logger
 from nonebot_plugin_alconna.uniseg import Target, UniMessage
 
+from ._types import Message
 from .config import get_schedule_configs
 from .muice import Muice
 
@@ -42,10 +43,11 @@ async def model_ask(muice_app: Muice, target_id: str, prompt: str, probability: 
     logger.info(f"定时任务: model_ask: {prompt}")
 
     if muice_app.model and muice_app.model.is_running:
-        message = await muice_app.ask(prompt, f"(bot_ask){target_id}", enable_history=False, enable_plugins=False)
+        message = Message(message=prompt, userid=f"(bot_ask){target_id}")
+        response = await muice_app.ask(message, enable_history=False, enable_plugins=False)
 
-    target = Target(target_id)
-    await UniMessage(message).send(target=target, bot=get_bot())
+        target = Target(target_id)
+        await UniMessage(response.text).send(target=target, bot=get_bot())
 
 
 def setup_scheduler(muice: Muice) -> AsyncIOScheduler:

@@ -2,6 +2,7 @@ import re
 import time
 from datetime import timedelta
 from pathlib import Path
+from typing import Literal
 
 import nonebot_plugin_localstore as store
 from arclet.alconna import Alconna, AllParam, Args
@@ -10,7 +11,8 @@ from nonebot import (
     get_driver,
     logger,
 )
-from nonebot.adapters import Bot, Event, Message
+from nonebot.adapters import Bot, Event
+from nonebot.adapters import Message as BotMessage
 from nonebot.matcher import Matcher
 from nonebot.permission import SUPERUSER
 from nonebot.rule import to_me
@@ -22,12 +24,15 @@ from nonebot_plugin_alconna import (
     MsgTarget,
     UniMessage,
     on_alconna,
+    uniseg,
 )
 from nonebot_plugin_alconna.builtins.extensions import ReplyRecordExtension
-from nonebot_plugin_alconna.uniseg import Image, UniMsg
+from nonebot_plugin_alconna.uniseg import UniMsg
 from nonebot_plugin_session import SessionIdType, extract_session
 
+from ._types import Message, Resource
 from .config import plugin_config
+from .llm import ModelCompletions
 from .muice import Muice
 from .plugin import get_plugins, load_plugins, set_ctx
 from .scheduler import setup_scheduler
@@ -266,20 +271,24 @@ async def handle_command_refresh(bot: Bot, event: Event, state: T_State, matcher
 
     response = await muice.refresh(userid)
 
-    if isinstance(response, str):
-        paragraphs = response.split("\n\n")
+    if isinstance(response, ModelCompletions):
+        paragraphs = response.text.split("\n\n")
 
         for index, paragraph in enumerate(paragraphs):
             if index == len(paragraphs) - 1:
                 await command_refresh.finish(paragraph)
             await command_refresh.send(paragraph)
 
+        if response.resources:
+            for resource in response.resources:
+                await _send_multi_messages(resource)
+
         return
 
     current_paragraph = ""
 
     async for chunk in response:
-        current_paragraph += chunk
+        current_paragraph += chunk.chunk
         paragraphs = current_paragraph.split("\n\n")
 
         while len(paragraphs) > 1:
@@ -289,6 +298,10 @@ async def handle_command_refresh(bot: Bot, event: Event, state: T_State, matcher
             paragraphs = paragraphs[1:]
 
         current_paragraph = paragraphs[-1].strip()
+
+        if chunk.resources:
+            for resource in chunk.resources:
+                await _send_multi_messages(resource)
 
     if current_paragraph:
         await UniMessage(current_paragraph).finish()
@@ -322,10 +335,70 @@ async def handle_command_start():
     pass
 
 
+async def _extract_multi_resource(
+    message: UniMessage, type: Literal["audio", "image", "video", "file"], event: Event
+) -> list[Resource]:
+    """
+    提取单个多模态文件
+    """
+    resources = []
+
+    for resource in message:
+        try:
+            if not resource.url:
+                logger.warning("无法通过通用方式获取图片URL，回退至传统方式...")
+                path = await legacy_get_images(resource.origin, event)
+            else:
+                path = await save_image_as_file(resource.url)
+            resources.append(Resource(type, path))
+        except Exception as e:
+            logger.error(f"处理图片失败: {e}")
+
+    return resources
+
+
+async def _extract_multi_resources(message: UniMsg, event: Event) -> list[Resource]:
+    """
+    提取多个多模态文件
+    """
+    if not muice.model_config.multimodal:
+        return []
+
+    resources = []
+
+    message_audio = message.get(uniseg.Audio) + message.get(uniseg.Voice)
+    message_images = message.get(uniseg.Image)
+    message_file = message.get(uniseg.File)
+    message_video = message.get(uniseg.Video)
+
+    resources.extend(await _extract_multi_resource(message_audio, "audio", event))
+    resources.extend(await _extract_multi_resource(message_file, "file", event))
+    resources.extend(await _extract_multi_resource(message_images, "image", event))
+    resources.extend(await _extract_multi_resource(message_video, "video", event))
+
+    return resources
+
+
+async def _send_multi_messages(resource: Resource):
+    """
+    发送多模态文件
+
+    TODO: 我们有可能对发送对象添加文件名吗？
+    """
+    if resource.type == "audio":
+        await UniMessage(uniseg.Voice(raw=resource.raw)).send()
+    elif resource.type == "image":
+        await UniMessage(uniseg.Image(raw=resource.raw)).send()
+    elif resource.type == "video":
+        await UniMessage(uniseg.Video(raw=resource.raw)).send()
+    else:
+        await UniMessage(uniseg.File(raw=resource.raw)).send()
+
+
 @at_event.handle()
 @nickname_event.handle()
 async def handle_supported_adapters(
-    message: UniMsg,
+    bot_message: UniMsg,
     event: Event,
     bot: Bot,
     state: T_State,
@@ -334,20 +407,20 @@ async def handle_supported_adapters(
     ext: ReplyRecordExtension,
 ):
     # 先拿到引用消息并合并到 message (如果有)
-    if message_reply := ext.get_reply(message.get_message_id()):
+    if message_reply := ext.get_reply(bot_message.get_message_id()):
         reply_message = message_reply.msg
-        if isinstance(reply_message, Message):
-            message += UniMessage("\n被引用的消息: ") + await UniMessage.generate(message=reply_message)
+        if isinstance(reply_message, BotMessage):
+            bot_message += UniMessage("\n被引用的消息: ") + await UniMessage.generate(message=reply_message)
         else:
-            message += UniMessage(f"\n被引用的消息: {reply_message}")
+            bot_message += UniMessage(f"\n被引用的消息: {reply_message}")
 
     # 然后等待新消息插入
-    if not (merged_message := await session_manager.put_and_wait(event, message)):
+    if not (merged_message := await session_manager.put_and_wait(event, bot_message)):
         matcher.skip()
-        return  # 防止类型检查器错误推断 merged_message 类型
+        return  # 防止类型检查器错误推断 merged_message 类型)
 
     message_text = merged_message.extract_plain_text()
-    message_images = merged_message.get(Image)
+    message_resource = await _extract_multi_resources(merged_message, event)
 
     userid = event.get_user_id()
     if not target.private:
@@ -358,33 +431,20 @@ async def handle_supported_adapters(
 
     set_ctx(bot, event, state, matcher)  # 注册上下文信息以供插件、传统图片获取器使用
 
-    images_set = set()
+    logger.info(f"收到消息文本: {message_text} 多模态消息: {message_resource}")
 
-    for img in message_images if muice.model_config.multimodal else []:
-        try:
-            if not img.url:
-                logger.warning("无法通过通用方式获取图片URL，回退至传统方式...")
-                legacy_path = await legacy_get_images(img.origin, event)
-                images_set.add(legacy_path)
-            else:
-                path = await save_image_as_file(img.url)
-                images_set.add(path)
-        except Exception as e:
-            logger.error(f"处理图片失败: {e}")
-
-    image_paths = list(images_set)
-
-    logger.info(f"收到消息文本: {message_text} 图片体: {image_paths}")
-
-    if not any((message_text, image_paths)):
+    if not any((message_text, message_resource)):
         return
+
+    message = Message(message=message_text, userid=userid, groupid=group_id, resources=message_resource)
 
     # Stream
     if muice.model_config.stream:
         current_paragraph = ""
 
-        async for chunk in muice.ask_stream(message_text, userid, group_id, image_paths=image_paths):
-            current_paragraph += chunk
+        async for chunk in muice.ask_stream(message):
+            logger.debug(chunk)
+            current_paragraph += chunk.chunk
             paragraphs = current_paragraph.split("\n\n")
 
             while len(paragraphs) > 1:
@@ -395,18 +455,21 @@ async def handle_supported_adapters(
 
             current_paragraph = paragraphs[-1].strip()
 
+            if chunk.resources:
+                for resource in chunk.resources:
+                    await _send_multi_messages(resource)
+
         if current_paragraph:
             await UniMessage(current_paragraph).finish()
 
         return
 
     # non-stream
-    response = await muice.ask(message_text, userid, group_id, image_paths=image_paths)
-    response = response.strip()
+    response = await muice.ask(message)
 
     logger.info(f"生成最终回复: {response}")
 
-    paragraphs = response.split("\n\n")
+    paragraphs = response.text.split("\n\n")
 
     for index, paragraph in enumerate(paragraphs):
         if not paragraph.strip():
@@ -414,3 +477,7 @@ async def handle_supported_adapters(
         if index == len(paragraphs) - 1:
             await UniMessage(paragraph).finish()
         await UniMessage(paragraph).send()
+
+    if response.resources:
+        for resource in response.resources:
+            await _send_multi_messages(resource)

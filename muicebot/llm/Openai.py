@@ -1,60 +1,96 @@
+import base64
 import json
-from typing import AsyncGenerator, List, Literal, Optional, Union, overload
+from io import BytesIO
+from typing import AsyncGenerator, List, Literal, Union, overload
 
 import openai
 from nonebot import logger
-from openai import NOT_GIVEN
+from openai import NOT_GIVEN, NotGiven
 from openai.types.chat import ChatCompletionMessage, ChatCompletionToolParam
 
-from ._types import BasicModel, Message, ModelConfig, function_call_handler
-from .utils.images import get_image_base64
+from .._types import Resource
+from ._types import (
+    BasicModel,
+    ModelCompletions,
+    ModelConfig,
+    ModelRequest,
+    ModelStreamCompletions,
+    function_call_handler,
+)
+from .utils.images import get_file_base64
 
 
 class Openai(BasicModel):
+    _tools: List[ChatCompletionToolParam]
+    modalities: Union[List[Literal["text", "audio"]], NotGiven]
+
     def __init__(self, model_config: ModelConfig) -> None:
         super().__init__(model_config)
         self._require("api_key", "model_name")
         self.api_key = self.config.api_key
         self.model = self.config.model_name
-        self.api_base = self.config.api_host if self.config.api_host else "https://api.openai.com/v1"
+        self.api_base = self.config.api_host or "https://api.openai.com/v1"
         self.max_tokens = self.config.max_tokens
         self.temperature = self.config.temperature
         self.stream = self.config.stream
+        self.modalities = [m for m in self.config.modalities if m in {"text", "audio"}] or NOT_GIVEN  # type:ignore
+        self.audio = self.config.audio if (self.modalities and self.config.audio) else NOT_GIVEN
 
         self.client = openai.AsyncOpenAI(api_key=self.api_key, base_url=self.api_base, timeout=30)
-        self._tools: List[ChatCompletionToolParam] = []
+        self._tools = []
 
-    def __build_image_message(self, prompt: str, image_paths: List[str]) -> dict:
-        user_content: List[dict] = [{"type": "text", "text": prompt}]
+    def __build_multi_messages(self, request: ModelRequest) -> dict:
+        """
+        构建多模态类型
 
-        for url in image_paths:
-            image_format = url.split(".")[-1]
-            image_url = f"data:image/{image_format};base64,{get_image_base64(local_path=url)}"
-            user_content.append({"type": "image_url", "image_url": {"url": image_url}})
+        此模型加载器支持的多模态类型: `audio` `image` `video` `file`
+        """
+        user_content: List[dict] = [{"type": "text", "text": request.prompt}]
+
+        for resource in request.resources:
+            if resource.type == "audio":
+                file_format = resource.url.split(".")[-1]
+                file_data = f"data:;base64,{get_file_base64(local_path=resource.url)}"
+                user_content.append({"type": "input_audio", "input_audio": {"data": file_data, "format": file_format}})
+
+            elif resource.type == "image":
+                file_format = resource.url.split(".")[-1]
+                file_data = f"data:image/{file_format};base64,{get_file_base64(local_path=resource.url)}"
+                user_content.append({"type": "image_url", "image_url": {"url": file_data}})
+
+            elif resource.type == "video":
+                file_format = resource.url.split(".")[-1]
+                file_data = f"data:;base64,{get_file_base64(local_path=resource.url)}"
+                user_content.append({"type": "video_url", "video_url": {"url": file_data}})
+
+            elif resource.type == "file":
+                file_format = resource.url.split(".")[-1]
+                file_data = f"data:;base64,{get_file_base64(local_path=resource.url)}"
+                user_content.append({"type": "file", "file": {"file_data": file_data}})
 
         return {"role": "user", "content": user_content}
 
-    def _build_messages(
-        self, prompt: str, history: List[Message], image_paths: Optional[List[str]] = [], system: Optional[str] = None
-    ) -> list:
+    def _build_messages(self, request: ModelRequest) -> list:
         messages = []
 
-        if system:
-            messages.append({"role": "system", "content": system})
+        if request.system:
+            messages.append({"role": "system", "content": request.system})
 
-        if history:
-            for index, item in enumerate(history):
+        if request.history:
+            for index, item in enumerate(request.history):
                 user_content = (
                     {"role": "user", "content": item.message}
-                    if not all([item.images, self.config.multimodal])
-                    else self.__build_image_message(item.message, item.images)
+                    if not all([item.resources, self.config.multimodal])
+                    else self.__build_multi_messages(ModelRequest(item.message, resources=item.resources))
                 )
 
                 messages.append(user_content)
                 messages.append({"role": "assistant", "content": item.respond})
 
         user_content = (
-            {"role": "user", "content": prompt} if not image_paths else self.__build_image_message(prompt, image_paths)
+            {"role": "user", "content": request.prompt}
+            if not request.resources
+            else self.__build_multi_messages(request)
         )
 
         messages.append(user_content)
@@ -76,10 +112,14 @@ class Openai(BasicModel):
 
         return True
 
-    async def _ask_sync(self, messages: list, **kwargs) -> str:
+    async def _ask_sync(self, messages: list, **kwargs) -> ModelCompletions:
+        completions = ModelCompletions()
+
         try:
             response = await self.client.chat.completions.create(
+                audio=self.audio,
                 model=self.model,
+                modalities=self.modalities,
                 messages=messages,
                 max_tokens=self.max_tokens,
                 temperature=self.temperature,
@@ -89,7 +129,7 @@ class Openai(BasicModel):
 
             result = ""
             message = response.choices[0].message  # type:ignore
-            self.total_tokens += response.usage.total_tokens if response.usage else -1
+            self._total_tokens += response.usage.total_tokens if response.usage else -1
 
             if (
                 hasattr(message, "reasoning_content")  # type:ignore
@@ -119,25 +159,41 @@ class Openai(BasicModel):
             if message.content:  # type:ignore
                 result += message.content  # type:ignore
 
-            return result if result else "（警告：模型无输出！）"
+            # 多模态消息处理（目前仅支持 audio 输出）
+            if response.choices[0].message.audio:
+                wav_bytes = base64.b64decode(response.choices[0].message.audio.data)
+                completions.resources = [Resource(type="audio", raw=wav_bytes)]
+
+            completions.text = result or "（警告：模型无输出！）"
+            completions.usage = self._total_tokens
 
         except openai.APIConnectionError as e:
             error_message = f"API 连接错误: {e}"
+            completions.text = error_message
             logger.error(error_message)
             logger.error(e.__cause__)
-            self.succeed = False
+            completions.succeed = False
 
         except openai.APIStatusError as e:
             error_message = f"API 状态异常: {e.status_code}({e.response})"
+            completions.text = error_message
             logger.error(error_message)
-            self.succeed = False
+            completions.succeed = False
 
-        return error_message
+        return completions
 
-    async def _ask_stream(self, messages: list, **kwargs) -> AsyncGenerator[str, None]:
+    async def _ask_stream(self, messages: list, **kwargs) -> AsyncGenerator[ModelStreamCompletions, None]:
+        is_insert_think_label = False
+        function_id = ""
+        function_name = ""
+        function_arguments = ""
+        audio_string = ""
+
         try:
             response = await self.client.chat.completions.create(
+                audio=self.audio,
                 model=self.model,
+                modalities=self.modalities,
                 messages=messages,
                 max_tokens=self.max_tokens,
                 temperature=self.temperature,
@@ -146,19 +202,19 @@ class Openai(BasicModel):
                 tools=self._tools,
             )
 
-            is_insert_think_label = False
-            function_id = ""
-            function_name = ""
-            function_arguments = ""
-
             async for chunk in response:
-                # 处理 Function call
+                stream_completions = ModelStreamCompletions()
+
+                # 获取 usage （最后一个包中返回）
                 if chunk.usage:
-                    self.total_tokens += chunk.usage.total_tokens
+                    self._total_tokens += chunk.usage.total_tokens
+                    stream_completions.usage = self._total_tokens
 
                 if not chunk.choices:
+                    yield stream_completions
                     continue
 
+                # 处理 Function call
                 if chunk.choices[0].delta.tool_calls:
                     tool_call = chunk.choices[0].delta.tool_calls[0]
                     if tool_call.id:
@@ -177,12 +233,26 @@ class Openai(BasicModel):
                     hasattr(delta, "reasoning_content") and delta.reasoning_content  # type:ignore
                 ):
                     reasoning_content = chunk.choices[0].delta.reasoning_content  # type:ignore
-                    yield (reasoning_content if is_insert_think_label else "<think>" + reasoning_content)
+                    stream_completions.chunk = (
+                        reasoning_content if is_insert_think_label else "<think>" + reasoning_content
+                    )
+                    yield stream_completions
                     is_insert_think_label = True
 
                 elif answer_content:
-                    yield (answer_content if not is_insert_think_label else "</think>" + answer_content)
+                    stream_completions.chunk = (
+                        answer_content if not is_insert_think_label else "</think>" + answer_content
+                    )
+                    yield stream_completions
                     is_insert_think_label = False
+
+                # 处理多模态消息 (audio-only) (非标准方法，可能出现问题)
+                if hasattr(chunk.choices[0].delta, "audio"):
+                    audio = chunk.choices[0].delta.audio  # type:ignore
+                    if audio.get("data", None):
+                        audio_string += audio.get("data")
+                    stream_completions.chunk = audio.get("transcript", "")
+                    yield stream_completions
 
             if function_id:
                 logger.info(f"function call 请求 {function_name}, 参数: {function_arguments}")
@@ -212,56 +282,52 @@ class Openai(BasicModel):
                 async for chunk in self._ask_stream(messages):
                     yield chunk
 
+            # 处理多模态返回
+            if audio_string:
+                import numpy as np
+                import soundfile as sf
+
+                wav_bytes = base64.b64decode(audio_string)
+                pcm_data = np.frombuffer(wav_bytes, dtype=np.int16)
+                wav_io = BytesIO()
+                sf.write(wav_io, pcm_data, samplerate=24000, format="WAV")
+
+                stream_completions = ModelStreamCompletions()
+                stream_completions.resources = [Resource(type="audio", raw=wav_io)]
+                yield stream_completions
+
         except openai.APIConnectionError as e:
             error_message = f"API 连接错误: {e}"
             logger.error(error_message)
             logger.error(e.__cause__)
-            yield error_message
+            stream_completions = ModelStreamCompletions()
+            stream_completions.chunk = error_message
+            stream_completions.succeed = False
+            yield stream_completions
 
         except openai.APIStatusError as e:
             error_message = f"API 状态异常: {e.status_code}({e.response})"
             logger.error(error_message)
-            yield error_message
+            stream_completions = ModelStreamCompletions()
+            stream_completions.chunk = error_message
+            stream_completions.succeed = False
+            yield stream_completions
+
+    @overload
+    async def ask(self, request: ModelRequest, *, stream: Literal[False] = False) -> ModelCompletions: ...
 
     @overload
     async def ask(
-        self,
-        prompt: str,
-        history: List[Message],
-        images: Optional[List[str]] = [],
-        tools: Optional[List[dict]] = [],
-        stream: Literal[False] = False,
-        system: Optional[str] = None,
-        **kwargs,
-    ) -> str: ...
-
-    @overload
-    async def ask(
-        self,
-        prompt: str,
-        history: List[Message],
-        images: Optional[List[str]] = [],
-        tools: Optional[List[dict]] = [],
-        stream: Literal[True] = True,
-        system: Optional[str] = None,
-        **kwargs,
-    ) -> AsyncGenerator[str, None]: ...
+        self, request: ModelRequest, *, stream: Literal[True] = True
+    ) -> AsyncGenerator[ModelStreamCompletions, None]: ...
 
     async def ask(
-        self,
-        prompt: str,
-        history: List[Message],
-        images: Optional[List[str]] = [],
-        tools: Optional[List[dict]] = [],
-        stream: Optional[bool] = False,
-        system: Optional[str] = None,
-        **kwargs,
-    ) -> Union[AsyncGenerator[str, None], str]:
-        self.succeed = True
-        self._tools = tools if tools else NOT_GIVEN  # type:ignore
-        self.total_tokens = 0
+        self, request: ModelRequest, *, stream: bool = False
+    ) -> Union[ModelCompletions, AsyncGenerator[ModelStreamCompletions, None]]:
+        self._tools = request.tools if request.tools else NOT_GIVEN  # type:ignore
+        self._total_tokens = 0
 
-        messages = self._build_messages(prompt, history, images, system)
+        messages = self._build_messages(request)
 
         if stream:
             return self._ask_stream(messages)

@@ -1,61 +1,43 @@
 import re
-from typing import Literal
-
-inside_think = False
+from typing import Optional
 
 
-def process_thoughts(message: str, status: Literal[0, 1, 2] = 1) -> tuple[str, str]:
-    """
-    思维过程提取优化
+class ThoughtProcessor:
+    def __init__(self, status: int = 1):
+        if status not in (0, 1, 2):
+            raise ValueError("status must be 0, 1, or 2")
+        self.status = status
+        self.inside_think = False  # 用于流式处理
 
-    :param message: 消息内容
-    :param status: 思维链处理状态 (0: 无需处理，直接返回； 1: 提取思考过程并单独成段； 2: 仅输出思考结果)
-    """
-    if not status:
-        return ("", message)
+    def process_message(self, message: str) -> tuple[str, str]:
+        if self.status == 0:
+            return "", message
 
-    thoughts_pattern = re.compile(r"<think>(.*?)</think>", re.DOTALL)
-    thoughts_match = thoughts_pattern.search(message)
-    thoughts = thoughts_match.group(1) if thoughts_match else ""
+        thoughts_pattern = re.compile(r"<think>(.*?)</think>", re.DOTALL)
+        match = thoughts_pattern.search(message)
+        thoughts = match.group(1).replace("\n", "") if match else ""
+        result = thoughts_pattern.sub("", message).strip()
 
-    if thoughts == "\n\n":
-        thoughts = ""
-    else:
-        thoughts = thoughts.replace("\n", "")
+        if self.status == 2 or not thoughts:
+            return "", result
 
-    result = thoughts_pattern.sub("", message).strip()
+        return f"思考过程：{thoughts}", result
 
-    if status == 2 or not thoughts:
-        return ("", result)
+    def process_chunk(self, chunk: str) -> Optional[str]:
+        if self.status == 0:
+            return chunk
 
-    return (f"思考过程：{thoughts}", f"{result}")
+        if self.status == 2:
+            if "<think>" in chunk:
+                self.inside_think = True
+                chunk = chunk.replace("<think>", "")
+            if "</think>" in chunk:
+                self.inside_think = False
+                chunk = chunk.replace("</think>", "")
+            if self.inside_think:
+                return None  # 当前在思考区域，屏蔽掉
+            return chunk
 
-
-def stream_process_thoughts(chunk: str, status: Literal[0, 1, 2] = 1) -> str:
-    """
-    流式思维过程提取优化
-
-    :param message: 消息内容
-    :param status: 思维链处理状态 (0: 无需处理，直接返回； 1: 提取思考过程并单独成段； 2: 仅输出思考结果)
-    """
-    global inside_think
-
-    if not status:
+        # status == 1
+        chunk = chunk.replace("<think>", "思考过程：").replace("</think>", "\n\n")
         return chunk
-
-    if status == 2:
-        if "<think>" in chunk:
-            inside_think = True
-            chunk = chunk.replace("<think>", "")
-
-        if "</think>" in chunk:
-            inside_think = False
-            chunk = chunk.replace("</think>", "")
-
-        if inside_think:
-            return ""
-
-        return chunk
-
-    chunk = chunk.replace("<think>", "思考过程：").replace("</think>", "\n\n")
-    return chunk

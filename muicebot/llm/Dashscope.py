@@ -1,5 +1,6 @@
 import asyncio
 import json
+from dataclasses import dataclass
 from functools import partial
 from pathlib import Path
 from typing import (
@@ -7,7 +8,6 @@ from typing import (
     Generator,
     List,
     Literal,
-    Optional,
     Union,
     overload,
 )
@@ -19,7 +19,67 @@ from dashscope.api_entities.dashscope_response import (
 )
 from nonebot import logger
 
-from ._types import BasicModel, Message, ModelConfig, function_call_handler
+from ._types import (
+    BasicModel,
+    ModelCompletions,
+    ModelConfig,
+    ModelRequest,
+    ModelStreamCompletions,
+    function_call_handler,
+)
+
+
+@dataclass
+class FunctionCallStream:
+    enable: bool = False
+    id: str = ""
+    function_name: str = ""
+    function_args: str = ""
+
+    def from_chunk(self, chunk: GenerationResponse | MultiModalConversationResponse):
+        tool_calls = chunk.output.choices[0].message.tool_calls
+        tool_call = tool_calls[0]
+
+        if tool_call.get("id", ""):
+            self.id = tool_call["id"]
+
+        if tool_call.get("function", {}).get("name", ""):
+            self.name = tool_call.get("function").get("name")
+
+        function_arg = tool_call.get("function", {}).get("arguments", "")
+
+        if function_arg and self.function_args != function_arg:
+            self.function_args += function_arg
+
+        self.enable = True
+
+
+class ThoughtStream:
+    def __init__(self):
+        self.is_insert_think_label: bool = False
+
+    def process_chunk(self, chunk: GenerationResponse | MultiModalConversationResponse) -> str:
+        choice = chunk.output.choices[0].message
+        answer_content = choice.content
+        reasoning_content = choice.get("reasoning_content", "")
+        reasoning_content = reasoning_content.replace("\n</think>", "") if reasoning_content else ""
+
+        # 处理模型可能输出的 reasoning（思考内容）
+        if reasoning_content:
+            if not self.is_insert_think_label:
+                self.is_insert_think_label = True
+                return f"<think>{reasoning_content}"
+            else:
+                return reasoning_content
+
+        if isinstance(answer_content, list):
+            answer_content = answer_content[0].get("text", "")
+
+        if self.is_insert_think_label:
+            self.is_insert_think_label = False
+            return f"</think>{answer_content}"
+
+        return answer_content
 
 
 class Dashscope(BasicModel):
@@ -41,43 +101,55 @@ class Dashscope(BasicModel):
         )
 
         self.stream = False
-        self.succeed = True
 
-    def __build_image_message(self, prompt: str, image_paths: List[str]) -> dict:
-        image_contents = []
-        for image_path in image_paths:
-            if not (image_path.startswith("http") or image_path.startswith("file:")):
-                image_path = str(Path(image_path).resolve())
+    def __build_multi_messages(self, request: ModelRequest) -> dict:
+        """
+        构建多模态类型
 
-            image_contents.append({"image": image_path})
+        此模型加载器支持的多模态类型: `audio` `image`
+        """
+        multi_contents: List[dict[str, str]] = []
 
-        user_content = [image_content for image_content in image_contents]
+        for item in request.resources:
+            if item.type == "audio":
+                if not (item.url.startswith("http") or item.url.startswith("file:")):
+                    item.url = str(Path(item.url).resolve())
 
-        if not prompt:
-            prompt = "请描述图像内容"
-        user_content.append({"type": "text", "text": prompt})
+                multi_contents.append({"audio": item.url})
+
+            elif item.type == "image":
+                if not (item.url.startswith("http") or item.url.startswith("file:")):
+                    item.url = str(Path(item.url).resolve())
+
+                multi_contents.append({"image": item.url})
+
+        user_content = [image_content for image_content in multi_contents]
+
+        if not request.prompt:
+            request.prompt = "请描述图像内容"
+        user_content.append({"text": request.prompt})
 
         return {"role": "user", "content": user_content}
 
-    def _build_messages(
-        self, prompt: str, history: List[Message], image_paths: Optional[List[str]] = None, system: Optional[str] = None
-    ) -> list:
+    def _build_messages(self, request: ModelRequest) -> list:
         messages = []
 
-        if system:
-            messages.append({"role": "system", "content": system})
+        if request.system:
+            messages.append({"role": "system", "content": request.system})
 
-        for msg in history:
+        for msg in request.history:
             user_msg = (
-                self.__build_image_message(msg.message, msg.images)
-                if all((self.config.multimodal, msg.images))
+                self.__build_multi_messages(ModelRequest(msg.message, resources=msg.resources))
+                if all((self.config.multimodal, msg.resources))
                 else {"role": "user", "content": msg.message}
             )
             messages.append(user_msg)
             messages.append({"role": "assistant", "content": msg.respond})
 
         user_msg = (
-            {"role": "user", "content": prompt} if not image_paths else self.__build_image_message(prompt, image_paths)
+            {"role": "user", "content": request.prompt}
+            if not request.resources
+            else self.__build_multi_messages(ModelRequest(request.prompt, resources=request.resources))
         )
 
         messages.append(user_msg)
@@ -86,21 +158,27 @@ class Dashscope(BasicModel):
 
     async def _GenerationResponse_handle(
         self, messages: list, response: GenerationResponse | MultiModalConversationResponse
-    ) -> str:
+    ) -> ModelCompletions:
+        completions = ModelCompletions()
+
         if response.status_code != 200:
-            self.succeed = False
+            completions.succeed = False
             logger.error(f"模型调用失败: {response.status_code}({response.code})")
             logger.error(f"{response.message}")
-            return f"模型调用失败: {response.status_code}({response.code})"
+            completions.text = f"模型调用失败: {response.status_code}({response.code})"
+            return completions
 
-        self.total_tokens += int(response.usage.total_tokens)
+        self._total_tokens += int(response.usage.total_tokens)
+        completions.usage = self._total_tokens
 
         if response.output.text:
-            return response.output.text
+            completions.text = response.output.text
+            return completions
 
         message_content = response.output.choices[0].message.content
         if message_content:
-            return message_content if isinstance(message_content, str) else message_content[0].get("text")
+            completions.text = message_content if isinstance(message_content, str) else message_content[0].get("text")
+            return completions
 
         return await self._tool_calls_handle_sync(messages, response)
 
@@ -108,84 +186,52 @@ class Dashscope(BasicModel):
         self,
         messages: list,
         response: Generator[GenerationResponse, None, None] | Generator[MultiModalConversationResponse, None, None],
-    ) -> AsyncGenerator[str, None]:
-        is_insert_think_label = False
-        is_function_call = False
-        total_tokens: int = 0
-        tool_call_id: str = ""
-        function_name: str = ""
-        function_args_delta: str = ""
+    ) -> AsyncGenerator[ModelStreamCompletions, None]:
+        func_stream = FunctionCallStream()
+        thought_stream = ThoughtStream()
 
         for chunk in response:
             logger.debug(chunk)
+            stream_completions = ModelStreamCompletions()
 
             if chunk.status_code != 200:
                 logger.error(f"模型调用失败: {chunk.status_code}({chunk.code})")
                 logger.error(f"{chunk.message}")
-                yield f"模型调用失败: {chunk.status_code}({chunk.code})"
-                self.succeed = False
+                stream_completions.chunk = f"模型调用失败: {chunk.status_code}({chunk.code})"
+                stream_completions.succeed = False
+
+                yield stream_completions
                 return
 
-            total_tokens = chunk.usage.total_tokens
+            # 更新 token 消耗
+            self._total_tokens = chunk.usage.total_tokens
+            stream_completions.usage = self._total_tokens
 
             # 优先判断是否是工具调用（OpenAI-style function calling）
             if chunk.output.choices and chunk.output.choices[0].message.get("tool_calls", []):
-                tool_calls = chunk.output.choices[0].message.tool_calls
-                tool_call = tool_calls[0]
-                if tool_call.get("id", ""):
-                    tool_call_id = tool_call["id"]
-                if tool_call.get("function", {}).get("name", ""):
-                    function_name = tool_call.get("function").get("name")
-                function_arg = tool_call.get("function", {}).get("arguments", "")
-                if function_arg and function_args_delta != function_arg:
-                    function_args_delta += function_arg
-                is_function_call = True
+                func_stream.from_chunk(chunk)
                 # 工具调用也可能在输出文本之后发生
 
             # DashScope 的 text 模式（非标准接口）
             if hasattr(chunk.output, "text") and chunk.output.text:
-                yield chunk.output.text
+                stream_completions.chunk = chunk.output.text
+                yield stream_completions
                 continue
 
             if chunk.output.choices is None:
                 continue
 
-            choice = chunk.output.choices[0].message
-            answer_content = choice.content
-            reasoning_content = choice.get("reasoning_content", "")
-            reasoning_content = reasoning_content.replace("\n</think>", "") if reasoning_content else ""
-
-            # 处理模型可能输出的 reasoning（思考内容）
-            if reasoning_content:
-                if not is_insert_think_label:
-                    yield f"<think>{reasoning_content}"
-                    is_insert_think_label = True
-                else:
-                    yield reasoning_content
-
-            # 处理模型输出的 answer（最终回复）
-            if answer_content:
-                if isinstance(answer_content, list):
-                    answer_content = answer_content[0].get("text", "")
-                if is_insert_think_label:
-                    yield f"</think>{answer_content}"
-                    is_insert_think_label = False
-                else:
-                    yield answer_content
-
-        # 更新 token 消耗
-        self.total_tokens += total_tokens
+            stream_completions.chunk = thought_stream.process_chunk(chunk)
+            yield stream_completions
 
         # 流式处理工具调用响应
-        if is_function_call:
-            async for final_chunk in await self._tool_calls_handle_stream(
-                messages, tool_call_id, function_name, function_args_delta
-            ):
+        if func_stream.enable:
+            async for final_chunk in await self._tool_calls_handle_stream(messages, func_stream):
                 yield final_chunk
 
     async def _tool_calls_handle_sync(
         self, messages: List, response: GenerationResponse | MultiModalConversationResponse
-    ) -> str:
+    ) -> ModelCompletions:
         tool_call = response.output.choices[0].message.tool_calls[0]
         tool_call_id = tool_call["id"]
         function_name = tool_call["function"]["name"]
@@ -201,12 +247,12 @@ class Dashscope(BasicModel):
         return await self._ask(messages)  # type:ignore
 
     async def _tool_calls_handle_stream(
-        self, messages: List, tool_call_id: str, function_name: str, function_args_delta: str
-    ) -> AsyncGenerator[str, None]:
-        function_args = json.loads(function_args_delta)
+        self, messages: List, func_stream: FunctionCallStream
+    ) -> AsyncGenerator[ModelStreamCompletions, None]:
+        function_args = json.loads(func_stream.function_args)
 
-        logger.info(f"function call 请求 {function_name}, 参数: {function_args}")
-        function_return = await function_call_handler(function_name, function_args)  # type:ignore
+        logger.info(f"function call 请求 {func_stream.function_name}, 参数: {function_args}")
+        function_return = await function_call_handler(func_stream.function_name, function_args)  # type:ignore
         logger.success(f"Function call 成功，返回: {function_return}")
 
         messages.append(
@@ -215,10 +261,10 @@ class Dashscope(BasicModel):
                 "content": "",
                 "tool_calls": [
                     {
-                        "id": tool_call_id,
+                        "id": func_stream.id,
                         "function": {
-                            "arguments": function_args_delta,
-                            "name": function_name,
+                            "arguments": func_stream.function_args,
+                            "name": func_stream.function_name,
                         },
                         "type": "function",
                         "index": 0,
@@ -226,13 +272,14 @@ class Dashscope(BasicModel):
                 ],
             }
         )
-        messages.append({"role": "tool", "content": function_return, "tool_call_id": tool_call_id})
+        messages.append({"role": "tool", "content": function_return, "tool_call_id": func_stream.id})
 
         return await self._ask(messages)  # type:ignore
 
-    async def _ask(self, messages: list) -> Union[AsyncGenerator[str, None], str]:
+    async def _ask(self, messages: list) -> Union[ModelCompletions, AsyncGenerator[ModelStreamCompletions, None]]:
         loop = asyncio.get_event_loop()
 
+        # 因为 Dashscope 对于多模态模型的接口不同，所以这里不能统一函数
         if not self.config.multimodal:
             response = await loop.run_in_executor(
                 None,
@@ -278,47 +325,20 @@ class Dashscope(BasicModel):
         return self._Generator_handle(messages, response)
 
     @overload
-    async def ask(
-        self,
-        prompt: str,
-        history: List[Message],
-        images: Optional[List[str]] = [],
-        tools: Optional[List[dict]] = [],
-        stream: Literal[False] = False,
-        system: Optional[str] = None,
-        **kwargs,
-    ) -> str: ...
+    async def ask(self, request: ModelRequest, *, stream: Literal[False] = False) -> ModelCompletions: ...
 
     @overload
     async def ask(
-        self,
-        prompt: str,
-        history: List[Message],
-        images: Optional[List[str]] = [],
-        tools: Optional[List[dict]] = [],
-        stream: Literal[True] = True,
-        system: Optional[str] = None,
-        **kwargs,
-    ) -> AsyncGenerator[str, None]: ...
+        self, request: ModelRequest, *, stream: Literal[True] = True
+    ) -> AsyncGenerator[ModelStreamCompletions, None]: ...
 
     async def ask(
-        self,
-        prompt: str,
-        history: List[Message],
-        images: Optional[List[str]] = [],
-        tools: Optional[List[dict]] = [],
-        stream: Optional[bool] = False,
-        system: Optional[str] = None,
-        **kwargs,
-    ) -> Union[AsyncGenerator[str, None], str]:
-        """
-        因为 Dashscope 对于多模态模型的接口不同，所以这里不能统一函数
-        """
-        self.succeed = True
-        self.total_tokens = 0
+        self, request: ModelRequest, *, stream: bool = False
+    ) -> Union[ModelCompletions, AsyncGenerator[ModelStreamCompletions, None]]:
+        self._total_tokens = 0
         self.stream = stream if stream is not None else False
 
-        self._tools = tools if tools else []
-        messages = self._build_messages(prompt, history, images, system)
+        self._tools = request.tools if request.tools else []
+        messages = self._build_messages(request)
 
         return await self._ask(messages)
