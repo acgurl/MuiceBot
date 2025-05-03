@@ -72,6 +72,9 @@ class ThoughtStream:
             else:
                 return reasoning_content
 
+        if not answer_content:
+            answer_content = ""
+
         if isinstance(answer_content, list):
             answer_content = answer_content[0].get("text", "")
 
