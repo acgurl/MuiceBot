@@ -46,8 +46,8 @@ async def model_ask(muice_app: Muice, target_id: str, prompt: str, probability: 
         message = Message(message=prompt, userid=f"(bot_ask){target_id}")
         response = await muice_app.ask(message, enable_history=False, enable_plugins=False)
 
-    target = Target(target_id)
-    await UniMessage(response.text).send(target=target, bot=get_bot())
+        target = Target(target_id)
+        await UniMessage(response.text).send(target=target, bot=get_bot())
 
 
 def setup_scheduler(muice: Muice) -> AsyncIOScheduler:

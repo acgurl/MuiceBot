@@ -269,6 +269,8 @@ class Muice:
         total_reply = ""
         thought_processor = ThoughtProcessor(status=self.think)
 
+        item: Optional[ModelStreamCompletions] = None
+
         async for item in response:
             processed = thought_processor.process_chunk(item.chunk)
             if processed and processed.strip():
@@ -276,6 +278,9 @@ class Muice:
                 yield ModelStreamCompletions(chunk=processed)
             if item.resources:
                 yield ModelStreamCompletions(resources=item.resources)
+
+        if item is None:
+            raise RuntimeError("模型调用器返回的值应至少包含一个元素")
 
         end_time = time.perf_counter()
         logger.success(f"已完成流式回复: {total_reply}")

@@ -232,9 +232,11 @@ class Gemini(BasicModel):
                     async for final_chunk in self._ask_stream(messages):
                         yield final_chunk
 
+            totaltokens_completions = ModelStreamCompletions()
+
             self._total_tokens += total_tokens
-            stream_completions.usage = self._total_tokens
-            yield stream_completions
+            totaltokens_completions.usage = self._total_tokens
+            yield totaltokens_completions
 
         except errors.APIError as e:
             stream_completions = ModelStreamCompletions()
@@ -247,6 +249,7 @@ class Gemini(BasicModel):
             return
 
         except ConnectError:
+            stream_completions = ModelStreamCompletions()
             error_message = "模型加载器连接超时"
             stream_completions.chunk = error_message
             logger.error(error_message)

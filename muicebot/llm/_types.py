@@ -135,17 +135,17 @@ class BasicModel(metaclass=ABCMeta):
         self.is_running = True
         return True
 
-    async def _ask_sync(self, messages: list, *args, **kwargs):
+    async def _ask_sync(self, messages: list) -> "ModelCompletions":
         """
         同步模型调用
         """
-        pass
+        raise NotImplementedError
 
-    def _ask_stream(self, messages: list, *args, **kwargs):
+    def _ask_stream(self, messages: list) -> AsyncGenerator["ModelStreamCompletions", None]:
         """
         流式输出
         """
-        pass
+        raise NotImplementedError
 
     @overload
     async def ask(self, request: "ModelRequest", *, stream: Literal[False] = False) -> "ModelCompletions": ...
