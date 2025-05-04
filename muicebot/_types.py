@@ -1,5 +1,6 @@
 from dataclasses import asdict, dataclass, field
 from datetime import datetime
+from functools import total_ordering
 from io import BytesIO
 from typing import List, Literal, Union
 
@@ -22,6 +23,7 @@ class Resource:
         }
 
 
+@total_ordering
 @dataclass
 class Message:
     """格式化后的 bot 消息"""
@@ -60,18 +62,8 @@ class Message:
     def from_dict(data: dict) -> "Message":
         return Message(**data)
 
-    # 又臭又长的比较函数
     def __hash__(self) -> int:
         return hash(self.id)
 
     def __lt__(self, other: "Message") -> bool:
         return self.format_time < other.format_time
-
-    def __le__(self, other: "Message") -> bool:
-        return self.format_time <= other.format_time
-
-    def __gt__(self, other: "Message") -> bool:
-        return self.format_time > other.format_time
-
-    def __ge__(self, other: "Message") -> bool:
-        return self.format_time >= other.format_time
