@@ -13,14 +13,11 @@ class ModelConfig(BaseModel):
     loader: str = ""
     """所使用加载器的名称，位于 llm 文件夹下，loader 开头必须大写"""
 
-    system_prompt: str = ""
-    """系统提示"""
-    auto_system_prompt: bool = False
-    """是否自动配置沐雪的系统提示"""
-    user_instructions: str = ""
-    """用户提示"""
-    auto_user_instructions: bool = False
-    """是否自动配置沐雪的用户提示"""
+    template: Optional[str] = None
+    """使用的人设模板名称"""
+    template_mode: Literal["system", "user"] = "system"
+    """模板嵌入模式: `system` 为嵌入到系统提示; `user` 为嵌入到用户提示中"""
+
     max_tokens: int = 4096
     """最大回复 Tokens """
     temperature: float = 0.75
@@ -50,8 +47,6 @@ class ModelConfig(BaseModel):
     """本地模型路径"""
     adapter_path: str = ""
     """基于 model_path 的微调模型或适配器路径"""
-    template: str = ""
-    """LLaMA-Factory 中模型的模板"""
 
     model_name: str = ""
     """所要使用模型的名称"""

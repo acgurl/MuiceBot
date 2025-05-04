@@ -16,9 +16,9 @@ from .llm import (
     ModelStreamCompletions,
     get_missing_dependencies,
 )
-from .llm.utils.muice_prompt import GROUP_SYSTEM_PROMPT, PRIVATE_SYSTEM_PROMPT
 from .llm.utils.thought import ThoughtProcessor
 from .plugin import get_tools
+from .templates import generate_prompt_from_template
 from .utils.utils import get_username
 
 
@@ -46,8 +46,11 @@ class Muice:
         self.database = Database()
         self.max_history_epoch = plugin_config.max_history_epoch
 
-        self.system_prompt: str = self.model_config.system_prompt
-        self.user_instructions = self.model_config.user_instructions
+        self.system_prompt = ""
+        self.user_instructions = ""
+
+        self.template = self.model_config.template
+        self.template_mode = self.model_config.template_mode
 
         self._init_model()
 
@@ -106,8 +109,6 @@ class Muice:
         self.think = new_config.think
         self.model_loader = new_config.loader
         self.multimodal = new_config.multimodal
-        self.system_prompt = new_config.system_prompt
-        self.user_instructions = new_config.user_instructions
 
         # 重新加载模型
         self._init_model()
@@ -130,20 +131,24 @@ class Muice:
 
         return f"已成功加载 {config_name}" if config_name else "未指定模型配置名，已加载默认模型配置"
 
-    async def _prepare_prompt(self, message: str, is_private: bool) -> str:
+    async def _prepare_prompt(self, message: str, userid: str, is_private: bool) -> str:
         """
         准备提示词(包含系统提示)
 
         :param message: 消息主体
+        :param userid: 用户 Nonebot ID
         :param is_private: 是否为私聊信息
         :return: 最终模型提示词
         """
-        muice_prompt = PRIVATE_SYSTEM_PROMPT if is_private else GROUP_SYSTEM_PROMPT
+        if self.template is None:
+            return message
 
-        if self.model_config.auto_system_prompt:
-            self.system_prompt = muice_prompt
-        elif self.model_config.auto_user_instructions:
-            self.user_instructions = muice_prompt
+        system_prompt = generate_prompt_from_template(self.template, userid, is_private).strip()
+
+        if self.template_mode == "system":
+            self.system_prompt = system_prompt
+        else:
+            self.user_instructions = system_prompt
 
         if is_private:
             return f"{self.user_instructions}\n\n{message}" if self.user_instructions else message
@@ -205,7 +210,7 @@ class Muice:
         is_private = message.groupid == "-1"
         logger.info("正在调用模型...")
 
-        prompt = await self._prepare_prompt(message.message, is_private)
+        prompt = await self._prepare_prompt(message.message, message.userid, is_private)
         history = await self._prepare_history(message.userid, message.groupid, enable_history) if enable_history else []
         tools = await get_tools() if self.model_config.function_call and enable_plugins else []
         system = self.system_prompt if self.system_prompt else None
@@ -255,7 +260,7 @@ class Muice:
         is_private = message.groupid == "-1"
         logger.info("正在调用模型...")
 
-        prompt = await self._prepare_prompt(message.message, is_private)
+        prompt = await self._prepare_prompt(message.message, message.userid, is_private)
         history = await self._prepare_history(message.userid, message.groupid, enable_history) if enable_history else []
         tools = await get_tools() if self.model_config.function_call and enable_plugins else []
         system = self.system_prompt if self.system_prompt else None
