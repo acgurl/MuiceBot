@@ -317,7 +317,7 @@ class Muice:
 
         last_item = last_item[0]
 
-        await self.database.remove_last_item(userid)
+        await self.database.mark_history_as_unavailable(userid, 1)
 
         if not self.model_config.stream:
             return await self.ask(last_item)
@@ -332,5 +332,5 @@ class Muice:
         return "已成功移除对话历史~"
 
     async def undo(self, userid: str) -> str:
-        await self.database.remove_last_item(userid)
+        await self.database.mark_history_as_unavailable(userid, 1)
         return "已成功撤销上一段对话~"

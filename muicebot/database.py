@@ -2,7 +2,7 @@ import asyncio
 import json
 import os
 from datetime import datetime
-from typing import Tuple
+from typing import Optional, Tuple
 
 import aiosqlite
 import nonebot_plugin_localstore as store
@@ -99,14 +99,20 @@ class Database:
                    VALUES (?, ?, ?, ?, ?, ?, ?)"""
         await self.execute(query, params)
 
-    async def mark_history_as_unavailable(self, userid: str):
+    async def mark_history_as_unavailable(self, userid: str, limit: Optional[int] = None):
         """
-        将用户的所有对话历史标记为不可用 (适用于 reset 命令)
+        将用户对话历史标记为不可用 (适用于 reset 命令)
 
-        :userid: 用户id
+        :param userid: 用户id
+        :param limit: (可选)操作数量
         """
-        query = "UPDATE MSG SET HISTORY = 0 WHERE USERID = ?"
-        await self.execute(query, (userid,))
+        if limit is not None:
+            query = """UPDATE MSG SET HISTORY = 0 WHERE ROWID IN (
+            SELECT ROWID FROM MSG WHERE USERID = ? AND HISTORY = 1 LIMIT ?)"""
+            await self.execute(query, (userid, limit))
+        else:
+            query = "UPDATE MSG SET HISTORY = 0 WHERE USERID = ?"
+            await self.execute(query, (userid,))
 
     async def _deserialize_rows(self, rows: list) -> list[Message]:
         """
