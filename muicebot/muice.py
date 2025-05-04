@@ -40,18 +40,14 @@ class Muice:
             return
 
         self.model_config = get_model_config()
-        self.think = self.model_config.think
-        self.model_loader = self.model_config.loader
-        self.multimodal = self.model_config.multimodal
+
         self.database = Database()
         self.max_history_epoch = plugin_config.max_history_epoch
 
         self.system_prompt = ""
         self.user_instructions = ""
 
-        self.template = self.model_config.template
-        self.template_mode = self.model_config.template_mode
-
+        self._load_config()
         self._init_model()
 
         model_config_manager.register_listener(self._on_config_changed)
@@ -64,6 +60,16 @@ class Muice:
             model_config_manager.unregister_listener(self._on_config_changed)
         except (AttributeError, RuntimeError) as e:
             logger.debug(f"Muice __del__ 清理失败: {e}")
+
+    def _load_config(self):
+        """
+        加载配置项
+        """
+        self.think = self.model_config.think
+        self.model_loader = self.model_config.loader
+        self.multimodal = self.model_config.multimodal
+        self.template = self.model_config.template
+        self.template_mode = self.model_config.template_mode
 
     def _init_model(self) -> None:
         """
@@ -106,11 +112,9 @@ class Muice:
         logger.info("检测到配置文件变更，自动重载模型...")
         # 更新配置
         self.model_config = new_config
-        self.think = new_config.think
-        self.model_loader = new_config.loader
-        self.multimodal = new_config.multimodal
 
         # 重新加载模型
+        self._load_config()
         self._init_model()
         self.load_model()
         logger.success(f"模型自动重载完成: {old_config.loader} -> {new_config.loader}")
@@ -123,9 +127,8 @@ class Muice:
             self.model_config = get_model_config(config_name)
         except (ValueError, FileNotFoundError) as e:
             return str(e)
-        self.think = self.model_config.think
-        self.model_loader = self.model_config.loader
-        self.multimodal = self.model_config.multimodal
+
+        self._load_config()
         self._init_model()
         self.load_model()
 
