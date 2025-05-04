@@ -235,6 +235,7 @@ class Muice:
         response.text = "\n\n".join([thought, result]) if thought else result
 
         message.respond = result
+        message.usage = response.usage
 
         if response.succeed:
             await self.database.add_item(message)
