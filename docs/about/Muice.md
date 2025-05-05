@@ -16,7 +16,7 @@
 
 沐雪的系统提示词基于 Qwen-Max 系列模型调教，在别的模型中可能体现出较大的差异
 
-请参考：[auto_system_prompt.py](https://github.com/Moemu/MuiceBot/blob/main/muicebot/llm/utils/auto_system_prompt.py)
+请参考沐雪提示词模板：[Muice.jinja2](https://github.com/Moemu/MuiceBot/blob/main/muicebot/builtin_templates/Muice.jinja2)
 
 ## 沐雪训练集📑
 

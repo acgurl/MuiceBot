@@ -32,6 +32,7 @@
 ```yaml
 <model_config_name>: # 配置名称。唯一，可任取，不一定和模型加载器名称有关联
   loader: <model_loader_name> # 模型加载器名称。对应的是 `muicebot/llm` 下的 `.py` 文件。通常模型加载器的首字母都是大写
+  template: Muice # 人设提示词 Jinja2 模板名称（不用带文件后缀）
   config1: value1 # 具体的配置项和值
   ...
 ```
@@ -42,6 +43,7 @@
 azure:
   loader: Azure # 使用 azure 加载器
   model_name: DeepSeek-R1 # 模型名称（可选，默认为 DeepSeek-R1）
+  template: Muice # 人设提示词 Jinja2 模板名称（不用带文件后缀）
   api_key: ghp_xxxxxxxxxxxxxxxxx # GitHub Token（若配置了环境变量，此项不填）
   system_prompt: '我们来玩一个角色扮演的小游戏吧，现在开始你是一个名为的“沐雪”的AI女孩子，用猫娘的语气和我说话。' # 系统提示（可选）
   auto_system_prompt: true # 自动配置沐雪的系统提示（默认为 false）
@@ -53,22 +55,10 @@ azure:
 我们支持多个模型配置，并可在聊天中通过指令动态切换，例如：
 
 ```yaml
-xfyun:
-  loader: Xfyun
-  app_id: 'b84ff476'
-  api_key: 'XXXXXXXXXX'
-  api_secret: xxxxxxxxxxxxxxxxxxxxx
-  service_id: 'xxxxxxxxxxxxxxx'
-  resource_id: '1234567890'
-  system_prompt: '' # 系统提示语（目前仅支持llmtuner模式）
-  auto_system_prompt: false # 是否自动生成系统提示语（仅适用于2.7.1以上的Qwen模型）
-  max_tokens: 1024 # 模型生成的最大 token 数（可选，默认为 2048）
-  temperature: 0.75 # 模型生成的温度参数（可选，默认为 0.5）
-  top_p: 0.95 # 模型生成的 Top_p 参数（可选，默认为 4）
-
 dashscope:
   loader: Dashscope # 使用 dashscope 加载器
   default: true # 默认配置文件
+  template: Muice # 人设提示词 Jinja2 模板名称（不用带文件后缀）
   multimodal: true # 是否启用多模态（可选，注意：使用的模型必须是多模态的）
   model_name: qwen2.5-vl-7b-instruct # 模型名称
   api_key: sk-xxxxxxxxxxxxxxxxxxxxxxx # API 密钥（必须）
@@ -81,6 +71,7 @@ dashscope:
 azure:
   loader: Azure # 使用 azure 加载器
   model_name: DeepSeek-R1 # 模型名称（可选，默认为 DeepSeek-R1）
+  template: Muice # 人设提示词 Jinja2 模板名称（不用带文件后缀）
   token: ghp_xxxxxxxxxxxxxxxxx # GitHub Token（若配置了环境变量，此项不填）
   system_prompt: '我们来玩一个角色扮演的小游戏吧，现在开始你是一个名为的“沐雪”的AI女孩子，用猫娘的语气和我说话。' # 系统提示（可选）
   auto_system_prompt: true # 自动配置沐雪的系统提示（默认为 false）
@@ -103,13 +94,12 @@ loader: Xfyun # 模型加载器名称，这些模型加载器位于插件目录�
 think: 1 # 针对于 DeepSeek-R1 等思考模型的思考过程优化（0不做任何处理；1提取并同时输出思考过程和结果；2仅输出思考结果）。就算思考过程不存在，设置为 1 或 2 也不会引发任何错误。
 multimodal: true # 多模态支持。目前仅支持 Dashscope 加载器。设置为 true 将处理图片事件。如果调用的模型不是多模态模型将引发报错
 
-system_prompt: '现在开始你是一个名为的“沐雪”的AI女孩子' # 系统提示（可选）
-auto_system_prompt: false # 自动配置沐雪的系统提示（默认为 false）
-user_instructions: '我们来玩一个角色扮演的小游戏吧，现在开始你是一个名为的“沐雪”的AI女孩子，用猫娘的语气和我说话。' # 用户提示（对于 DeepSeek-R1 此类不推荐添加系统提示的模型非常有用。此项内容会追加到最早一轮的历史对话中）
-auto_user_instructions: true # 自动配置沐雪的用户提示（默认为 false）
+template: Muice # 人设提示词 Jinja2 模板，模板文件需要存放在 `./templates` 文件夹下。Muice为内嵌模板。默认值为空
 ```
 
-其中，沐雪的系统提示词存放于：[auto_system_prompt.py](https://github.com/Moemu/MuiceBot/blob/main/muicebot/llm/utils/auto_system_prompt.py)
+其中，沐雪人设模板文件存放于：[Muice.jinja2](https://github.com/Moemu/MuiceBot/blob/main/muicebot/builtin_templates/Muice.jinja2)
+
+关于人设文件的具体写法，请参考 [人设模板的撰写](/develop/template)
 
 
 如果一切顺利，以 QQ 适配器为例，在运行 `nb run` 后，你将会看到以下输出，这表明 Bot 已经开始工作：

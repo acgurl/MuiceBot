@@ -2,14 +2,13 @@
 
 对于每一个模型加载器，他们需要或支持的模型配置都不尽相同。本页面将向您展示目前 MuiceBot 所有的模型加载器类所需要的不同配置。你也可以从 [_types.py](https://github.com/Moemu/MuiceBot/blob/main/Muice/llm/_types.py) 中获取所有支持的模型配置项。
 
-请注意： 对于像 `auto_system_prompt` 这类全部加载器都支持的配置项，将在下文忽略，这些通用配置项参见 [模型配置](/guide/configuration#模型配置modelsyml)
-
 ## Azure (Github Models)
 
 ```yaml
 loader: Azure # 使用 Azure 加载器（必填）
 model_name: DeepSeek-R1 # 模型名称（必填）
 api_key: <your-github-token-goes-here> # GitHub Token 或 Azure Key（必填）
+template: Muice # 使用的模板名称（可选，无默认值）
 max_tokens: 1024 # 模型生成的最大 token 数（可选，默认为 1024）
 temperature: 0.75 # 模型生成的温度参数（可选）
 top_p: 0.95 # 模型生成的 Top_p 参数（可选）
@@ -25,6 +24,7 @@ function_call: false # 是否启用工具调用（可选。需要编写 function
 ```yaml
 loader: Dashscope # 使用 Dashscope 加载器（必须）
 model_name: qwen-max # 模型名称（必须）
+template: Muice # 使用的模板名称（可选，无默认值）
 multimodal: false # 是否启用多模态（可选。注意：使用的模型必须是多模态的）
 api_key: xxxxxx # API 密钥（必须）
 max_tokens: 1024 # 模型生成的最大 token 数（可选，默认为 1024）
@@ -42,6 +42,7 @@ content_security: false # 内容安全（可选。需要开通内容审核服务
 ```yaml
 loader: Gemini # 使用 Dashscope 加载器（必须）
 model_name: gemini-2.0-flash # 模型名称（必须）
+template: Muice # 使用的模板名称（可选，无默认值）
 multimodal: false # 是否启用多模态（可选。注意：使用的模型必须是多模态的）
 # modalities: ["text", "image"]  # 启用的返回模态（使用多模态的画图功能时才取消注释此配置项）
 api_key: xxxxxx # API 密钥（必须）
@@ -68,6 +69,7 @@ content_security: false # 内容安全（可选。默认为中级及以上）
 ```yaml
 loader: Ollama # 使用 Ollama 加载器（必填）
 model_name: deepseek-r1 # ollama 模型名称（必填）
+template: Muice # 使用的模板名称（可选，无默认值）
 api_host: http://localhost:11434 # ollama 客户端端口（可选）
 top_k: 20 #从概率分布中选择最高概率的前k个候选项
 top_p: 0.9 # 从概率分布中选择累积概率达到阈值p的候选项
@@ -85,6 +87,7 @@ function_call: false # 是否启用工具调用（可选。需要编写 function
 ```yaml
 loader: Openai # 使用 openai 加载器（必填）
 model_name: text-davinci-003 # 模型名称（必填）
+template: Muice # 使用的模板名称（可选，无默认值）
 api_key: xxxxxx # API 密钥（必须）
 api_host: https://api.openai.com/v1 # 服务器 API 接口地址 （可选，默认 OpenAI 服务）
 max_tokens: 1024 # 模型生成的最大 token 数（可选，默认为 1024）

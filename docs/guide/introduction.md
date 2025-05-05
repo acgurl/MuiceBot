@@ -21,6 +21,8 @@
 
 ✅ 使用 SQLite3 保存对话数据。那有人就要问了：Maintainer，Maintainer，能不能实现长期短期记忆、LangChain、FairSeq 这些记忆优化啊。以后会有的（
 
+✅ 使用 Jinja2 动态生成人设提示词
+
 ## 模型加载器适配情况
 
 | 模型加载器  | 多轮对话 | 图片识别 | 推理模型调用 | 流式对话 | 联网搜索 | 工具调用 |
@@ -56,13 +58,9 @@
 
 - [X] 多模态模型：工具集支持
 
-- [ ] OFA 图像识别。既然都有了多模态为什么还用 OFA？好吧，因为没钱调用接口
-
-- [ ] Faiss 记忆优化。沐雪总记不太清楚上一句话是什么
+- [ ] 插件系统：Faiss 记忆优化插件 + OFA 图像识别插件
 
 - [ ] 短期记忆和长期记忆优化。总感觉这是提示工程师该做的事情，~~和 Bot 没太大关系~~
-
-- [ ] （多）对话语音合成器。比如 [GPT-SoVITS](https://github.com/RVC-Boss/GPT-SoVITS) 、[RVC](https://github.com/RVC-Project/Retrieval-based-Voice-Conversion-WebUI)之类的。
 
 - [ ] 发布。我知道你很急，但是你先别急。
 
