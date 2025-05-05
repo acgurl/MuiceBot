@@ -57,12 +57,12 @@ class ModelConfig(BaseModel):
     api_host: str = ""
     """自定义 API 地址"""
 
-    app_id: str = ""
-    """xfyun 的 app_id"""
-    service_id: str = ""
-    """xfyun 的 service_id"""
-    resource_id: str = ""
-    """xfyun 的 resource_id"""
+    extra_body: Optional[dict] = None
+    """OpenAI 的 extra_body"""
+    enable_thinking: Optional[bool] = None
+    """Dashscope 的 enable_thinking"""
+    thinking_budget: Optional[int] = None
+    """Dashscope 的 thinking_budget"""
 
     multimodal: bool = False
     """是否为（或启用）多模态模型"""

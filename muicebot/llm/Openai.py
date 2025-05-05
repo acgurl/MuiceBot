@@ -35,6 +35,7 @@ class Openai(BasicModel):
         self.stream = self.config.stream
         self.modalities = [m for m in self.config.modalities if m in {"text", "audio"}] or NOT_GIVEN  # type:ignore
         self.audio = self.config.audio if (self.modalities and self.config.audio) else NOT_GIVEN
+        self.extra_body = self.config.extra_body
 
         self.client = openai.AsyncOpenAI(api_key=self.api_key, base_url=self.api_base, timeout=30)
         self._tools = []
@@ -125,6 +126,7 @@ class Openai(BasicModel):
                 temperature=self.temperature,
                 stream=False,
                 tools=self._tools,
+                extra_body=self.extra_body,
             )
 
             result = ""
@@ -200,6 +202,7 @@ class Openai(BasicModel):
                 stream=True,
                 stream_options={"include_usage": True},
                 tools=self._tools,
+                extra_body=self.extra_body,
             )
 
             async for chunk in response:

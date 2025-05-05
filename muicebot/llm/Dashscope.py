@@ -96,6 +96,8 @@ class Dashscope(BasicModel):
         self.top_p = self.config.top_p
         self.repetition_penalty = self.config.repetition_penalty
         self.enable_search = self.config.online_search
+        self.enable_thinking = self.config.enable_thinking
+        self.thinking_budget = self.config.thinking_budget
 
         self._tools: List[dict] = []
 
@@ -301,6 +303,8 @@ class Dashscope(BasicModel):
                     enable_search=self.enable_search,
                     incremental_output=self.stream,  # 给他调成一样的：这个参数只支持流式调用时设置为True
                     headers=self.extra_headers,
+                    enable_thinking=self.enable_thinking,
+                    thinking_budget=self.thinking_budget,
                 ),
             )
         else:
