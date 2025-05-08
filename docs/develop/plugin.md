@@ -192,3 +192,78 @@ async def get_weather(location: str) -> str:
 ```
 
 配置好后就可以运行了。你看，很简单不是吗？
+
+## 使用钩子函数
+
+在 `Muicebot` 的整个消息处理流程中，提供了 4 个钩子函数可以用来修改消息处理流程中的一些数据，从而有利于 TTS，记忆插件的编写
+
+### on_before_pretreatment
+
+这个钩子函数会在 `Muice._prepare_prompt()` 之前运行。支持依赖注入，可以注入 `Message` (如无特殊说明，以下的 `Message` 都出自 [Muicebot 的数据类](https://github.com/Moemu/MuiceBot/blob/main/muicebot/models.py)) 和 Nonebot 的原生依赖注入（如 `bot`, `Message` 对象）
+
+```python
+from muicebot.plugin.hook import on_before_pretreatment
+from muicebot.models import Message
+
+@on_before_pretreatment(priority=10)
+def _(message: Message):
+    message.message += "(已插入钩子函数)"
+```
+
+### on_before_completion
+
+这个钩子函数会在将数据传入模型(`Muice` 的 `model.ask()`)之前调用。支持依赖注入，可以注入 `ModelRequest` 和 Nonebot 的原生依赖注入
+
+```python
+from muicebot.plugin.hook import on_before_completion
+from muicebot.llm import ModelRequest
+from nonebot.permission import SUPERUSER
+
+@on_before_completion(rule=SUPERUSER)
+def _(request: ModelRequest):
+    request.system = "你是一个叫 Muika 的猫娘"
+```
+
+### on_after_completion
+
+这个钩子函数会在将数据传入模型(`Muice` 的 `model.ask()`)之后调用。支持依赖注入，可以注入 `Union[ModelCompletions, ModelStreamCompletions]` 和 Nonebot 的原生依赖注入
+
+> [!WARNING]
+>
+> 当启用流式时，由于此钩子函数只会在结束迭代时运行，而此时消息回复逻辑已完成，因此对 `ModelStreamCompletion` 的任何修改将不生效
+>
+> 由于此钩子函数可用性较差，未来我们可能会更改此钩子函数的实现
+
+```python
+from muicebot.plugin.hook import on_after_completion
+from muicebot.llm import ModelCompletions, ModelStreamCompletions
+from mytts import generate_voice
+
+@on_after_completion()
+def _(completion: ModelCompletions | ModelStreamCompletions):
+    if isinstance(ModelStreamCompletions):
+        logger.warning("流式传输暂不支持 TTS")
+        return
+
+    tts_output =
+
+    completion.resources.append(Resource(
+        type="audio",
+        raw=generate_voice(completion.text)
+    ))
+```
+
+### on_finish_chat
+
+这个钩子函数会在结束对话(存库前)调用。支持依赖注入，可以注入 `Message` 和 Nonebot 的原生依赖注入
+
+```python
+from muicebot.plugin.hook import on_finish_chat
+from muicebot.models import Message
+from nonebot.permission import SUPERUSER
+from muicebot_plugin_memory import save_memory
+
+@on_finish_chat()
+def _(message: Message):
+    await save_memory(message.text, message.respond)
+```
