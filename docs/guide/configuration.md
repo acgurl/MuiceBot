@@ -136,10 +136,6 @@ template: Muice # 人设提示词 Jinja2 模板，模板文件需要存放在 `.
 
 在 `configs` 文件夹下新建 `schedules.yml`，用于存储定时任务调度器的配置。
 
-> [!WARNING]
->
-> 由于在主动发起对话时调用 `send_message` 方法需要构建适配器的 Message 类，而我们尚未对不同适配器做优化，所以目前定时任务仅支持 Onebot V12 协议适配器。
-
 众所周知，MuiceBot 基于 `nonebot_plugin_apscheduler` 的定时任务，可定时向大语言模型交互或直接发送信息。这也是沐雪系列模型的一个特色之一，尽管其效果确实不是很好（
 
 有关定时任务的配置格式大致与 `models.yml` 相同，同样支持多个定时任务配置：
@@ -165,9 +161,7 @@ morning:
     hour: 8
     minute: 30
   ask: <日常问候：早上>
-  target:
-    detail_type: private
-    user_id: '123456789'
+  target: '123456789'  # 私聊（目标用户ID）
 
 afternoon:
   trigger: cron
@@ -175,9 +169,7 @@ afternoon:
     hour: 12
     minute: 30
   say: 中午好呀各位~吃饭了没有？
-  target:
-    detail_type: group
-    group_id: '1234567890123'
+  target: '1234567890123'  # 群聊（目标群聊ID）
 
 auto_create_topic:
   trigger: interval
@@ -185,9 +177,7 @@ auto_create_topic:
     minutes: 30
   random: 1
   ask: "<生成推文: 胡思乱想>"
-  target:
-    detail_type: group
-    group_id: '1234567890123'
+  target: '1234567890123'
 ```
 
 正如你所见，每个定时任务在 `schedule` 下以列表的形式进行配置。
@@ -204,8 +194,7 @@ auto_create_topic:
 
 `ask` 和 `say` 虽作为可选参数但必须选择一个，分别代表了传递给模型的 prompt 和直接发送信息的文本内容
 
-`target` 指定发送信息的目标用户/群聊，作为参数传入 `bot` 的 `send_message` 方法。具体参数内容请参见 [适配器文档](https://onebot.adapters.nonebot.dev/docs/api/v12/bot#Bot-send)
-
+`target` 指定发送信息的目标用户/群聊 ID。对于非私聊场景，你可能需要提取 `.whoami` 指令中的群聊ID
 
 定时任务运行引擎将在 `driver.on_bot_connect` 时启动，你也可以运行 `.schedule` 指令手动启动引擎
 
