@@ -18,6 +18,7 @@ from .llm import (
 from .llm.utils.thought import ThoughtProcessor
 from .models import Message
 from .plugin import get_tools
+from .plugin.hook import HookType, hook_manager
 from .templates import generate_prompt_from_template
 from .utils.utils import get_username
 
@@ -213,6 +214,8 @@ class Muice:
         is_private = message.groupid == "-1"
         logger.info("正在调用模型...")
 
+        await hook_manager.run(HookType.BEFORE_PRETREATMENT, message)
+
         prompt = await self._prepare_prompt(message.message, message.userid, is_private)
         history = await self._prepare_history(message.userid, message.groupid, enable_history) if enable_history else []
         tools = await get_tools() if self.model_config.function_call and enable_plugins else []
@@ -220,6 +223,7 @@ class Muice:
 
         model_request = ModelRequest(prompt, history, message.resources, tools, system)
         thought_processor = ThoughtProcessor(self.think)
+        await hook_manager.run(HookType.BEFORE_MODEL_COMPLETION, model_request)
 
         start_time = time.perf_counter()
         logger.debug(f"模型调用参数：Prompt: {message}, History: {history}")
@@ -231,6 +235,7 @@ class Muice:
         logger.success(f"模型调用成功: {response}")
         logger.debug(f"模型调用时长: {end_time - start_time} s (token用量: {response.usage})")
 
+        await hook_manager.run(HookType.AFTER_MODEL_COMPLETION, response)
         thought, result = thought_processor.process_message(response.text)
         response.text = "\n\n".join([thought, result]) if thought else result
 
@@ -239,6 +244,8 @@ class Muice:
 
         if response.succeed:
             await self.database.add_item(message)
+
+        await hook_manager.run(HookType.ON_FINISHING_CHAT, message)
 
         return response
 
@@ -264,12 +271,16 @@ class Muice:
         is_private = message.groupid == "-1"
         logger.info("正在调用模型...")
 
+        await hook_manager.run(HookType.BEFORE_PRETREATMENT, message)
+
         prompt = await self._prepare_prompt(message.message, message.userid, is_private)
         history = await self._prepare_history(message.userid, message.groupid, enable_history) if enable_history else []
         tools = await get_tools() if self.model_config.function_call and enable_plugins else []
         system = self.system_prompt if self.system_prompt else None
 
         model_request = ModelRequest(prompt, history, message.resources, tools, system)
+        await hook_manager.run(HookType.BEFORE_MODEL_COMPLETION, model_request)
+
         start_time = time.perf_counter()
         logger.debug(f"模型调用参数：Prompt: {message}, History: {history}")
 
@@ -295,12 +306,15 @@ class Muice:
         logger.success(f"已完成流式回复: {total_reply}")
         logger.debug(f"模型调用时长: {end_time - start_time} s (token用量: {item.usage})")
 
+        await hook_manager.run(HookType.AFTER_MODEL_COMPLETION, item)
         thought, result = thought_processor.process_message(total_reply)
         message.respond = result
         message.usage = item.usage
 
         if item.succeed:
             await self.database.add_item(message)
+
+        await hook_manager.run(HookType.ON_FINISHING_CHAT, message)
 
     async def refresh(self, userid: str) -> Union[AsyncGenerator[ModelStreamCompletions, None], ModelCompletions]:
         """
