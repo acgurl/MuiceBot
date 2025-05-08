@@ -30,9 +30,9 @@ from nonebot_plugin_alconna.builtins.extensions import ReplyRecordExtension
 from nonebot_plugin_alconna.uniseg import UniMsg
 from nonebot_plugin_session import SessionIdType, extract_session
 
-from ._types import Message, Resource
 from .config import plugin_config
 from .llm import ModelCompletions, ModelStreamCompletions
+from .models import Message, Resource
 from .muice import Muice
 from .plugin import get_plugins, load_plugins, set_ctx
 from .scheduler import setup_scheduler

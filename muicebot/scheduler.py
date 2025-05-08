@@ -6,8 +6,8 @@ from apscheduler.triggers.interval import IntervalTrigger
 from nonebot import get_bot, logger
 from nonebot_plugin_alconna.uniseg import Target, UniMessage
 
-from ._types import Message
 from .config import get_schedule_configs
+from .models import Message
 from .muice import Muice
 
 

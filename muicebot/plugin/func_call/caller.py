@@ -18,8 +18,8 @@ from nonebot.rule import Rule
 from nonebot.typing import T_State
 
 from ..context import get_bot, get_event, get_mather
-from ..typing import ASYNC_FUNCTION_CALL_FUNC, F
 from ..utils import async_wrap, is_coroutine_callable
+from ._types import ASYNC_FUNCTION_CALL_FUNC, F
 from .parameter import Parameter
 
 _caller_data: dict[str, "Caller"] = {}

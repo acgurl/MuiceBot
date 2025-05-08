@@ -8,7 +8,7 @@ from nonebot import logger
 from openai import NOT_GIVEN, NotGiven
 from openai.types.chat import ChatCompletionMessage, ChatCompletionToolParam
 
-from .._types import Resource
+from ..models import Resource
 from ._types import (
     BasicModel,
     ModelCompletions,

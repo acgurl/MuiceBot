@@ -5,7 +5,7 @@ from typing import Any, AsyncGenerator, List, Literal, Optional, Union, overload
 
 from pydantic import BaseModel, field_validator
 
-from .._types import Message, Resource
+from ..models import Message, Resource
 from ..plugin import get_function_calls
 
 

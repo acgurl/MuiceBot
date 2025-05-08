@@ -8,7 +8,7 @@ import aiosqlite
 import nonebot_plugin_localstore as store
 from nonebot import logger
 
-from ._types import Message, Resource
+from .models import Message, Resource
 from .utils.migrations import MigrationManager
 
 

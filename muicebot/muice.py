@@ -5,7 +5,6 @@ from typing import AsyncGenerator, Optional, Union
 
 from nonebot import logger
 
-from ._types import Message
 from .config import ModelConfig, get_model_config, model_config_manager, plugin_config
 from .database import Database
 from .llm import (
@@ -17,6 +16,7 @@ from .llm import (
     get_missing_dependencies,
 )
 from .llm.utils.thought import ThoughtProcessor
+from .models import Message
 from .plugin import get_tools
 from .templates import generate_prompt_from_template
 from .utils.utils import get_username

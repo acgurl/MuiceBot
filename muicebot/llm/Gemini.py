@@ -16,7 +16,7 @@ from google.genai.types import (
 from httpx import ConnectError
 from nonebot import logger
 
-from .._types import Resource
+from ..models import Resource
 from ._types import (
     BasicModel,
     ModelCompletions,
