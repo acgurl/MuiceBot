@@ -135,10 +135,11 @@ class Hooked:
 def on_before_pretreatment(priority: int = 10, rule: Optional[Rule] = None) -> Hooked:
     """
     注册一个钩子函数
-    这个函数将在传入消息 (`Muice` 的 `_prepare_prompt()`) 调用
-    它可接受一个 `Message` 类
+    这个函数将在传入消息 (`Muice` 的 `_prepare_prompt()`) 前调用
+    它可接受一个 `Message` 类参数
 
     :param priority: 调用优先级
+    :param rule: Nonebot 的响应规则
     """
     return Hooked(HookType.BEFORE_PRETREATMENT, priority=priority, rule=rule)
 
@@ -147,9 +148,10 @@ def on_before_completion(priority: int = 10, rule: Optional[Rule] = None) -> Hoo
     """
     注册一个钩子函数。
     这个函数将在传入模型(`Muice` 的 `model.ask()`)前调用
-    它可接受一个 `ModelRequest` 类
+    它可接受一个 `ModelRequest` 类参数
 
     :param priority: 调用优先级
+    :param rule: Nonebot 的响应规则
     """
     return Hooked(HookType.BEFORE_MODEL_COMPLETION, priority=priority, rule=rule)
 
@@ -158,11 +160,12 @@ def on_after_completion(priority: int = 10, rule: Optional[Rule] = None) -> Hook
     """
     注册一个钩子函数。
     这个函数将在传入模型(`Muice` 的 `model.ask()`)后调用（流式则传入最后一个流式包）
-    它可接受一个 `Union[ModelCompletion, ModelStreamCompletion` 类
+    它可接受一个 `Union[ModelCompletions, ModelStreamCompletions]` 类参数
 
     请注意：当启用流式时，对 `ModelStreamCompletion` 的任何修改将不生效
 
     :param priority: 调用优先级
+    :param rule: Nonebot 的响应规则
     """
     return Hooked(HookType.AFTER_MODEL_COMPLETION, priority=priority, rule=rule)
 
@@ -171,8 +174,9 @@ def on_finish_chat(priority: int = 10, rule: Optional[Rule] = None) -> Hooked:
     """
     注册一个钩子函数。
     这个函数将在结束对话(存库前)调用
-    它可接受一个 `Message` 类
+    它可接受一个 `Message` 类参数
 
     :param priority: 调用优先级
+    :param rule: Nonebot 的响应规则
     """
     return Hooked(HookType.ON_FINISHING_CHAT, priority=priority, rule=rule)
