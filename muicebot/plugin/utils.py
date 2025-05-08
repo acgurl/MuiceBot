@@ -3,7 +3,7 @@ from functools import wraps
 from pathlib import Path
 from typing import Any, Callable
 
-from .typing import ASYNC_FUNCTION_CALL_FUNC, SYNC_FUNCTION_CALL_FUNC
+from .func_call._types import ASYNC_FUNCTION_CALL_FUNC, SYNC_FUNCTION_CALL_FUNC
 
 
 def path_to_module_name(module_path: Path, base_path: Path) -> str:
