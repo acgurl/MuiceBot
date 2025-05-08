@@ -245,8 +245,6 @@ def _(completion: ModelCompletions | ModelStreamCompletions):
         logger.warning("流式传输暂不支持 TTS")
         return
 
-    tts_output =
-
     completion.resources.append(Resource(
         type="audio",
         raw=generate_voice(completion.text)
