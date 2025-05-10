@@ -37,7 +37,7 @@ from .muice import Muice
 from .plugin import get_plugins, load_plugins, set_ctx
 from .scheduler import setup_scheduler
 from .utils.SessionManager import SessionManager
-from .utils.utils import get_version, legacy_get_images, save_image_as_file
+from .utils.utils import download_file, get_file_via_adapter, get_version
 
 COMMAND_PREFIXES = [".", "/"]
 
@@ -311,17 +311,23 @@ async def _extract_multi_resource(
     resources = []
 
     for resource in message:
+        assert isinstance(resource, uniseg.segment.Media)  # 正常情况下应该都是 Media 的子类
+
         try:
-            if not resource.url:
-                logger.warning("无法通过通用方式获取图片URL，回退至传统方式...")
-                path = await legacy_get_images(resource.origin, event)
+            if resource.path is not None:
+                path = str(resource.path)
+            elif resource.url is not None:
+                path = await download_file(resource.url, file_name=resource.name)
+            elif resource.origin is not None:
+                logger.warning("无法通过通用方式获取文件URL，回退至适配器自有方式...")
+                path = await get_file_via_adapter(resource.origin, event)  # type:ignore
             else:
-                path = await save_image_as_file(resource.url)
+                continue
 
             if path:
                 resources.append(Resource(type, path))
         except Exception as e:
-            logger.error(f"处理图片失败: {e}")
+            logger.error(f"处理文件失败: {e}")
 
     return resources
 

@@ -27,13 +27,13 @@ User_Agent = (
 )
 
 
-async def save_image_as_file(image_url: str, file_name: Optional[str] = None, proxy: Optional[str] = None) -> str:
+async def download_file(file_url: str, file_name: Optional[str] = None, proxy: Optional[str] = None) -> str:
     """
-    保存图片至本地目录
+    保存文件至本地目录
 
-    :image_url: 图片在线地址
-    :file_name: 要保存的文件名
-    :proxy: 代理地址
+    :param file_url: 图片在线地址
+    :param file_name: 要保存的文件名
+    :param proxy: 代理地址
 
     :return: 保存后的本地目录
     """
@@ -42,7 +42,7 @@ async def save_image_as_file(image_url: str, file_name: Optional[str] = None, pr
     file_name = file_name if file_name else str(time.time_ns()) + ".jpg"
 
     async with httpx.AsyncClient(proxy=proxy, verify=ssl_context) as client:
-        r = await client.get(image_url, headers={"User-Agent": User_Agent})
+        r = await client.get(file_url, headers={"User-Agent": User_Agent})
         local_path = (IMG_DIR / file_name).resolve()
         with open(local_path, "wb") as file:
             file.write(r.content)
@@ -65,9 +65,9 @@ async def save_image_as_base64(image_url: str, proxy: Optional[str] = None) -> s
     return image_base64.decode("utf-8")
 
 
-async def legacy_get_images(message: MessageSegment, event: Event) -> Optional[str]:
+async def get_file_via_adapter(message: MessageSegment, event: Event) -> Optional[str]:
     """
-    (传统兼容模式)获取图片地址并保存到本地
+    通过适配器自有方式获取文件地址并保存到本地
 
     :return: 本地地址
     """
@@ -80,20 +80,20 @@ async def legacy_get_images(message: MessageSegment, event: Event) -> Optional[s
     TelegramFile = ADAPTER_CLASSES["telegram_file"]
 
     if Onebotv12Bot and UnsupportedParam and isinstance(bot, Onebotv12Bot):
-        if message.type != "image":
-            return None
+        # if message.type != "image":
+        #     return None
 
         try:
-            image_path = await bot.get_file(type="url", file_id=message.data["file_id"])
+            file_path = await bot.get_file(type="url", file_id=message.data["file_id"])
         except UnsupportedParam as e:
-            logger.error(f"Onebot 实现不支持获取文件 URL，图片获取操作失败：{e}")
+            logger.error(f"Onebot 实现不支持获取文件 URL，文件获取操作失败：{e}")
             return None
 
-        return str(image_path)
+        return str(file_path)
 
     elif Onebotv11Bot and isinstance(bot, Onebotv11Bot):
-        if message.type == "image" and "url" in message.data and "file" in message.data:
-            return await save_image_as_file(message.data["url"], message.data["file"])
+        if "url" in message.data and "file" in message.data:
+            return await download_file(message.data["url"], message.data["file"])
 
     elif TelegramEvent and TelegramFile and isinstance(event, TelegramEvent):
         if not isinstance(message, TelegramFile):
@@ -106,7 +106,7 @@ async def legacy_get_images(message: MessageSegment, event: Event) -> Optional[s
 
         url = f"https://api.telegram.org/file/bot{bot.bot_config.token}/{file.file_path}"  # type: ignore
         # filename = file.file_path.split("/")[1]
-        return await save_image_as_file(url, proxy=plugin_config.telegram_proxy)
+        return await download_file(url, proxy=plugin_config.telegram_proxy)
 
     return None
 
