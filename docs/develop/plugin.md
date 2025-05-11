@@ -224,32 +224,117 @@ def _(request: ModelRequest):
     request.system = "你是一个叫 Muika 的猫娘"
 ```
 
-### on_after_completion
+### on_stream_chunk
 
-这个钩子函数会在将数据传入模型(`Muice` 的 `model.ask()`)之后调用。支持依赖注入，可以注入 `Union[ModelCompletions, ModelStreamCompletions]` 和 Nonebot 的原生依赖注入
+这个函数将在流式调用中途(`Muice` 的 `model.ask_stream()`)调用。支持依赖注入，可以注入 `ModelStreamCompletions` 和 Nonebot 的原生依赖注入
 
-> [!WARNING]
+> [!TIP]
 >
-> 当启用流式时，由于此钩子函数只会在结束迭代时运行，而此时消息回复逻辑已完成，因此对 `ModelStreamCompletion` 的任何修改将不生效
+> 这个函数将依次获得流式迭代器中的所有包，因此可通过钩子函数修改流式输出
 >
-> 由于此钩子函数可用性较差，未来我们可能会更改此钩子函数的实现
+> 尽管我们没有引入额外的会话上下文信息帮助你判断当前包在哪个对话中，但是你仍然可以通过 Nonebot 的原生上下文注入和全局变量帮助你实现实现会话存储和定位
 
 ```python
-from muicebot.plugin.hook import on_after_completion
-from muicebot.llm import ModelCompletions, ModelStreamCompletions
-from mytts import generate_voice
+# muicebot/builtin_plugins/thought_processor.py
 
-@on_after_completion()
-def _(completion: ModelCompletions | ModelStreamCompletions):
-    if isinstance(ModelStreamCompletions):
-        logger.warning("流式传输暂不支持 TTS")
+import re
+from dataclasses import dataclass
+
+from nonebot.adapters import Event
+
+from muicebot.config import plugin_config
+from muicebot.llm import ModelCompletions, ModelStreamCompletions
+from muicebot.models import Message
+from muicebot.plugin.hook import on_after_completion, on_finish_chat, on_stream_chunk
+
+_PROCESS_MODE = plugin_config.thought_process_mode
+_STREAM_PROCESS_STATE: dict[str, bool] = {}
+_PROCESSCACHES: dict[str, "ProcessCache"] = {}
+
+
+@dataclass
+class ProcessCache:
+    thoughts: str = ""
+    result: str = ""
+
+@on_stream_chunk(priority=1)
+def stream_processor(chunk: ModelStreamCompletions, event: Event):
+    session_id = event.get_session_id()
+    cache = _PROCESSCACHES.setdefault(session_id, ProcessCache())
+    state = _STREAM_PROCESS_STATE
+
+    # 思考过程中
+    if "<think>" in chunk.chunk:
+        state[session_id] = True
+        cache.thoughts += chunk.chunk.replace("<think>", "")
+        if _PROCESS_MODE == 1:
+            chunk.chunk = chunk.chunk.replace("<think>", "思考过程: ")
+        elif _PROCESS_MODE == 2:
+            chunk.chunk = ""
         return
 
-    completion.resources.append(Resource(
-        type="audio",
-        raw=generate_voice(completion.text)
-    ))
+    # 思考结束
+    elif "</think>" in chunk.chunk:
+        del state[session_id]
+        cache.result += chunk.chunk.replace("</think>", "")
+        if _PROCESS_MODE == 1:
+            chunk.chunk = chunk.chunk.replace("</think>", "\n\n")
+        elif _PROCESS_MODE == 2:
+            chunk.chunk = chunk.chunk.replace("</think>", "")
+        return
+
+    # 思考过程中
+    elif state.get(session_id, False):
+        cache.thoughts += chunk.chunk
+        if _PROCESS_MODE == 2:
+            chunk.chunk = ""
+
+    # 思考结果中
+    else:
+        cache.result += chunk.chunk
 ```
+
+### on_after_completion
+
+这个钩子函数会在将数据传入模型(`Muice` 的 `model.ask()`)之后调用。支持依赖注入，可以注入 `ModelCompletions` 和 Nonebot 的原生依赖注入
+
+> [!INFO]
+>
+> 当启用流式时，将传入完整的 `ModelCompletions` 构造。此时，仅支持 Resources 属性的修改。
+> 尽管如此，对于 TTS 任务，已经完全够用
+
+```python
+# edge_tts.py
+from muicebot.plugin.hook import on_after_completion
+from muicebot.models import Resource
+from muicebot.llm import ModelCompletions
+from nonebot import logger
+import tempfile
+import edge_tts
+
+VOICE = "zh-CN-XiaoxiaoNeural"  # 可配置
+
+# 合成并播放 TTS 音频
+async def synthesize_and_play(text: str) -> str:
+    logger.info("tts处理中...")
+    communicate = edge_tts.Communicate(text, VOICE)
+    with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as f:
+        path = f.name
+    await communicate.save(path)
+
+    logger.info(f"[TTS] 合成完成: {path}")
+
+    return path
+
+@on_after_completion(priority=20)
+async def tts_after_completion(completions: ModelCompletions):
+    text = completions.text.strip()
+    if text:
+        path = await synthesize_and_play(text)
+        completions.resources.append(Resource(type='audio', path=path))
+```
+
+`on_after_completion` 修饰器还支持传入 `stream` 参数，用于是否仅在(非)流式中处理，默认为无限制
 
 ### on_finish_chat
 

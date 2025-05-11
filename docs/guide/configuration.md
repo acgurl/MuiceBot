@@ -6,16 +6,18 @@
 
 目前支持的配置有:
 
-| 配置项                   | 类型(默认值)                            | 说明                                                       |
-| ------------------------ | --------------------------------------- | ---------------------------------------------------------- |
-| `LOG_LEVEL`              | str = "INFO"                            | 日志等级                                                   |
-| `TELEGRAM_PROXY`         | Optional[str] = None                    | tg适配器代理，并使用该代理下载文件                         |
-| `PLUGINS_DIR`            | list = []                               | 自定义 Muicebot 插件加载目录                               |
-| `ENABLE_BUILTIN_PLUGINS` | bool = True                             | 启用内嵌插件                                               |
-| `MUICE_NICKNAMES`        | list = ["muice"]                        | 沐雪的自定义昵称，作为消息前缀条件响应信息事件             |
-| `MAX_HISTORY_EPOCH`      | int = 0                                 | 最大记忆历史轮数。0为全部使用                              |
-| `INPUT_TIMEOUT`          | int = 0                                 | 输入等待时间。在这时间段内的消息将会被合并为同一条消息使用 |
-| `ENABLE_ADAPTERS`        | list = ["~.onebot.v11", "~.onebot.v12"] | 在入口文件中启用的 Nonebot 适配器(仅 Debug 环境)           |
+| 配置项                   | 类型(默认值)                            | 说明                                                         |
+| ------------------------ | --------------------------------------- | ------------------------------------------------------------ |
+| `MUICE_NICKNAMES`        | list = ["muice"]                        | 沐雪的自定义昵称，作为消息前缀条件响应信息事件               |
+| `DEFAULT_TEMPLATE`       | Optional[str] = None                    | 默认使用的人设模板。None为不使用                             |
+| `MAX_HISTORY_EPOCH`      | int = 0                                 | 最大记忆历史轮数。0为全部使用                                |
+| `THOUGHT_PROCESS_MODE`   | int = 2                                 | 针对 Deepseek-R1 等思考模型的思考过程提取模式。为0则不处理，1为提取思考过程和结果，2为仅输出结果 |
+| `INPUT_TIMEOUT`          | int = 0                                 | 输入等待时间。在这时间段内的消息将会被合并为同一条消息使用   |
+| `LOG_LEVEL`              | str = "INFO"                            | 日志等级                                                     |
+| `TELEGRAM_PROXY`         | Optional[str] = None                    | tg适配器代理，并使用该代理下载文件                           |
+| `PLUGINS_DIR`            | list = []                               | 自定义 Muicebot 插件加载目录                                 |
+| `ENABLE_BUILTIN_PLUGINS` | bool = True                             | 启用内嵌插件                                                 |
+| `ENABLE_ADAPTERS`        | list = ["~.onebot.v11", "~.onebot.v12"] | 在入口文件中启用的 Nonebot 适配器(仅 Debug 环境)             |
 
 # YAML 配置文件⚙️
 
@@ -47,7 +49,6 @@ azure:
   api_key: ghp_xxxxxxxxxxxxxxxxx # GitHub Token（若配置了环境变量，此项不填）
   system_prompt: '我们来玩一个角色扮演的小游戏吧，现在开始你是一个名为的“沐雪”的AI女孩子，用猫娘的语气和我说话。' # 系统提示（可选）
   auto_system_prompt: true # 自动配置沐雪的系统提示（默认为 false）
-  think: 1 # DeepSeek-R1 思考过程优化（0不做任何处理；1提取并同时输出思考过程和结果；2仅输出思考结果）
 ```
 
 如果你不知道这些配置中哪些是必须的，那么你可以先填写一个 `loader` 配置，模型加载器初始化时会抛出错误并提示您
@@ -75,7 +76,6 @@ azure:
   token: ghp_xxxxxxxxxxxxxxxxx # GitHub Token（若配置了环境变量，此项不填）
   system_prompt: '我们来玩一个角色扮演的小游戏吧，现在开始你是一个名为的“沐雪”的AI女孩子，用猫娘的语气和我说话。' # 系统提示（可选）
   auto_system_prompt: true # 自动配置沐雪的系统提示（默认为 false）
-  think: 1 # DeepSeek-R1 思考过程优化（0不做任何处理；1提取并同时输出思考过程和结果；2仅输出思考结果）
 ```
 
 在某个模型配置中配置 `default: true` 即可将此模型配置设为默认。如果没有默认的模型配置，则会加载第一个。
@@ -91,10 +91,10 @@ azure:
 
 ```yaml
 loader: Xfyun # 模型加载器名称，这些模型加载器位于插件目录下的 llm 文件夹中，并初始化同名文件的同名类，如果不存在则报错。注意，每个模型加载器因为兼容问题，开头首字母都是大写的
-think: 1 # 针对于 DeepSeek-R1 等思考模型的思考过程优化（0不做任何处理；1提取并同时输出思考过程和结果；2仅输出思考结果）。就算思考过程不存在，设置为 1 或 2 也不会引发任何错误。
 multimodal: true # 多模态支持。目前仅支持 Dashscope 加载器。设置为 true 将处理图片事件。如果调用的模型不是多模态模型将引发报错
 
-template: Muice # 人设提示词 Jinja2 模板，模板文件需要存放在 `./templates` 文件夹下。Muice为内嵌模板。默认值为空
+template: Muice # 人设提示词 Jinja2 模板，模板文件需要存放在 `./templates` 文件夹下。Muice为内嵌模板。默认值为空或全局默认值
+template_mode: system # 模板嵌入模式: `system` 为嵌入到系统提示; `user` 为嵌入到用户提示中。默认为 `system`
 ```
 
 其中，沐雪人设模板文件存放于：[Muice.jinja2](https://github.com/Moemu/MuiceBot/blob/main/muicebot/builtin_templates/Muice.jinja2)
