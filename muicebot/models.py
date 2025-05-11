@@ -12,9 +12,11 @@ class Resource:
     type: Literal["image", "video", "audio", "file"]
     """消息类型"""
     url: str = ""
-    """存储地址"""
+    """远程存储地址"""
     raw: Union[bytes, BytesIO] = b""
     """二进制数据（只使用于模型返回且不保存到数据库中）"""
+    path: str = ""
+    """本地存储地址"""
 
     def to_dict(self) -> dict:
         return {

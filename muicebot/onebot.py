@@ -361,13 +361,13 @@ async def _send_multi_messages(resource: Resource):
     TODO: 我们有可能对发送对象添加文件名吗？
     """
     if resource.type == "audio":
-        await UniMessage(uniseg.Voice(raw=resource.raw)).send()
+        await UniMessage(uniseg.Voice(raw=resource.raw, path=resource.path)).send()
     elif resource.type == "image":
-        await UniMessage(uniseg.Image(raw=resource.raw)).send()
+        await UniMessage(uniseg.Image(raw=resource.raw, path=resource.path)).send()
     elif resource.type == "video":
-        await UniMessage(uniseg.Video(raw=resource.raw)).send()
+        await UniMessage(uniseg.Video(raw=resource.raw, path=resource.path)).send()
     else:
-        await UniMessage(uniseg.File(raw=resource.raw)).send()
+        await UniMessage(uniseg.File(raw=resource.raw, path=resource.path)).send()
 
 
 async def _send_message(completions: ModelCompletions | AsyncGenerator[ModelStreamCompletions, None]):
