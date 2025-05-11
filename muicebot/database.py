@@ -108,7 +108,7 @@ class Database:
         """
         if limit is not None:
             query = """UPDATE MSG SET HISTORY = 0 WHERE ROWID IN (
-            SELECT ROWID FROM MSG WHERE USERID = ? AND HISTORY = 1 LIMIT ?)"""
+                SELECT ROWID FROM MSG WHERE USERID = ? AND HISTORY = 1 ORDER BY ROWID DESC LIMIT ?)"""
             await self.execute(query, (userid, limit))
         else:
             query = "UPDATE MSG SET HISTORY = 0 WHERE USERID = ?"
