@@ -54,6 +54,10 @@ class PluginConfig(BaseModel):
     """启用的 Nonebot 适配器"""
     input_timeout: int = 0
     """输入等待时间"""
+    default_template: Optional[str] = None
+    """默认使用人设模板名称"""
+    thought_process_mode: Literal[0, 1, 2] = 2
+    """针对 Deepseek-R1 等思考模型的思考过程提取模式"""
 
 
 plugin_config = get_plugin_config(PluginConfig)
@@ -162,6 +166,8 @@ class ModelConfigManager:
         self.configs = {}
         for name, config in configs_dict.items():
             self.configs[name] = ModelConfig(**config)
+            # 未指定模板时，使用默认模板
+            self.configs[name].template = self.configs[name].template or plugin_config.default_template
             if config.get("default"):
                 self.default_config = self.configs[name]
 

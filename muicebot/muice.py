@@ -15,8 +15,7 @@ from .llm import (
     ModelStreamCompletions,
     get_missing_dependencies,
 )
-from .llm.utils.thought import ThoughtProcessor
-from .models import Message
+from .models import Message, Resource
 from .plugin import get_tools
 from .plugin.hook import HookType, hook_manager
 from .templates import generate_prompt_from_template
@@ -66,7 +65,6 @@ class Muice:
         """
         加载配置项
         """
-        self.think = self.model_config.think
         self.model_loader = self.model_config.loader
         self.multimodal = self.model_config.multimodal
         self.template = self.model_config.template
@@ -209,7 +207,7 @@ class Muice:
         """
         if not (self.model and self.model.is_running):
             logger.error("模型未加载")
-            return ModelCompletions("模型未加载")
+            return ModelCompletions("模型未加载", succeed=False)
 
         is_private = message.groupid == "-1"
         logger.info("正在调用模型...")
@@ -222,7 +220,6 @@ class Muice:
         system = self.system_prompt if self.system_prompt else None
 
         model_request = ModelRequest(prompt, history, message.resources, tools, system)
-        thought_processor = ThoughtProcessor(self.think)
         await hook_manager.run(HookType.BEFORE_MODEL_COMPLETION, model_request)
 
         start_time = time.perf_counter()
@@ -232,20 +229,18 @@ class Muice:
 
         end_time = time.perf_counter()
 
-        logger.success(f"模型调用成功: {response}")
+        logger.success(f"模型调用{'成功' if response.succeed else '失败'}: {response}")
         logger.debug(f"模型调用时长: {end_time - start_time} s (token用量: {response.usage})")
 
         await hook_manager.run(HookType.AFTER_MODEL_COMPLETION, response)
-        thought, result = thought_processor.process_message(response.text)
-        response.text = "\n\n".join([thought, result]) if thought else result
 
-        message.respond = result
+        message.respond = response.text
         message.usage = response.usage
+
+        await hook_manager.run(HookType.ON_FINISHING_CHAT, message)
 
         if response.succeed:
             await self.database.add_item(message)
-
-        await hook_manager.run(HookType.ON_FINISHING_CHAT, message)
 
         return response
 
@@ -287,17 +282,15 @@ class Muice:
         response = await self.model.ask(model_request, stream=True)
 
         total_reply = ""
-        thought_processor = ThoughtProcessor(status=self.think)
-
+        total_resources: list[Resource] = []
         item: Optional[ModelStreamCompletions] = None
 
         async for item in response:
-            processed = thought_processor.process_chunk(item.chunk)
-            if processed and processed.strip():
-                total_reply += processed
-                yield ModelStreamCompletions(chunk=processed)
+            await hook_manager.run(HookType.ON_STREAM_CHUNK, item)
+            total_reply += item.chunk
+            yield item
             if item.resources:
-                yield ModelStreamCompletions(resources=item.resources)
+                total_resources.extend(item.resources)
 
         if item is None:
             raise RuntimeError("模型调用器返回的值应至少包含一个元素")
@@ -306,15 +299,25 @@ class Muice:
         logger.success(f"已完成流式回复: {total_reply}")
         logger.debug(f"模型调用时长: {end_time - start_time} s (token用量: {item.usage})")
 
-        await hook_manager.run(HookType.AFTER_MODEL_COMPLETION, item)
-        thought, result = thought_processor.process_message(total_reply)
-        message.respond = result
+        final_model_completions = ModelCompletions(
+            text=total_reply, usage=item.usage, resources=total_resources.copy(), succeed=item.succeed
+        )
+        await hook_manager.run(HookType.AFTER_MODEL_COMPLETION, final_model_completions)
+
+        # 提取挂钩函数的可能的 resources 资源
+        new_resources = [r for r in final_model_completions.resources if r not in total_resources]
+
+        # yield 新资源
+        for r in new_resources:
+            yield ModelStreamCompletions(resources=[r])
+
+        message.respond = total_reply
         message.usage = item.usage
+
+        await hook_manager.run(HookType.ON_FINISHING_CHAT, message)
 
         if item.succeed:
             await self.database.add_item(message)
-
-        await hook_manager.run(HookType.ON_FINISHING_CHAT, message)
 
     async def refresh(self, userid: str) -> Union[AsyncGenerator[ModelStreamCompletions, None], ModelCompletions]:
         """
@@ -324,13 +327,13 @@ class Muice:
         """
         logger.info(f"用户 {userid} 请求刷新")
 
-        last_item = await self.database.get_user_history(userid, limit=1)
+        user_history = await self.database.get_user_history(userid, limit=1)
 
-        if not last_item:
+        if not user_history:
             logger.warning("用户对话数据不存在，拒绝刷新")
             return ModelCompletions("你都还没和我说过一句话呢，得和我至少聊上一段才能刷新哦")
 
-        last_item = last_item[0]
+        last_item = user_history[0]
 
         await self.database.mark_history_as_unavailable(userid, 1)
 

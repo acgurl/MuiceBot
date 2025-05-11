@@ -32,8 +32,6 @@ class ModelConfig(BaseModel):
     """模型的存在惩罚"""
     repetition_penalty: Optional[float] = None
     """模型的重复惩罚"""
-    think: Literal[0, 1, 2] = 2
-    """针对 Deepseek-R1 等思考模型的思考过程提取模式"""
     stream: bool = False
     """是否使用流式输出"""
     online_search: bool = False
