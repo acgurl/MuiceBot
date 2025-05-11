@@ -5,6 +5,7 @@ from .manager import (
     on_before_completion,
     on_before_pretreatment,
     on_finish_chat,
+    on_stream_chunk,
 )
 
 __all__ = [
@@ -14,4 +15,5 @@ __all__ = [
     "on_before_completion",
     "on_before_pretreatment",
     "on_finish_chat",
+    "on_stream_chunk",
 ]

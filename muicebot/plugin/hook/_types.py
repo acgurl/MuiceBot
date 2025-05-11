@@ -18,6 +18,8 @@ class HookType(Enum):
     """预处理前"""
     BEFORE_MODEL_COMPLETION = auto()
     """模型调用前"""
+    ON_STREAM_CHUNK = auto()
+    """模型流式输出中"""
     AFTER_MODEL_COMPLETION = auto()
     """模型调用后"""
     ON_FINISHING_CHAT = auto()

@@ -79,7 +79,14 @@ class HookManager:
         self._hooks[hook_type].append(hooked)
         return hooked
 
-    async def run(self, hook_type: HookType, hook_arg: HOOK_ARGS):
+    async def run(self, hook_type: HookType, hook_arg: HOOK_ARGS, stream: bool = False):
+        """
+        运行所有的钩子函数
+
+        :param hook_type: 钩子类型
+        :param hook_arg: 消息处理流程中对应的数据类
+        :param stream: 当前是否为流式状态
+        """
         hookeds = self._hooks[hook_type]
         hookeds.sort(key=lambda x: x.priority)
 
@@ -90,7 +97,9 @@ class HookManager:
         for hooked in hookeds:
             args = await self._inject_dependencies(hooked.function, hook_arg)
 
-            if hooked.rule and not await hooked.rule(bot, event, state):
+            if (hooked.stream is not None and hooked.stream == stream) or (
+                hooked.rule and not await hooked.rule(bot, event, state)
+            ):
                 continue
 
             result = hooked.function(**args)
@@ -104,11 +113,15 @@ hook_manager = HookManager()
 class Hooked:
     """挂钩函数对象"""
 
-    def __init__(self, hook_type: HookType, priority: int = 10, rule: Optional[Rule] = None):
+    def __init__(
+        self, hook_type: HookType, priority: int = 10, stream: Optional[bool] = None, rule: Optional[Rule] = None
+    ):
         self.hook_type = hook_type
         """钩子函数类型"""
         self.priority = priority
         """函数调用优先级"""
+        self.stream = stream
+        """是否仅在(非)流式中运行"""
         self.rule: Optional[Rule] = rule
         """启用规则"""
 
@@ -156,18 +169,31 @@ def on_before_completion(priority: int = 10, rule: Optional[Rule] = None) -> Hoo
     return Hooked(HookType.BEFORE_MODEL_COMPLETION, priority=priority, rule=rule)
 
 
-def on_after_completion(priority: int = 10, rule: Optional[Rule] = None) -> Hooked:
+def on_stream_chunk(priority: int = 10, rule: Optional[Rule] = None) -> Hooked:
     """
     注册一个钩子函数。
-    这个函数将在传入模型(`Muice` 的 `model.ask()`)后调用（流式则传入最后一个流式包）
-    它可接受一个 `Union[ModelCompletions, ModelStreamCompletions]` 类参数
-
-    请注意：当启用流式时，对 `ModelStreamCompletion` 的任何修改将不生效
+    这个函数将在流式调用中途(`Muice` 的 `model.ask()`)调用
+    它可接受一个 `ModelStreamCompletions` 类参数
 
     :param priority: 调用优先级
     :param rule: Nonebot 的响应规则
     """
-    return Hooked(HookType.AFTER_MODEL_COMPLETION, priority=priority, rule=rule)
+    return Hooked(HookType.ON_STREAM_CHUNK, priority=priority, rule=rule)
+
+
+def on_after_completion(priority: int = 10, stream: Optional[bool] = None, rule: Optional[Rule] = None) -> Hooked:
+    """
+    注册一个钩子函数。
+    这个函数将在传入模型(`Muice` 的 `model.ask()`)后调用（流式则传入整合后的数据）
+    它可接受一个 `ModelCompletion` 类参数
+
+    请注意：当启用流式时，对 `ModelStreamCompletion` 的任何修改将不生效
+
+    :param priority: 调用优先级
+    :param stream: 是否仅在(非)流式中处理，None 则无限制
+    :param rule: Nonebot 的响应规则
+    """
+    return Hooked(HookType.AFTER_MODEL_COMPLETION, priority=priority, stream=stream, rule=rule)
 
 
 def on_finish_chat(priority: int = 10, rule: Optional[Rule] = None) -> Hooked:
