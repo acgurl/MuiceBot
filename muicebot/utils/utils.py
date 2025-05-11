@@ -1,4 +1,5 @@
 import base64
+import mimetypes
 import os
 import ssl
 import sys
@@ -7,6 +8,7 @@ from importlib.metadata import PackageNotFoundError, version
 from typing import Optional
 
 import httpx
+import magic
 import nonebot_plugin_localstore as store
 from nonebot import get_bot, logger
 from nonebot.adapters import Event, MessageSegment
@@ -14,6 +16,7 @@ from nonebot.log import default_filter, logger_id
 from nonebot_plugin_userinfo import get_user_info
 
 from ..config import plugin_config
+from ..models import Resource
 from ..plugin.context import get_event
 from .adapters import ADAPTER_CLASSES
 
@@ -189,3 +192,19 @@ async def get_username(user_id: Optional[str] = None) -> str:
     user_id = user_id if user_id else event.get_user_id()
     user_info = await get_user_info(bot, event, user_id)
     return user_info.user_name if user_info else user_id
+
+
+def guess_mimetype(resource: Resource) -> Optional[str]:
+    """
+    尝试获取 minetype 类型
+    """
+    # raw 不落库，因此无法从 raw 判断
+    if resource.path and os.path.exists(resource.path):
+        try:
+            mime = magic.Magic(mime=True)
+            return mime.from_file(resource.path)
+        except Exception:
+            return mimetypes.guess_type(resource.path)[0]
+    elif resource.url:
+        return mimetypes.guess_type(resource.url)[0]
+    return None

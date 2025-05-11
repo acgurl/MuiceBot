@@ -49,24 +49,27 @@ class Openai(BasicModel):
         user_content: List[dict] = [{"type": "text", "text": request.prompt}]
 
         for resource in request.resources:
-            if resource.type == "audio":
-                file_format = resource.url.split(".")[-1]
-                file_data = f"data:;base64,{get_file_base64(local_path=resource.url)}"
+            if resource.path is None:
+                continue
+
+            elif resource.type == "audio":
+                file_format = resource.path.split(".")[-1]
+                file_data = f"data:;base64,{get_file_base64(local_path=resource.path)}"
                 user_content.append({"type": "input_audio", "input_audio": {"data": file_data, "format": file_format}})
 
             elif resource.type == "image":
-                file_format = resource.url.split(".")[-1]
-                file_data = f"data:image/{file_format};base64,{get_file_base64(local_path=resource.url)}"
+                file_format = resource.path.split(".")[-1]
+                file_data = f"data:image/{file_format};base64,{get_file_base64(local_path=resource.path)}"
                 user_content.append({"type": "image_url", "image_url": {"url": file_data}})
 
             elif resource.type == "video":
-                file_format = resource.url.split(".")[-1]
-                file_data = f"data:;base64,{get_file_base64(local_path=resource.url)}"
+                file_format = resource.path.split(".")[-1]
+                file_data = f"data:;base64,{get_file_base64(local_path=resource.path)}"
                 user_content.append({"type": "video_url", "video_url": {"url": file_data}})
 
             elif resource.type == "file":
-                file_format = resource.url.split(".")[-1]
-                file_data = f"data:;base64,{get_file_base64(local_path=resource.url)}"
+                file_format = resource.path.split(".")[-1]
+                file_data = f"data:;base64,{get_file_base64(local_path=resource.path)}"
                 user_content.append({"type": "file", "file": {"file_data": file_data}})
 
         return {"role": "user", "content": user_content}

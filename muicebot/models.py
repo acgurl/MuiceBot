@@ -2,7 +2,7 @@ from dataclasses import asdict, dataclass, field
 from datetime import datetime
 from functools import total_ordering
 from io import BytesIO
-from typing import List, Literal, Union
+from typing import List, Literal, Optional, Union
 
 
 @dataclass
@@ -11,17 +11,25 @@ class Resource:
 
     type: Literal["image", "video", "audio", "file"]
     """消息类型"""
-    url: str = ""
-    """远程存储地址"""
-    raw: Union[bytes, BytesIO] = b""
+    path: str = field(default_factory=str)
+    """本地存储地址(对于模型处理是必需的)"""
+    url: Optional[str] = field(default=None)
+    """远程存储地址(一般不传入模型处理中)"""
+    raw: Optional[Union[bytes, BytesIO]] = field(default=None)
     """二进制数据（只使用于模型返回且不保存到数据库中）"""
-    path: str = ""
-    """本地存储地址"""
+    mimetype: Optional[str] = field(default=None)
+    """文件元数据类型"""
+
+    def ensure_mimetype(self):
+        from .utils.utils import guess_mimetype
+
+        if not self.mimetype:
+            self.mimetype = guess_mimetype(self)
 
     def to_dict(self) -> dict:
         return {
             "type": self.type,
-            "url": self.url,
+            "path": self.path,
         }
 
 

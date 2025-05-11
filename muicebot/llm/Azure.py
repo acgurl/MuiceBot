@@ -60,18 +60,20 @@ class Azure(BasicModel):
         multi_content_items: List[ContentItem] = []
 
         for resource in request.resources:
-            if resource.type == "audio":
+            if resource.path is None:
+                continue
+            elif resource.type == "audio":
                 multi_content_items.append(
                     AudioContentItem(
-                        input_audio=InputAudio.load(audio_file=resource.url, audio_format=resource.url.split(".")[-1])
+                        input_audio=InputAudio.load(audio_file=resource.path, audio_format=resource.path.split(".")[-1])
                     )
                 )
             elif resource.type == "image":
                 multi_content_items.append(
                     ImageContentItem(
                         image_url=ImageUrl.load(
-                            image_file=resource.url,
-                            image_format=resource.url.split(".")[-1],
+                            image_file=resource.path,
+                            image_format=resource.path.split(".")[-1],
                             detail=ImageDetailLevel.AUTO,
                         )
                     )

@@ -55,7 +55,9 @@ class Ollama(BasicModel):
         images = []
 
         for resource in request.resources:
-            image_base64 = get_file_base64(local_path=resource.url)
+            if resource.path is None:
+                continue
+            image_base64 = get_file_base64(local_path=resource.path)
             images.append(image_base64)
 
         message = {"role": "user", "content": request.prompt, "images": images}

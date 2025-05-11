@@ -325,7 +325,7 @@ async def _extract_multi_resource(
                 continue
 
             if path:
-                resources.append(Resource(type, path))
+                resources.append(Resource(type, path=path))
         except Exception as e:
             logger.error(f"处理文件失败: {e}")
 

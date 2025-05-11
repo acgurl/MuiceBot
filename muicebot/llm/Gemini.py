@@ -80,9 +80,12 @@ class Gemini(BasicModel):
             return user_parts
 
         for resource in request.resources:
-            if resource.type == "image":
+            if resource.type == "image" and resource.path is not None:
+                resource.ensure_mimetype()
                 user_parts.append(
-                    Part.from_bytes(data=get_file_base64(resource.url), mime_type="image/jpeg")  # type:ignore
+                    Part.from_bytes(
+                        data=get_file_base64(resource.path), mime_type=resource.mimetype or "image/jpeg"  # type:ignore
+                    )
                 )
 
         return user_parts

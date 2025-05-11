@@ -172,7 +172,9 @@ class Muice:
 
         # 验证多模态资源路径是否可用
         for item in user_history:
-            item.resources = [resource for resource in item.resources if os.path.isfile(resource.url)]
+            item.resources = [
+                resource for resource in item.resources if resource.path and os.path.isfile(resource.path)
+            ]
 
         if groupid == "-1":
             return user_history[-self.max_history_epoch :]
@@ -180,7 +182,9 @@ class Muice:
         group_history = await self.database.get_group_history(groupid, self.max_history_epoch)
 
         for item in group_history:
-            item.resources = [resource for resource in item.resources if os.path.isfile(resource.url)]
+            item.resources = [
+                resource for resource in item.resources if resource.path and os.path.isfile(resource.path)
+            ]
 
         # 群聊历史构建成 <Username> Message 的格式，避免上下文混乱
         for item in group_history:
