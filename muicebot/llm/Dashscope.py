@@ -117,16 +117,16 @@ class Dashscope(BasicModel):
 
         for item in request.resources:
             if item.type == "audio":
-                if not (item.url.startswith("http") or item.url.startswith("file:")):
-                    item.url = str(Path(item.url).resolve())
+                if not (item.path.startswith("http") or item.path.startswith("file:")):
+                    item.url = str(Path(item.path).resolve())
 
-                multi_contents.append({"audio": item.url})
+                multi_contents.append({"audio": item.path})
 
             elif item.type == "image":
-                if not (item.url.startswith("http") or item.url.startswith("file:")):
-                    item.url = str(Path(item.url).resolve())
+                if not (item.path.startswith("http") or item.path.startswith("file:")):
+                    item.url = str(Path(item.path).resolve())
 
-                multi_contents.append({"image": item.url})
+                multi_contents.append({"image": item.path})
 
         user_content = [image_content for image_content in multi_contents]
 
