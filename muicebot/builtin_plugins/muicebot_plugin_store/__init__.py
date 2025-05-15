@@ -1,4 +1,5 @@
 from arclet.alconna import Alconna, Subcommand
+from nonebot.permission import SUPERUSER
 from nonebot_plugin_alconna import Args, CommandMeta, Match, on_alconna
 
 from muicebot.plugin import PluginMetadata
@@ -24,6 +25,7 @@ store_cmd = on_alconna(
     priority=10,
     block=True,
     skip_for_unmatch=False,
+    permission=SUPERUSER,
 )
 
 
