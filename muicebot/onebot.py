@@ -424,6 +424,9 @@ async def handle_supported_adapters(
     target: MsgTarget,
     ext: ReplyRecordExtension,
 ):
+    if any((bot_message.startswith("."), bot_message.startswith("/"))):
+        await UniMessage("未知的指令或权限不足").finish()
+
     # 先拿到引用消息并合并到 message (如果有)
     if message_reply := ext.get_reply(bot_message.get_message_id()):
         reply_message = message_reply.msg
