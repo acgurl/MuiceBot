@@ -19,6 +19,7 @@ async def get_index() -> Optional[dict[str, PluginInfo]]:
     """
     获取插件索引
     """
+    logger.info("获取插件索引文件...")
     try:
         async with aiohttp.ClientSession() as session:
             async with session.get(config.store_index) as response:
@@ -44,6 +45,38 @@ def load_store_plugin():
         load_plugins(plugin)
 
 
+async def install_dependencies(path: Path) -> bool:
+    """
+    安装插件依赖
+
+    :return: 依赖安装状态
+    """
+    logger.info("安装插件依赖...")
+
+    if (path / "pyproject.toml").exists():
+        cmd = ["python", "-m", "pip", "install", "."]
+    elif (path / "requirements.txt").exists():
+        cmd = ["python", "-m", "pip", "install", "-r", "requirements.txt"]
+    else:
+        return True
+
+    proc = await asyncio.create_subprocess_exec(
+        *cmd,
+        cwd=str(path),
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.PIPE,
+    )
+    stdout, stderr = await proc.communicate()
+
+    logger.error("插件依赖安装失败!")
+    logger.error(stderr)
+
+    if proc.returncode == 0:
+        return True
+    else:
+        return False
+
+
 async def install_plugin(name: str) -> str:
     """
     通过 git clone 安装指定插件
@@ -61,6 +94,7 @@ async def install_plugin(name: str) -> str:
     if plugin_path.exists():
         return f"⚠️ 插件 {name} 已存在，无需安装。"
 
+    logger.info(f"获取插件: {repo_url}")
     try:
         process = await asyncio.create_subprocess_exec(
             "git",
@@ -74,6 +108,9 @@ async def install_plugin(name: str) -> str:
 
         if process.returncode != 0:
             return f"❌ 安装失败：{stderr.decode().strip()}"
+
+        if not await install_dependencies(plugin_path):
+            return "❌ 插件依赖安装失败！请检查控制台输出"
 
     except FileNotFoundError:
         return "❌ 请确保已安装 Git 并配置到 PATH。"
@@ -92,6 +129,7 @@ async def update_plugin(name: str) -> str:
     if not plugin_path.exists():
         return f"❌ 插件 {name} 不存在！"
 
+    logger.info(f"更新插件: {name}")
     try:
         process = await asyncio.create_subprocess_exec(
             "git",
@@ -119,6 +157,8 @@ async def uninstall_plugin(name: str) -> str:
 
     if not plugin_path.exists():
         return f"❌ 插件 {name} 不存在！"
+
+    logger.info(f"卸载插件: {name}")
     try:
         loop = asyncio.get_running_loop()
         await loop.run_in_executor(None, shutil.rmtree, plugin_path)
