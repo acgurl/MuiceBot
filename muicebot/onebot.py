@@ -40,10 +40,11 @@ from .utils.SessionManager import SessionManager
 from .utils.utils import download_file, get_file_via_adapter, get_version
 
 COMMAND_PREFIXES = [".", "/"]
+PLUGINS_PATH = Path("./plugins")
+START_TIME = time.time()
 
 muice = Muice()
 scheduler = None
-START_TIME = time.time()
 connect_time = 0.0
 session_manager = SessionManager()
 
@@ -67,9 +68,9 @@ async def load_bot():
         exit(1)
     logger.success(f"模型适配器加载成功: {muice.model_loader} ⭐")
 
-    logger.info("加载外部插件...")
-    for plugin_dir in plugin_config.plugins_dir:
-        load_plugins(plugin_dir)
+    if PLUGINS_PATH.exists():
+        logger.info("加载外部插件...")
+        load_plugins("./plugins")
 
     if plugin_config.enable_builtin_plugins:
         logger.info("加载 MuiceBot 内嵌插件...")

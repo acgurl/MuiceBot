@@ -46,8 +46,6 @@ conda instll muicebot
 
 默认情况下，这会仅安装 `OpenAI` 加载器所需的依赖，要想完整安装所有模型加载器的依赖，请执行：
 
-import { Tab, Tabs } from 'rspress/theme';
-
 <Tabs>
   <Tab label="pip">
 ```shell
@@ -127,18 +125,19 @@ SUPERUSERS=["123456789"]
 
 默认值: `[]`
 
-### 自定义插件目录/启用内嵌插件
-
-从以下目录中加载 Muicebot 插件：
-
-```dotenv
-PLUGINS_DIR=["./plugins"]
-ENABLE_BUILTIN_PLUGINS=true
-```
+### 使用自定义插件/内嵌插件
 
 目前的内嵌插件有: `access_control`(Nonebot 黑白名单管理); `muicebot-plugin-time`(Function Call 获取当前时间); `muicebot-plugin-username`(Function Call 获取当前对话用户名)
 
-默认值: `[] false`
+以下设置可以调整内嵌插件的开启或关闭
+
+```dotenv
+ENABLE_BUILTIN_PLUGINS=true
+```
+
+默认值: `true`
+
+对于自定义 Muicebot 或 Nonebot 插件，可以存放在机器人运行目录下的 `plugins` 文件夹下，程序启动时会自动加载。
 
 ### 加载指定的 Nonebot 适配器(仅 Debug 用途)
 

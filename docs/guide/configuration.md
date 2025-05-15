@@ -15,7 +15,6 @@
 | `INPUT_TIMEOUT`          | int = 0                                 | 输入等待时间。在这时间段内的消息将会被合并为同一条消息使用   |
 | `LOG_LEVEL`              | str = "INFO"                            | 日志等级                                                     |
 | `TELEGRAM_PROXY`         | Optional[str] = None                    | tg适配器代理，并使用该代理下载文件                           |
-| `PLUGINS_DIR`            | list = []                               | 自定义 Muicebot 插件加载目录                                 |
 | `ENABLE_BUILTIN_PLUGINS` | bool = True                             | 启用内嵌插件                                                 |
 | `ENABLE_ADAPTERS`        | list = ["~.onebot.v11", "~.onebot.v12"] | 在入口文件中启用的 Nonebot 适配器(仅 Debug 环境)             |
 
