@@ -6,19 +6,21 @@
 
 ## 使用 Muicebot 插件
 
-你可以通过以下方式加载/使用 Muicebot 插件
+### 自定义插件
 
-编辑 `.env` 文件，写入自定义插件加载目录：
-
-```dotenv
-PLUGINS_DIR=["./plugins"]
-```
-
-Muicebot 时会自动查找 `plugins` 文件夹下的插件并加载
+Muicebot 时会自动查找 `plugins` 文件夹下的插件并加载，因此你可以在此文件夹中放入您的自定义插件
 
 对于依赖 `nonebot_plugin_localstore` 的插件，我们并不建议通过此方式加载，因为 `get_plugin_data_dir` 函数可能会返回一个非预期的插件目录
 
-以后我们有可能会规范 Muicebot 插件数据目录
+### 商店插件
+
+Muicebot 的插件索引库为 [MuikaAI/Muicebot-Plugins-Index](https://github.com/MuikaAI/Muicebot-Plugins-Index)
+
+您可以通过 `.store` 命令安装插件等操作，`.store` 命令常见的用法如下:
+
+- `.store install <插件名>` 安装插件
+- `.store update <插件名>` 更新插件
+- `.store uninstall <插件名>` 卸载插件
 
 ## 开发 Function Call 插件
 

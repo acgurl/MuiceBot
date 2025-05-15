@@ -104,6 +104,9 @@
 
 参考 [使用文档](https://bot.snowy.moe)
 
+# 插件商店
+
+[Muicebot-Plugins-Index](https://github.com/MuikaAI/Muicebot-Plugins-Index)
 
 # 关于🎗️
 
