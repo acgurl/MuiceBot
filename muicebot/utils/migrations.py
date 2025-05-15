@@ -113,7 +113,7 @@ class MigrationManager:
 
             resources = []
             for url in images:
-                resources.append({"type": "image", "url": url})
+                resources.append({"type": "image", "path": url})
             resources_json = json.dumps(resources, ensure_ascii=False)
 
             # 插入到新表
