@@ -100,6 +100,7 @@ class Dashscope(BasicModel):
         self.thinking_budget = self.config.thinking_budget
 
         self._tools: List[dict] = []
+        self._last_call_total_tokens = 0
 
         self.extra_headers = (
             {"X-DashScope-DataInspection": '{"input":"cip","output":"cip"}'} if self.config.content_security else {}
@@ -209,7 +210,12 @@ class Dashscope(BasicModel):
                 return
 
             # 更新 token 消耗
-            self._total_tokens = chunk.usage.total_tokens
+            current_call_total = chunk.usage.total_tokens
+            delta = current_call_total - self._last_call_total_tokens
+            if delta < 0:
+                delta = current_call_total
+            self._total_tokens += delta
+            self._last_call_total_tokens = current_call_total
             stream_completions.usage = self._total_tokens
 
             # 优先判断是否是工具调用（OpenAI-style function calling）
@@ -231,6 +237,7 @@ class Dashscope(BasicModel):
 
         # 流式处理工具调用响应
         if func_stream.enable:
+            self._last_call_total_tokens = 0
             async for final_chunk in await self._tool_calls_handle_stream(messages, func_stream):
                 yield final_chunk
 
@@ -343,6 +350,7 @@ class Dashscope(BasicModel):
         self, request: ModelRequest, *, stream: bool = False
     ) -> Union[ModelCompletions, AsyncGenerator[ModelStreamCompletions, None]]:
         self._total_tokens = 0
+        self._last_call_total_tokens = 0
         self.stream = stream if stream is not None else False
 
         self._tools = request.tools if request.tools else []
