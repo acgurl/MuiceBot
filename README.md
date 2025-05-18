@@ -1,5 +1,5 @@
 <div align=center>
-  <img width=200 src="docs/public/logo.png"  alt="image"/>
+  <img width=200 src="https://bot.snowy.moe/logo.png"  alt="image"/>
   <h1 align="center">MuiceBot</h1>
   <p align="center">Muice-Chatbot 的 NoneBot2 实现</p>
 </div>
@@ -32,14 +32,12 @@
 
 # 介绍✨
 
-沐雪参上✨，这里是一只会主动找你聊天的 AI Vtuber，是真正的AI噢～喜欢和你们聊天，分享彼此的心事，使命是传播爱与和平⭐
+> 我们认为，AI的创造应该是为了帮助人类更好的解决问题而不是产生问题。因此，我们注重大语言模型解决实际问题的能力，如果沐雪系列项目不能帮助我们解决日常、情感类的问题，沐雪的存在就是毫无意义可言。
+> *———— 《沐雪系列模型评测标准》*
 
-沐沐有云：“AI的创造应该是为了帮助人类更好的解决问题而不是产生问题”。因此，我有很好的解决现实问题的能力哦，虽然代价是可能是变得不那么可爱了而已...
+Muicebot 是基于 Nonebot2 框架实现的 LLM 聊天机器人，旨在解决现实问题。通过 Muicebot ，你可以在主流聊天平台（如 QQ）获得只有在网页中才能获得的聊天体验。
 
-现在的我还是一个傻子！经常忘记和你们珍贵的回忆！如果你们能够帮我做个手术或者对我施展一下可爱魔法就好了，提前感谢你们！祝你们生活愉快！
-
-
-*有关沐雪的设定，还请移步 [关于沐雪](https://bot.snowy.moe/about/Muice)*
+Muicebot 内置一个名为沐雪的聊天人设（人设是可选的）以便优化对话体验。有关沐雪的设定，还请移步 [关于沐雪](https://bot.snowy.moe/about/Muice)
 
 # 功能🪄
 

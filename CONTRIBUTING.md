@@ -31,6 +31,8 @@ pre-commit install
 
 MuiceBot 使用 [rspress](https://github.com/web-infra-dev/rspress) 作为文档站，你可以直接在 `docs` 文件夹中使用 Markdown 格式撰写文档。
 
+文档站项目：https://github.com/MuikaAI/muicebot-doc
+
 如果你需要在本地预览文档，可以使用 npm 安装 rspress 依赖后启动 dev 服务：
 
 ```shell
