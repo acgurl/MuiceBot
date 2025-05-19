@@ -4,7 +4,13 @@ from nonebot_plugin_alconna import Args, CommandMeta, Match, on_alconna
 
 from muicebot.plugin import PluginMetadata
 
-from .store import install_plugin, load_store_plugin, uninstall_plugin, update_plugin
+from .store import (
+    get_installed_plugins_info,
+    install_plugin,
+    load_store_plugin,
+    uninstall_plugin,
+    update_plugin,
+)
 
 __meta__ = PluginMetadata(name="muicebot-plugin-store", description="Muicebot 插件商店操作", usage=".store help")
 
@@ -17,9 +23,10 @@ store_cmd = on_alconna(
         COMMAND_PREFIXES,
         "store",
         Subcommand("help"),
-        Subcommand("install", Args["name", str]),
-        Subcommand("update", Args["name", str]),
-        Subcommand("uninstall", Args["name", str]),
+        Subcommand("install", Args["name", str], help_text=".store install 插件名"),
+        Subcommand("show"),
+        Subcommand("update", Args["name", str], help_text=".store update 插件名"),
+        Subcommand("uninstall", Args["name", str], help_text=".store uninstall 插件名"),
         meta=CommandMeta("Muicebot 插件商店指令"),
     ),
     priority=10,
@@ -35,6 +42,12 @@ async def install(name: Match[str]):
         await store_cmd.finish("必须传入一个插件名")
     result = await install_plugin(name.result)
     await store_cmd.finish(result)
+
+
+@store_cmd.assign("show")
+async def show():
+    info = await get_installed_plugins_info()
+    await store_cmd.finish(info)
 
 
 @store_cmd.assign("update")
@@ -55,4 +68,9 @@ async def uninstall(name: Match[str]):
 
 @store_cmd.assign("help")
 async def store_help():
-    await store_cmd.finish("install <插件名> 安装插件\n" "update <插件名> 更新插件\n" "uninstall <插件名> 卸载插件")
+    await store_cmd.finish(
+        "install <插件名> 安装插件\n"
+        "show 查看已安装的商店插件信息\n"
+        "update <插件名> 更新插件\n"
+        "uninstall <插件名> 卸载插件"
+    )

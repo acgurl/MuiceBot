@@ -6,10 +6,11 @@ from typing import Optional
 import aiohttp
 from nonebot import logger
 
-from muicebot.plugin import load_plugin, load_plugins
+from muicebot.plugin import load_plugin
 
 from .config import config
 from .models import PluginInfo
+from .register import load_json_record, register_plugin, unregister_plugin
 
 PLUGIN_DIR = Path("plugins/store")
 PLUGIN_DIR.mkdir(parents=True, exist_ok=True)
@@ -32,17 +33,39 @@ async def get_index() -> Optional[dict[str, PluginInfo]]:
     return {}
 
 
+async def get_plugin_commit(plugin: str) -> str:
+    """
+    获取插件 commit hash
+    """
+    plugin_path = PLUGIN_DIR / plugin
+
+    process = await asyncio.create_subprocess_exec(
+        "git",
+        "log",
+        '--pretty=format:"%h"',
+        "-1",
+        cwd=plugin_path,
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.PIPE,
+    )
+    stdout, stderr = await process.communicate()
+
+    return stdout.decode().strip()
+
+
 def load_store_plugin():
     """
     加载商店插件
-
-    TODO: 更好的加载逻辑
     """
     logger.info("加载商店插件...")
-    for plugin in PLUGIN_DIR.iterdir():
-        if not plugin.is_dir():
+    plugins = load_json_record()
+
+    for plugin, info in plugins.items():
+        if not Path(PLUGIN_DIR / plugin).exists():
             continue
-        load_plugins(plugin)
+
+        module_path = PLUGIN_DIR / plugin / info["module"]
+        load_plugin(module_path)
 
 
 async def install_dependencies(path: Path) -> bool:
@@ -68,31 +91,42 @@ async def install_dependencies(path: Path) -> bool:
     )
     stdout, stderr = await proc.communicate()
 
-    logger.error("插件依赖安装失败!")
-    logger.error(stderr)
-
     if proc.returncode == 0:
         return True
     else:
+        logger.error("插件依赖安装失败!")
+        logger.error(stderr)
         return False
 
 
-async def install_plugin(name: str) -> str:
+async def get_installed_plugins_info() -> str:
+    """
+    获得已安装插件信息
+    """
+    plugins = load_json_record()
+    plugins_info = []
+    for plugin, info in plugins.items():
+        plugins_info.append(f"{plugin}: {info['name']} {info['commit']}")
+    return "\n".join(plugins_info) or "本地还未安装商店插件~"
+
+
+async def install_plugin(plugin: str) -> str:
     """
     通过 git clone 安装指定插件
     """
     if not (index := await get_index()):
         return "❌ 无法获取插件索引文件，请检查控制台日志"
 
-    if name not in index:
-        return f"❌ 插件 {name} 不存在于索引中！请检查插件名称是否正确"
+    if plugin not in index:
+        return f"❌ 插件 {plugin} 不存在于索引中！请检查插件名称是否正确"
 
-    repo_url = index[name]["repo"]
-    module = index[name]["module"]
-    plugin_path = PLUGIN_DIR / name
+    repo_url = index[plugin]["repo"]
+    module = index[plugin]["module"]
+    name = index[plugin]["name"]
+    plugin_path = PLUGIN_DIR / plugin
 
     if plugin_path.exists():
-        return f"⚠️ 插件 {name} 已存在，无需安装。"
+        return f"⚠️ 插件 {plugin} 已存在，无需安装。"
 
     logger.info(f"获取插件: {repo_url}")
     try:
@@ -117,19 +151,23 @@ async def install_plugin(name: str) -> str:
 
     load_plugin(plugin_path / module)
 
-    return f"✅ 插件 {name} 安装成功！"
+    commit = await get_plugin_commit(plugin)
+
+    register_plugin(plugin, commit, name, module)
+
+    return f"✅ 插件 {plugin} 安装成功！"
 
 
-async def update_plugin(name: str) -> str:
+async def update_plugin(plugin: str) -> str:
     """
     更新指定插件
     """
-    plugin_path = PLUGIN_DIR / name
+    plugin_path = PLUGIN_DIR / plugin
 
     if not plugin_path.exists():
-        return f"❌ 插件 {name} 不存在！"
+        return f"❌ 插件 {plugin} 不存在！"
 
-    logger.info(f"更新插件: {name}")
+    logger.info(f"更新插件: {plugin}")
     try:
         process = await asyncio.create_subprocess_exec(
             "git",
@@ -146,23 +184,32 @@ async def update_plugin(name: str) -> str:
     except FileNotFoundError:
         return "❌ 请确保已安装 Git 并配置到 PATH。"
 
-    return f"✅ 插件 {name} 更新成功！重启后生效"
+    await install_dependencies(plugin_path)
+
+    info = load_json_record()[plugin]
+    commit = await get_plugin_commit(plugin)
+    register_plugin(plugin, commit, info["name"], info["module"])
+
+    return f"✅ 插件 {plugin} 更新成功！重启后生效"
 
 
-async def uninstall_plugin(name: str) -> str:
+async def uninstall_plugin(plugin: str) -> str:
     """
     卸载指定插件
     """
-    plugin_path = PLUGIN_DIR / name
+    plugin_path = PLUGIN_DIR / plugin
 
     if not plugin_path.exists():
-        return f"❌ 插件 {name} 不存在！"
+        return f"❌ 插件 {plugin} 不存在！"
 
-    logger.info(f"卸载插件: {name}")
+    logger.info(f"卸载插件: {plugin}")
+
+    unregister_plugin(plugin)
+
     try:
         loop = asyncio.get_running_loop()
         await loop.run_in_executor(None, shutil.rmtree, plugin_path)
     except PermissionError:
-        return f"❌ 插件 {name} 移除失败，请尝试手动移除"
+        return f"❌ 插件 {plugin} 移除失败，请尝试手动移除"
 
-    return f"✅ 插件 {name} 移除成功！重启后生效"
+    return f"✅ 插件 {plugin} 移除成功！重启后生效"

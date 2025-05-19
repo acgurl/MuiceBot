@@ -10,3 +10,12 @@ class PluginInfo(TypedDict):
     """插件描述"""
     repo: str
     """插件 repo 地址"""
+
+
+class InstalledPluginInfo(TypedDict):
+    module: str
+    """插件模块名"""
+    name: str
+    """插件名称"""
+    commit: str
+    """commit 信息"""
