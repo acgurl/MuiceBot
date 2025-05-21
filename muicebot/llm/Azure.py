@@ -32,8 +32,8 @@ from ._types import (
     ModelConfig,
     ModelRequest,
     ModelStreamCompletions,
-    function_call_handler,
 )
+from .utils.tools import function_call_handler
 
 
 class Azure(BasicModel):

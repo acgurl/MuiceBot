@@ -1,9 +1,6 @@
 import inspect
-from functools import wraps
 from pathlib import Path
 from typing import Any, Callable
-
-from .func_call._types import ASYNC_FUNCTION_CALL_FUNC, SYNC_FUNCTION_CALL_FUNC
 
 
 def path_to_module_name(module_path: Path, base_path: Path) -> str:
@@ -36,15 +33,3 @@ def is_coroutine_callable(call: Callable[..., Any]) -> bool:
         return False
     func_ = getattr(call, "__call__", None)
     return inspect.iscoroutinefunction(func_)
-
-
-def async_wrap(func: SYNC_FUNCTION_CALL_FUNC) -> ASYNC_FUNCTION_CALL_FUNC:
-    """
-    装饰器，将同步函数包装为异步函数
-    """
-
-    @wraps(func)
-    async def wrapper(*args: Any, **kwargs: Any) -> Any:
-        return func(*args, **kwargs)
-
-    return wrapper

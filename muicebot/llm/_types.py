@@ -6,7 +6,6 @@ from typing import Any, AsyncGenerator, List, Literal, Optional, Union, overload
 from pydantic import BaseModel, field_validator
 
 from ..models import Message, Resource
-from ..plugin import get_function_calls
 
 
 class ModelConfig(BaseModel):
@@ -209,12 +208,3 @@ class FunctionCallRequest(BaseModel):
     """函数名称"""
     arguments: dict[str, str] | None = None
     """函数参数"""
-
-
-async def function_call_handler(func: str, arguments: dict[str, str] | None = None) -> Any:
-    """
-    模型 Function Call 请求处理
-    """
-    arguments = arguments if arguments and arguments != {"dummy_param": ""} else {}
-    func_caller = get_function_calls().get(func)
-    return await func_caller.run(**arguments) if func_caller else "(Unknown Function)"

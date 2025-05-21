@@ -1,5 +1,4 @@
 from .context import get_bot, get_ctx, get_event, get_mather, get_state, set_ctx
-from .func_call import get_function_calls, get_tools
 from .loader import (
     get_plugin_by_module_name,
     get_plugin_data_dir,
@@ -22,7 +21,5 @@ __all__ = [
     "PluginMetadata",
     "Plugin",
     "set_ctx",
-    "get_function_calls",
-    "get_tools",
     "get_plugin_data_dir",
 ]

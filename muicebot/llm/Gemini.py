@@ -23,9 +23,9 @@ from ._types import (
     ModelConfig,
     ModelRequest,
     ModelStreamCompletions,
-    function_call_handler,
 )
 from .utils.images import get_file_base64
+from .utils.tools import function_call_handler
 
 
 class Gemini(BasicModel):

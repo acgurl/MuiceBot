@@ -25,8 +25,8 @@ from ._types import (
     ModelConfig,
     ModelRequest,
     ModelStreamCompletions,
-    function_call_handler,
 )
+from .utils.tools import function_call_handler
 
 
 @dataclass
@@ -44,7 +44,7 @@ class FunctionCallStream:
             self.id = tool_call["id"]
 
         if tool_call.get("function", {}).get("name", ""):
-            self.name = tool_call.get("function").get("name")
+            self.function_name = tool_call.get("function").get("name")
 
         function_arg = tool_call.get("function", {}).get("arguments", "")
 

@@ -35,12 +35,14 @@ from .llm import ModelCompletions, ModelStreamCompletions
 from .models import Message, Resource
 from .muice import Muice
 from .plugin import get_plugins, load_plugins, set_ctx
+from .plugin.mcp import initialize_servers
 from .scheduler import setup_scheduler
 from .utils.SessionManager import SessionManager
 from .utils.utils import download_file, get_file_via_adapter, get_version
 
 COMMAND_PREFIXES = [".", "/"]
 PLUGINS_PATH = Path("./plugins")
+MCP_CONFIG_PATH = Path("./configs/mcp.json")
 START_TIME = time.time()
 
 muice = Muice()
@@ -77,6 +79,10 @@ async def load_bot():
         builtin_plugins_path = Path(__file__).parent / "builtin_plugins"
         muicebot_plugins_path = Path(__file__).resolve().parent.parent
         load_plugins(builtin_plugins_path, base_path=muicebot_plugins_path)
+
+    if MCP_CONFIG_PATH.exists():
+        logger.info("加载 MCP Server 配置")
+        await initialize_servers()
 
     logger.success("插件加载完成⭐")
 

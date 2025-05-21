@@ -16,8 +16,9 @@ from .llm import (
     get_missing_dependencies,
 )
 from .models import Message, Resource
-from .plugin import get_tools
+from .plugin.func_call import get_function_list
 from .plugin.hook import HookType, hook_manager
+from .plugin.mcp import get_mcp_list
 from .templates import generate_prompt_from_template
 from .utils.utils import get_username
 
@@ -220,7 +221,11 @@ class Muice:
 
         prompt = await self._prepare_prompt(message.message, message.userid, is_private)
         history = await self._prepare_history(message.userid, message.groupid, enable_history) if enable_history else []
-        tools = await get_tools() if self.model_config.function_call and enable_plugins else []
+        tools = (
+            (await get_function_list() + await get_mcp_list())
+            if self.model_config.function_call and enable_plugins
+            else []
+        )
         system = self.system_prompt if self.system_prompt else None
 
         model_request = ModelRequest(prompt, history, message.resources, tools, system)
@@ -274,7 +279,11 @@ class Muice:
 
         prompt = await self._prepare_prompt(message.message, message.userid, is_private)
         history = await self._prepare_history(message.userid, message.groupid, enable_history) if enable_history else []
-        tools = await get_tools() if self.model_config.function_call and enable_plugins else []
+        tools = (
+            (await get_function_list() + await get_mcp_list())
+            if self.model_config.function_call and enable_plugins
+            else []
+        )
         system = self.system_prompt if self.system_prompt else None
 
         model_request = ModelRequest(prompt, history, message.resources, tools, system)

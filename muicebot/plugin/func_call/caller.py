@@ -18,9 +18,10 @@ from nonebot.rule import Rule
 from nonebot.typing import T_State
 
 from ..context import get_bot, get_event, get_mather
-from ..utils import async_wrap, is_coroutine_callable
+from ..utils import is_coroutine_callable
 from ._types import ASYNC_FUNCTION_CALL_FUNC, F
 from .parameter import Parameter
+from .utils import async_wrap
 
 _caller_data: dict[str, "Caller"] = {}
 """函数注册表，存储所有注册的函数"""
@@ -167,7 +168,7 @@ def get_function_calls() -> dict[str, Caller]:
     return _caller_data
 
 
-async def get_tools() -> list[dict[str, dict]]:
+async def get_function_list() -> list[dict[str, dict]]:
     """
     获取所有已注册的function call函数，并转换为工具格式
 
