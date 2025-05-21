@@ -75,9 +75,9 @@ async def transform_json(tool: Tool) -> dict[str, Any]:
         parameters = {
             "type": tool.input_schema.get("type", "object"),
             "properties": tool.input_schema.get("properties", {}),
+            "required": tool.input_schema.get("required", []),
         }
         func_desc["parameters"] = parameters
-        func_desc["required"] = tool.input_schema.get("required", [])
 
     output = {"type": "function", "function": func_desc}
 

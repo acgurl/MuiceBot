@@ -140,8 +140,8 @@ class Caller:
                 "parameters": {
                     "type": "object",
                     "properties": properties,
+                    "required": required,
                 },
-                "required": required,
             },
         }
 
