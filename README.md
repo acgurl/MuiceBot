@@ -4,26 +4,28 @@
   <p align="center">Muice-Chatbot 的 NoneBot2 实现</p>
 </div>
 <div align=center>
-  <img src="https://img.shields.io/github/stars/Moemu/MuiceBot" alt="Stars">
+  <a href="#关于️"><img src="https://img.shields.io/github/stars/Moemu/MuiceBot" alt="Stars"></a>
   <a href="https://pypi.org/project/MuiceBot/"><img src="https://img.shields.io/pypi/v/Muicebot" alt="PyPI Version"></a>
   <a href="https://pypi.org/project/MuiceBot/"><img src="https://img.shields.io/pypi/dm/Muicebot" alt="PyPI Downloads" ></a>
   <a href="https://nonebot.dev/"><img src="https://img.shields.io/badge/nonebot-2-red" alt="nonebot2"></a>
-  <img src="https://img.shields.io/badge/Code%20Style-Black-121110.svg" alt="codestyle">
+  <a href="#"><img src="https://img.shields.io/badge/Code%20Style-Black-121110.svg" alt="codestyle"></a>
 </div>
 <div align=center>
-  <img src="https://wakatime.com/badge/user/637d5886-8b47-4b82-9264-3b3b9d6add67/project/a4557f7b-4d26-4105-842a-7a783cbad588.svg" alt="wakatime">
-  <img src="https://img.shields.io/badge/ModelScope-Dataset-644cfd?link=https://www.modelscope.cn/datasets/Moemuu/Muice-Dataset" alt="ModelScope">
-  <img src="https://img.shields.io/badge/HuggingFace-Dataset-yellow?link=https%3A%2F%2Fhuggingface.co%2Fdatasets%2FMoemu%2FMuice-Dataset" alt="HuggingFace">
+  <a href="#"><img src="https://wakatime.com/badge/user/637d5886-8b47-4b82-9264-3b3b9d6add67/project/a4557f7b-4d26-4105-842a-7a783cbad588.svg" alt="wakatime"></a>
+  <a href="https://www.modelscope.cn/datasets/Moemuu/Muice-Dataset"><img src="https://img.shields.io/badge/ModelScope-Dataset-644cfd?link=https://www.modelscope.cn/datasets/Moemuu/Muice-Dataset" alt="ModelScope"></a>
+  <a href="https://huggingface.co/datasets/Moemu/Muice-Dataset"><img src="https://img.shields.io/badge/HuggingFace-Dataset-yellow?link=https%3A%2F%2Fhuggingface.co%2Fdatasets%2FMoemu%2FMuice-Dataset" alt="HuggingFace"></a>
   <a href='https://qm.qq.com/q/lhUBw6Gcdq'><img src="https://img.shields.io/badge/QQ群-MuiceHouse-blue" alt="QQ群组"></a>
 </div>
 <div align=center>
   <a href="https://bot.snowy.moe">📃使用文档</a>
   <a href="https://bot.snowy.moe/guide/setup.html">✨快速开始</a>
-  <a href="https://live.bilibili.com/22523526">🎤沐沐和沐雪的直播间</a>
+  <a href="https://live.bilibili.com/22523526">🎤沐沐和沐雪的B站(停止更新)</a>
 </div>
 
 
 > [!NOTE]
+>
+> 由于本项目的 Maintainer Muika(Moemu) 现已淡出互联网，且面临来自学业和考核的多重压力，此项目的开发进度可能会严重放慢，敬请谅解
 >
 > 欢迎来到本项目！目前此项目尚处于预发布状态，运行时可能会遇到一些问题。请务必向我们反馈在运行时遇到的各种错误！
 >
