@@ -1,4 +1,3 @@
-import importlib
 import os
 import time
 from typing import AsyncGenerator, Optional, Union
@@ -9,11 +8,11 @@ from .config import ModelConfig, get_model_config, model_config_manager, plugin_
 from .database import Database
 from .llm import (
     MODEL_DEPENDENCY_MAP,
-    BasicModel,
     ModelCompletions,
     ModelRequest,
     ModelStreamCompletions,
     get_missing_dependencies,
+    load_model,
 )
 from .models import Message, Resource
 from .plugin.func_call import get_function_list
@@ -76,10 +75,7 @@ class Muice:
         初始化模型类
         """
         try:
-            module_name = f"muicebot.llm.{self.model_loader}"
-            module = importlib.import_module(module_name)
-            ModelClass = getattr(module, self.model_loader, None)
-            self.model: Optional[BasicModel] = ModelClass(self.model_config) if ModelClass else None
+            self.model = load_model(self.model_config)
 
         except ImportError as e:
             logger.critical(f"导入模型加载器 '{self.model_loader}' 失败：{e}")
@@ -89,22 +85,16 @@ class Muice:
                 install_command = "pip install " + " ".join(missing)
                 logger.critical(f"缺少依赖库：{', '.join(missing)}\n请运行以下命令安装缺失项：\n\n{install_command}")
 
-        except AttributeError as e:
-            logger.critical(f"导入模型加载器 '{self.model_loader}' 失败：{e}")
-            logger.critical("这有可能是负责编写模型加载器的开发者未正确命名类导致，又或者是您输入了错误的模型加载器名")
-
     def load_model(self) -> bool:
         """
         加载模型
 
         return: 是否加载成功
         """
-        if not self.model:
-            logger.error("模型加载失败: self.model 变量不存在")
-            return False
         if not self.model.load():
             logger.error("模型加载失败: self.model.load 函数失败")
             return False
+
         return True
 
     def _on_config_changed(self, new_config: ModelConfig, old_config: ModelConfig):

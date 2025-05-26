@@ -8,19 +8,22 @@ from nonebot import logger
 from openai import NOT_GIVEN, NotGiven
 from openai.types.chat import ChatCompletionMessage, ChatCompletionToolParam
 
-from ..models import Resource
-from ._types import (
-    BasicModel,
+from muicebot.models import Resource
+
+from .. import (
+    BaseLLM,
     ModelCompletions,
     ModelConfig,
     ModelRequest,
     ModelStreamCompletions,
+    register,
 )
-from .utils.images import get_file_base64
-from .utils.tools import function_call_handler
+from ..utils.images import get_file_base64
+from ..utils.tools import function_call_handler
 
 
-class Openai(BasicModel):
+@register("openai")
+class Openai(BaseLLM):
     _tools: List[ChatCompletionToolParam]
     modalities: Union[List[Literal["text", "audio"]], NotGiven]
 
@@ -148,9 +151,9 @@ class Openai(BasicModel):
                 messages.append(response.choices[0].message)
                 tool_call = response.choices[0].message.tool_calls[0]  # type:ignore
                 arguments = json.loads(tool_call.function.arguments.replace("'", '"'))
-                logger.info(f"function call 请求 {tool_call.function.name}, 参数: {arguments}")
+
                 function_return = await function_call_handler(tool_call.function.name, arguments)
-                logger.success(f"Function call 成功，返回: {function_return}")
+
                 messages.append(
                     {
                         "tool_call_id": tool_call.id,
@@ -261,9 +264,9 @@ class Openai(BasicModel):
                     yield stream_completions
 
             if function_id:
-                logger.info(f"function call 请求 {function_name}, 参数: {function_arguments}")
+
                 function_return = await function_call_handler(function_name, json.loads(function_arguments))
-                logger.success(f"Function call 成功，返回: {function_return}")
+
                 messages.append(
                     {
                         "role": "assistant",

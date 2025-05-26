@@ -19,14 +19,15 @@ from dashscope.api_entities.dashscope_response import (
 )
 from nonebot import logger
 
-from ._types import (
-    BasicModel,
+from .. import (
+    BaseLLM,
     ModelCompletions,
     ModelConfig,
     ModelRequest,
     ModelStreamCompletions,
+    register,
 )
-from .utils.tools import function_call_handler
+from ..utils.tools import function_call_handler
 
 
 @dataclass
@@ -85,7 +86,8 @@ class ThoughtStream:
         return answer_content
 
 
-class Dashscope(BasicModel):
+@register("dashscope")
+class Dashscope(BaseLLM):
     def __init__(self, model_config: ModelConfig) -> None:
         super().__init__(model_config)
         self._require("api_key", "model_name")
@@ -249,9 +251,7 @@ class Dashscope(BasicModel):
         function_name = tool_call["function"]["name"]
         function_args = json.loads(tool_call["function"]["arguments"])
 
-        logger.info(f"function call 请求 {function_name}, 参数: {function_args}")
         function_return = await function_call_handler(function_name, function_args)
-        logger.success(f"Function call 成功，返回: {function_return}")
 
         messages.append(response.output.choices[0].message)
         messages.append({"role": "tool", "content": function_return, "tool_call_id": tool_call_id})
@@ -263,9 +263,7 @@ class Dashscope(BasicModel):
     ) -> AsyncGenerator[ModelStreamCompletions, None]:
         function_args = json.loads(func_stream.function_args)
 
-        logger.info(f"function call 请求 {func_stream.function_name}, 参数: {function_args}")
         function_return = await function_call_handler(func_stream.function_name, function_args)  # type:ignore
-        logger.success(f"Function call 成功，返回: {function_return}")
 
         messages.append(
             {

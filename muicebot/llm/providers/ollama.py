@@ -4,18 +4,20 @@ import ollama
 from nonebot import logger
 from ollama import ResponseError
 
-from ._types import (
-    BasicModel,
+from .. import (
+    BaseLLM,
     ModelCompletions,
     ModelConfig,
     ModelRequest,
     ModelStreamCompletions,
+    register,
 )
-from .utils.images import get_file_base64
-from .utils.tools import function_call_handler
+from ..utils.images import get_file_base64
+from ..utils.tools import function_call_handler
 
 
-class Ollama(BasicModel):
+@register("ollama")
+class Ollama(BaseLLM):
     """
     使用 Ollama 模型服务调用模型
     """
@@ -109,9 +111,7 @@ class Ollama(BasicModel):
                 function_name = tool.function.name
                 function_args = tool.function.arguments
 
-                logger.info(f"function call 请求 {function_name}, 参数: {function_args}")
                 function_return = await function_call_handler(function_name, dict(function_args))
-                logger.success(f"Function call 成功，返回: {function_return}")
 
                 messages.append(response.message)
                 messages.append({"role": "tool", "content": str(function_return), "name": tool.function.name})
@@ -162,9 +162,7 @@ class Ollama(BasicModel):
                     function_name = tool.function.name
                     function_args = tool.function.arguments
 
-                    logger.info(f"function call 请求 {function_name}, 参数: {function_args}")
                     function_return = await function_call_handler(function_name, dict(function_args))
-                    logger.success(f"Function call 成功，返回: {function_return}")
 
                     messages.append(chunk.message)  # type:ignore
                     messages.append({"role": "tool", "content": str(function_return), "name": tool.function.name})

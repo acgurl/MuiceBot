@@ -16,19 +16,22 @@ from google.genai.types import (
 from httpx import ConnectError
 from nonebot import logger
 
-from ..models import Resource
-from ._types import (
-    BasicModel,
+from muicebot.models import Resource
+
+from .. import (
+    BaseLLM,
     ModelCompletions,
     ModelConfig,
     ModelRequest,
     ModelStreamCompletions,
+    register,
 )
-from .utils.images import get_file_base64
-from .utils.tools import function_call_handler
+from ..utils.images import get_file_base64
+from ..utils.tools import function_call_handler
 
 
-class Gemini(BasicModel):
+@register("gemini")
+class Gemini(BaseLLM):
     def __init__(self, model_config: ModelConfig) -> None:
         super().__init__(model_config)
         self._require("model_name", "api_key")
@@ -125,7 +128,7 @@ class Gemini(BasicModel):
         return messages
 
     async def _ask_sync(self, messages: list[ContentOrDict], **kwargs) -> ModelCompletions:
-        compltions = ModelCompletions()
+        completions = ModelCompletions()
 
         try:
             chat = self.client.aio.chats.create(model=self.model_name, config=self.gemini_config, history=messages[:-1])
@@ -136,7 +139,7 @@ class Gemini(BasicModel):
                 self._total_tokens += total_token_count if total_token_count else -1
 
             if response.text:
-                compltions.text = response.text
+                completions.text = response.text
 
             if (
                 response.candidates
@@ -145,7 +148,7 @@ class Gemini(BasicModel):
                 and response.candidates[0].content.parts[0].inline_data
                 and response.candidates[0].content.parts[0].inline_data.data
             ):
-                compltions.resources = [
+                completions.resources = [
                     Resource(type="image", raw=response.candidates[0].content.parts[0].inline_data.data)
                 ]
 
@@ -154,9 +157,7 @@ class Gemini(BasicModel):
                 function_name = function_call.name
                 function_args = function_call.args
 
-                logger.info(f"function call 请求 {function_name}, 参数: {function_args}")
                 function_return = await function_call_handler(function_name, function_args)  # type:ignore
-                logger.success(f"Function call 成功，返回: {function_return}")
 
                 function_response_part = Part.from_function_response(
                     name=function_name,  # type:ignore
@@ -168,24 +169,24 @@ class Gemini(BasicModel):
 
                 return await self._ask_sync(messages)
 
-            compltions.text = compltions.text or "（警告：模型无输出！）"
-            compltions.usage = self._total_tokens
-            return compltions
+            completions.text = completions.text or "（警告：模型无输出！）"
+            completions.usage = self._total_tokens
+            return completions
 
         except errors.APIError as e:
             error_message = f"API 状态异常: {e.code}({e.response})"
-            compltions.text = error_message
-            compltions.succeed = False
+            completions.text = error_message
+            completions.succeed = False
             logger.error(error_message)
             logger.error(e.message)
-            return compltions
+            return completions
 
         except ConnectError:
             error_message = "模型加载器连接超时"
-            compltions.text = error_message
-            compltions.succeed = False
+            completions.text = error_message
+            completions.succeed = False
             logger.error(error_message)
-            return compltions
+            return completions
 
     async def _ask_stream(self, messages: list, **kwargs) -> AsyncGenerator[ModelStreamCompletions, None]:
         try:
@@ -220,9 +221,7 @@ class Gemini(BasicModel):
                     function_name = function_call.name
                     function_args = function_call.args
 
-                    logger.info(f"function call 请求 {function_name}, 参数: {function_args}")
                     function_return = await function_call_handler(function_name, function_args)  # type:ignore
-                    logger.success(f"Function call 成功，返回: {function_return}")
 
                     function_response_part = Part.from_function_response(
                         name=function_name,  # type:ignore

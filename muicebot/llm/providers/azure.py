@@ -26,17 +26,19 @@ from azure.core.credentials import AzureKeyCredential
 from azure.core.exceptions import HttpResponseError
 from nonebot import logger
 
-from ._types import (
-    BasicModel,
+from .. import (
+    BaseLLM,
     ModelCompletions,
     ModelConfig,
     ModelRequest,
     ModelStreamCompletions,
+    register,
 )
-from .utils.tools import function_call_handler
+from ..utils.tools import function_call_handler
 
 
-class Azure(BasicModel):
+@register("azure")
+class Azure(BaseLLM):
     def __init__(self, model_config: ModelConfig) -> None:
         super().__init__(model_config)
         self._require("model_name")
@@ -171,9 +173,8 @@ class Azure(BasicModel):
 
                 tool_call = tool_calls[0]
                 function_args = json.loads(tool_call.function.arguments.replace("'", '"'))
-                logger.info(f"function call 请求 {tool_call.function.name}, 参数: {function_args}")
+
                 function_return = await function_call_handler(tool_call.function.name, function_args)
-                logger.success(f"Function call 成功，返回: {function_return}")
 
                 # Append the function call result fo the chat history
                 messages.append(ToolMessage(tool_call_id=tool_call.id, content=function_return))
@@ -262,9 +263,8 @@ class Azure(BasicModel):
                     )
 
                     function_arg = json.loads(function_args.replace("'", '"'))
-                    logger.info(f"function call 请求 {function_name}, 参数: {function_arg}")
+
                     function_return = await function_call_handler(function_name, function_arg)
-                    logger.success(f"Function call 成功，返回: {function_return}")
 
                     # Append the function call result fo the chat history
                     messages.append(ToolMessage(tool_call_id=tool_call_id, content=function_return))
@@ -280,7 +280,7 @@ class Azure(BasicModel):
             logger.error(f"模型响应失败: {e.status_code} ({e.reason})")
             logger.error(f"{e.message}")
             stream_completions = ModelStreamCompletions()
-            stream_completions.chunk = "模型响应失败: {e.status_code} ({e.reason})"
+            stream_completions.chunk = f"模型响应失败: {e.status_code} ({e.reason})"
             stream_completions.succeed = False
             yield stream_completions
 
