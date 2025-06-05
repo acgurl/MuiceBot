@@ -476,7 +476,7 @@ async def handle_supported_adapters(
 
     # Stream
     if muice.model_config.stream:
-        stream_completions = muice.ask_stream(message, db_session)
+        stream_completions = muice.ask_stream(db_session, message)
         try:
             await _send_message(stream_completions)
         finally:
@@ -484,7 +484,7 @@ async def handle_supported_adapters(
             return
 
     # non-stream
-    completions = await muice.ask(message, db_session)
+    completions = await muice.ask(db_session, message)
 
     logger.info(f"生成最终回复: {completions}")
 

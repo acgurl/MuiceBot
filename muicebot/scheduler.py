@@ -47,7 +47,7 @@ async def model_ask(
 
     if muice_app.model and muice_app.model.is_running:
         message = Message(message=prompt, userid=f"(bot_ask){target_id}")
-        response = await muice_app.ask(message, session, enable_history=False, enable_plugins=False)
+        response = await muice_app.ask(session, message, enable_history=False, enable_plugins=False)
 
         target = Target(target_id)
         await UniMessage(response.text).send(target=target, bot=get_bot())

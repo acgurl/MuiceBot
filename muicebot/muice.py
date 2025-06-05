@@ -43,7 +43,6 @@ class Muice:
         self.model_config = get_model_config()
 
         self.database = MessageORM()
-        self.session: Optional[async_scoped_session] = None
         self.max_history_epoch = plugin_config.max_history_epoch
 
         self.system_prompt = ""
@@ -152,7 +151,9 @@ class Muice:
 
         return f"{self.user_instructions}\n\n{group_prompt}" if self.user_instructions else group_prompt
 
-    async def _prepare_history(self, userid: str, groupid: str = "-1", enable_history: bool = True) -> list[Message]:
+    async def _prepare_history(
+        self, session: async_scoped_session, userid: str, groupid: str = "-1", enable_history: bool = True
+    ) -> list[Message]:
         """
         准备对话历史
 
@@ -161,10 +162,8 @@ class Muice:
         :param enable_history: 是否启用历史记录
         :return: 最终模型提示词
         """
-        assert self.session
-
         user_history = (
-            await self.database.get_user_history(self.session, userid, self.max_history_epoch) if enable_history else []
+            await self.database.get_user_history(session, userid, self.max_history_epoch) if enable_history else []
         )
 
         # 验证多模态资源路径是否可用
@@ -176,7 +175,7 @@ class Muice:
         if groupid == "-1":
             return user_history[-self.max_history_epoch :]
 
-        group_history = await self.database.get_group_history(self.session, groupid, self.max_history_epoch)
+        group_history = await self.database.get_group_history(session, groupid, self.max_history_epoch)
 
         for item in group_history:
             item.resources = [
@@ -194,8 +193,8 @@ class Muice:
 
     async def ask(
         self,
-        message: Message,
         session: async_scoped_session,
+        message: Message,
         enable_history: bool = True,
         enable_plugins: bool = True,
     ) -> ModelCompletions:
@@ -207,8 +206,6 @@ class Muice:
         :param enable_plugins: 是否启用工具插件
         :return: 模型回复
         """
-        self.session = session
-
         if not (self.model and self.model.is_running):
             logger.error("模型未加载")
             return ModelCompletions("模型未加载", succeed=False)
@@ -219,7 +216,11 @@ class Muice:
         await hook_manager.run(HookType.BEFORE_PRETREATMENT, message)
 
         prompt = await self._prepare_prompt(message.message, message.userid, is_private)
-        history = await self._prepare_history(message.userid, message.groupid, enable_history) if enable_history else []
+        history = (
+            await self._prepare_history(session, message.userid, message.groupid, enable_history)
+            if enable_history
+            else []
+        )
         tools = (
             (await get_function_list() + await get_mcp_list())
             if self.model_config.function_call and enable_plugins
@@ -248,14 +249,14 @@ class Muice:
         await hook_manager.run(HookType.ON_FINISHING_CHAT, message)
 
         if response.succeed:
-            await self.database.add_item(self.session, message)
+            await self.database.add_item(session, message)
 
         return response
 
     async def ask_stream(
         self,
-        message: Message,
         session: async_scoped_session,
+        message: Message,
         enable_history: bool = True,
         enable_plugins: bool = True,
     ) -> AsyncGenerator[ModelStreamCompletions, None]:
@@ -267,8 +268,6 @@ class Muice:
         :param enable_plugins: 是否启用工具插件
         :return: 模型回复
         """
-        self.session = session
-
         if not (self.model and self.model.is_running):
             logger.error("模型未加载")
             yield ModelStreamCompletions("模型未加载")
@@ -280,7 +279,11 @@ class Muice:
         await hook_manager.run(HookType.BEFORE_PRETREATMENT, message)
 
         prompt = await self._prepare_prompt(message.message, message.userid, is_private)
-        history = await self._prepare_history(message.userid, message.groupid, enable_history) if enable_history else []
+        history = (
+            await self._prepare_history(session, message.userid, message.groupid, enable_history)
+            if enable_history
+            else []
+        )
         tools = (
             (await get_function_list() + await get_mcp_list())
             if self.model_config.function_call and enable_plugins
@@ -332,7 +335,7 @@ class Muice:
         await hook_manager.run(HookType.ON_FINISHING_CHAT, message)
 
         if item.succeed:
-            await self.database.add_item(self.session, message)
+            await self.database.add_item(session, message)
 
     async def refresh(
         self, userid: str, session: async_scoped_session
@@ -355,9 +358,9 @@ class Muice:
         await self.database.mark_history_as_unavailable(session, userid, 1)
 
         if not self.model_config.stream:
-            return await self.ask(last_item, session)
+            return await self.ask(session, last_item)
 
-        return self.ask_stream(last_item, session)
+        return self.ask_stream(session, last_item)
 
     async def reset(self, userid: str, session: async_scoped_session) -> str:
         """
