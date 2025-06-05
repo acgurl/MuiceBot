@@ -79,12 +79,15 @@ class Muice:
             self.model = load_model(self.model_config)
 
         except ImportError as e:
+            import sys
+
             logger.critical(f"导入模型加载器 '{self.model_loader}' 失败：{e}")
             dependencies = MODEL_DEPENDENCY_MAP.get(self.model_loader, [])
             missing = get_missing_dependencies(dependencies)
             if missing:
                 install_command = "pip install " + " ".join(missing)
                 logger.critical(f"缺少依赖库：{', '.join(missing)}\n请运行以下命令安装缺失项：\n\n{install_command}")
+            sys.exit(1)
 
     def load_model(self) -> bool:
         """
