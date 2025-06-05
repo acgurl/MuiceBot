@@ -2,7 +2,6 @@ import asyncio
 import json
 from dataclasses import dataclass
 from functools import partial
-from pathlib import Path
 from typing import (
     AsyncGenerator,
     Generator,
@@ -120,15 +119,9 @@ class Dashscope(BaseLLM):
 
         for item in request.resources:
             if item.type == "audio":
-                if not (item.path.startswith("http") or item.path.startswith("file:")):
-                    item.url = str(Path(item.path).resolve())
-
                 multi_contents.append({"audio": item.path})
 
             elif item.type == "image":
-                if not (item.path.startswith("http") or item.path.startswith("file:")):
-                    item.url = str(Path(item.path).resolve())
-
                 multi_contents.append({"image": item.path})
 
         user_content = [image_content for image_content in multi_contents]

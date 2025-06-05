@@ -4,6 +4,8 @@ from functools import total_ordering
 from io import BytesIO
 from typing import List, Literal, Optional, Union
 
+from .utils.utils import guess_mimetype
+
 
 @dataclass
 class Resource:
@@ -20,17 +22,19 @@ class Resource:
     mimetype: Optional[str] = field(default=None)
     """文件元数据类型"""
 
-    def ensure_mimetype(self):
-        from .utils.utils import guess_mimetype
+    def __post_init__(self):
+        self.ensure_mimetype()
 
+    def ensure_mimetype(self):
         if not self.mimetype:
             self.mimetype = guess_mimetype(self)
 
     def to_dict(self) -> dict:
-        return {
-            "type": self.type,
-            "path": self.path,
-        }
+        """
+        落库时存储的数据
+        (注意：与模型进行交互的多模态文件必须在本地拥有备份)
+        """
+        return {"type": self.type, "path": self.path, "mimetype": self.mimetype}
 
 
 @total_ordering
