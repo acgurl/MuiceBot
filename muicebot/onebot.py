@@ -23,11 +23,13 @@ from nonebot_plugin_alconna import (
     Match,
     MsgTarget,
     UniMessage,
+    get_message_id,
     on_alconna,
     uniseg,
 )
 from nonebot_plugin_alconna.builtins.extensions import ReplyRecordExtension
 from nonebot_plugin_alconna.uniseg import UniMsg
+from nonebot_plugin_orm import async_scoped_session
 from nonebot_plugin_session import SessionIdType, extract_session
 
 from .config import plugin_config
@@ -242,13 +244,13 @@ async def handle_command_about():
 
 
 @command_status.handle()
-async def handle_command_status():
+async def handle_command_status(session: async_scoped_session):
     now = time.time()
     uptime = timedelta(seconds=int(now - START_TIME))
     bot_uptime = timedelta(seconds=int(now - connect_time))
 
     model_status = "运行中" if muice.model and muice.model.is_running else "未启动"
-    today_usage, total_usage = await muice.database.get_model_usage()
+    today_usage, total_usage = await muice.database.get_model_usage(session)
 
     scheduler_status = "运行中" if scheduler and scheduler.running else "未启动"
 
@@ -264,27 +266,33 @@ async def handle_command_status():
 
 
 @command_reset.handle()
-async def handle_command_reset(event: Event):
+async def handle_command_reset(event: Event, session: async_scoped_session):
     userid = event.get_user_id()
-    response = await muice.reset(userid)
+    response = await muice.reset(userid, session)
+
+    await session.commit()
     await command_reset.finish(response)
 
 
 @command_refresh.handle()
-async def handle_command_refresh(bot: Bot, event: Event, state: T_State, matcher: Matcher):
+async def handle_command_refresh(
+    bot: Bot, event: Event, state: T_State, matcher: Matcher, session: async_scoped_session
+):
     userid = event.get_user_id()
 
     set_ctx(bot, event, state, matcher)
 
-    response = await muice.refresh(userid)
+    response = await muice.refresh(userid, session)
 
+    await session.commit()
     await _send_message(response)
 
 
 @command_undo.handle()
-async def handle_command_undo(event: Event):
+async def handle_command_undo(event: Event, session: async_scoped_session):
     userid = event.get_user_id()
-    response = await muice.undo(userid)
+    response = await muice.undo(userid, session)
+    await session.commit()
     await command_undo.finish(response)
 
 
@@ -429,12 +437,13 @@ async def handle_supported_adapters(
     matcher: Matcher,
     target: MsgTarget,
     ext: ReplyRecordExtension,
+    db_session: async_scoped_session,
 ):
     if any((bot_message.startswith("."), bot_message.startswith("/"))):
         await UniMessage("未知的指令或权限不足").finish()
 
     # 先拿到引用消息并合并到 message (如果有)
-    if message_reply := ext.get_reply(bot_message.get_message_id()):
+    if message_reply := ext.get_reply(get_message_id(event, bot)):
         reply_message = message_reply.msg
         if isinstance(reply_message, BotMessage):
             bot_message += UniMessage("\n被引用的消息: ") + await UniMessage.generate(message=reply_message)
@@ -467,13 +476,19 @@ async def handle_supported_adapters(
 
     # Stream
     if muice.model_config.stream:
-        stream_completions = muice.ask_stream(message)
-        await _send_message(stream_completions)
-        return
+        stream_completions = muice.ask_stream(message, db_session)
+        try:
+            await _send_message(stream_completions)
+        finally:
+            await db_session.commit()
+            return
 
     # non-stream
-    completions = await muice.ask(message)
+    completions = await muice.ask(message, db_session)
 
     logger.info(f"生成最终回复: {completions}")
 
-    await _send_message(completions)
+    try:
+        await _send_message(completions)
+    finally:
+        await db_session.commit()

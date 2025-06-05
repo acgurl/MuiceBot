@@ -3,9 +3,10 @@ import time
 from typing import AsyncGenerator, Optional, Union
 
 from nonebot import logger
+from nonebot_plugin_orm import async_scoped_session
 
 from .config import ModelConfig, get_model_config, model_config_manager, plugin_config
-from .database import Database
+from .database import MessageORM
 from .llm import (
     MODEL_DEPENDENCY_MAP,
     ModelCompletions,
@@ -41,7 +42,8 @@ class Muice:
 
         self.model_config = get_model_config()
 
-        self.database = Database()
+        self.database = MessageORM()
+        self.session: Optional[async_scoped_session] = None
         self.max_history_epoch = plugin_config.max_history_epoch
 
         self.system_prompt = ""
@@ -159,7 +161,11 @@ class Muice:
         :param enable_history: 是否启用历史记录
         :return: 最终模型提示词
         """
-        user_history = await self.database.get_user_history(userid, self.max_history_epoch) if enable_history else []
+        assert self.session
+
+        user_history = (
+            await self.database.get_user_history(self.session, userid, self.max_history_epoch) if enable_history else []
+        )
 
         # 验证多模态资源路径是否可用
         for item in user_history:
@@ -170,7 +176,7 @@ class Muice:
         if groupid == "-1":
             return user_history[-self.max_history_epoch :]
 
-        group_history = await self.database.get_group_history(groupid, self.max_history_epoch)
+        group_history = await self.database.get_group_history(self.session, groupid, self.max_history_epoch)
 
         for item in group_history:
             item.resources = [
@@ -189,6 +195,7 @@ class Muice:
     async def ask(
         self,
         message: Message,
+        session: async_scoped_session,
         enable_history: bool = True,
         enable_plugins: bool = True,
     ) -> ModelCompletions:
@@ -200,6 +207,8 @@ class Muice:
         :param enable_plugins: 是否启用工具插件
         :return: 模型回复
         """
+        self.session = session
+
         if not (self.model and self.model.is_running):
             logger.error("模型未加载")
             return ModelCompletions("模型未加载", succeed=False)
@@ -239,13 +248,14 @@ class Muice:
         await hook_manager.run(HookType.ON_FINISHING_CHAT, message)
 
         if response.succeed:
-            await self.database.add_item(message)
+            await self.database.add_item(self.session, message)
 
         return response
 
     async def ask_stream(
         self,
         message: Message,
+        session: async_scoped_session,
         enable_history: bool = True,
         enable_plugins: bool = True,
     ) -> AsyncGenerator[ModelStreamCompletions, None]:
@@ -257,6 +267,8 @@ class Muice:
         :param enable_plugins: 是否启用工具插件
         :return: 模型回复
         """
+        self.session = session
+
         if not (self.model and self.model.is_running):
             logger.error("模型未加载")
             yield ModelStreamCompletions("模型未加载")
@@ -320,9 +332,11 @@ class Muice:
         await hook_manager.run(HookType.ON_FINISHING_CHAT, message)
 
         if item.succeed:
-            await self.database.add_item(message)
+            await self.database.add_item(self.session, message)
 
-    async def refresh(self, userid: str) -> Union[AsyncGenerator[ModelStreamCompletions, None], ModelCompletions]:
+    async def refresh(
+        self, userid: str, session: async_scoped_session
+    ) -> Union[AsyncGenerator[ModelStreamCompletions, None], ModelCompletions]:
         """
         刷新对话
 
@@ -330,7 +344,7 @@ class Muice:
         """
         logger.info(f"用户 {userid} 请求刷新")
 
-        user_history = await self.database.get_user_history(userid, limit=1)
+        user_history = await self.database.get_user_history(session, userid, limit=1)
 
         if not user_history:
             logger.warning("用户对话数据不存在，拒绝刷新")
@@ -338,20 +352,20 @@ class Muice:
 
         last_item = user_history[0]
 
-        await self.database.mark_history_as_unavailable(userid, 1)
+        await self.database.mark_history_as_unavailable(session, userid, 1)
 
         if not self.model_config.stream:
-            return await self.ask(last_item)
+            return await self.ask(last_item, session)
 
-        return self.ask_stream(last_item)
+        return self.ask_stream(last_item, session)
 
-    async def reset(self, userid: str) -> str:
+    async def reset(self, userid: str, session: async_scoped_session) -> str:
         """
         清空历史对话（将用户对话历史记录标记为不可用）
         """
-        await self.database.mark_history_as_unavailable(userid)
+        await self.database.mark_history_as_unavailable(session, userid)
         return "已成功移除对话历史~"
 
-    async def undo(self, userid: str) -> str:
-        await self.database.mark_history_as_unavailable(userid, 1)
+    async def undo(self, userid: str, session: async_scoped_session) -> str:
+        await self.database.mark_history_as_unavailable(session, userid, 1)
         return "已成功撤销上一段对话~"
