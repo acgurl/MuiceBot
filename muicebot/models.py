@@ -4,8 +4,6 @@ from functools import total_ordering
 from io import BytesIO
 from typing import List, Literal, Optional, Union
 
-from .utils.utils import guess_mimetype
-
 
 @dataclass
 class Resource:
@@ -26,6 +24,8 @@ class Resource:
         self.ensure_mimetype()
 
     def ensure_mimetype(self):
+        from .utils.utils import guess_mimetype
+
         if not self.mimetype:
             self.mimetype = guess_mimetype(self)
 
