@@ -210,6 +210,6 @@ async def uninstall_plugin(plugin: str) -> str:
         loop = asyncio.get_running_loop()
         await loop.run_in_executor(None, shutil.rmtree, plugin_path)
     except PermissionError:
-        return f"❌ 插件 {plugin} 移除失败，请尝试手动移除"
+        return f"⚠️ 插件 {plugin} 虽然已从加载列表中移除，但其文件移除失败，请尝试手动删除此插件"
 
     return f"✅ 插件 {plugin} 移除成功！重启后生效"
