@@ -3,7 +3,7 @@ name: PyTest Check
 on: [push]
 
 jobs:
-  pre-commit:
+  pytest:
     runs-on: ubuntu-latest
 
     env:
