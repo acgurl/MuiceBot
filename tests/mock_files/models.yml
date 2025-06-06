@@ -3,3 +3,4 @@ test:
   template: Muice
   default: true
   api_key: sk-00000000001
+  model_name: dickseep-R2
