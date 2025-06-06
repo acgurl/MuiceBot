@@ -23,7 +23,7 @@ def pytest_collection_modifyitems(items: list[pytest.Item]):
         async_test.add_marker(session_scope_marker, append=False)
 
 
-@pytest.fixture(autouse=True)
+@pytest.fixture(scope="session", autouse=True)
 async def after_nonebot_init(after_nonebot_init: None):
     driver = nonebot.get_driver()
     driver.register_adapter(OneBotV11Adapter)
