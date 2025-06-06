@@ -23,8 +23,7 @@ jobs:
         python -m pip install --user pipx
         python -m pipx ensurepath
         pipx install nb-cli
-        pdm config python.use_venv false
-        pdm install --frozen-lockfile --group dev
+        python -m pip install .[dev]
 
     - name: Run migrations
       run: pipx run nb-cli orm upgrade
