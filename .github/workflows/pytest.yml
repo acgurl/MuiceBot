@@ -24,6 +24,7 @@ jobs:
         python -m pipx ensurepath
         pipx install nb-cli
         python -m pip install .[dev]
+        python -m pip install nonebot2[fastapi]
 
     - name: Run migrations
       run: pipx run nb-cli orm upgrade
