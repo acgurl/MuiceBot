@@ -11,6 +11,7 @@ from .models import BotInfo
 def pytest_configure(config: pytest.Config):
     config.stash[NONEBOT_INIT_KWARGS] = {
         "sqlalchemy_database_url": "sqlite+aiosqlite://",
+        "alembic_startup_check": False,
         "SUPERUSERS": [BotInfo.superuser_id.__str__()],
     }
     config.stash[NONEBOT_START_LIFESPAN] = False
