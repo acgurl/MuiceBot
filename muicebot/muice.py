@@ -69,6 +69,10 @@ class Muice:
         except (AttributeError, RuntimeError) as e:
             logger.debug(f"Muice __del__ 清理失败: {e}")
 
+    @staticmethod
+    def get_instance() -> "Muice":
+        return Muice()
+
     def _load_config(self):
         """
         加载配置项

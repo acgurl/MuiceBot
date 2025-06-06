@@ -47,7 +47,6 @@ PLUGINS_PATH = Path("./plugins")
 MCP_CONFIG_PATH = Path("./configs/mcp.json")
 START_TIME = time.time()
 
-muice = Muice()
 scheduler = None
 connect_time = 0.0
 session_manager = SessionManager()
@@ -65,6 +64,9 @@ async def load_bot():
     logger.info(f"MuiceBot 版本: {get_version()}")
     logger.info(f"MuiceBot 数据目录: {store.get_plugin_data_dir().resolve()}")
     logger.info("加载 MuiceBot 框架...")
+
+    logger.info("初始化 Muice 实例...")
+    muice = Muice.get_instance()
 
     logger.info(f"加载模型适配器: {muice.model_loader} ...")
     if not muice.load_model():
@@ -187,7 +189,7 @@ at_event = on_alconna(
 async def on_bot_connect():
     global scheduler
     if not scheduler:
-        scheduler = setup_scheduler(muice)
+        scheduler = setup_scheduler(Muice.get_instance())
 
 
 @driver.on_bot_disconnect
@@ -216,6 +218,8 @@ async def handle_command_help():
 
 @command_about.handle()
 async def handle_command_about():
+    muice = Muice.get_instance()
+
     model_loader = muice.model_loader
     # plugins_list = ", ".join(get_available_plugin_names())
     mplugins_list = ", ".join(get_plugins())
@@ -248,6 +252,7 @@ async def handle_command_status(session: async_scoped_session):
     now = time.time()
     uptime = timedelta(seconds=int(now - START_TIME))
     bot_uptime = timedelta(seconds=int(now - connect_time))
+    muice = Muice.get_instance()
 
     model_status = "运行中" if muice.model and muice.model.is_running else "未启动"
     today_usage, total_usage = await muice.database.get_model_usage(session)
@@ -267,6 +272,7 @@ async def handle_command_status(session: async_scoped_session):
 
 @command_reset.handle()
 async def handle_command_reset(event: Event, session: async_scoped_session):
+    muice = Muice.get_instance()
     userid = event.get_user_id()
     response = await muice.reset(userid, session)
 
@@ -278,6 +284,7 @@ async def handle_command_reset(event: Event, session: async_scoped_session):
 async def handle_command_refresh(
     bot: Bot, event: Event, state: T_State, matcher: Matcher, session: async_scoped_session
 ):
+    muice = Muice.get_instance()
     userid = event.get_user_id()
 
     set_ctx(bot, event, state, matcher)
@@ -290,6 +297,7 @@ async def handle_command_refresh(
 
 @command_undo.handle()
 async def handle_command_undo(event: Event, session: async_scoped_session):
+    muice = Muice.get_instance()
     userid = event.get_user_id()
     response = await muice.undo(userid, session)
     await session.commit()
@@ -298,6 +306,7 @@ async def handle_command_undo(event: Event, session: async_scoped_session):
 
 @command_load.handle()
 async def handle_command_load(config: Match[str] = AlconnaMatch("config_name")):
+    muice = Muice.get_instance()
     config_name = config.result
     result = muice.change_model_config(config_name)
     await UniMessage(result).finish()
@@ -351,6 +360,7 @@ async def _extract_multi_resources(message: UniMsg, event: Event) -> list[Resour
     """
     提取多个多模态文件
     """
+    muice = Muice.get_instance()
     if not muice.model_config.multimodal:
         return []
 
@@ -475,6 +485,7 @@ async def handle_supported_adapters(
     message = Message(message=message_text, userid=userid, groupid=group_id, resources=message_resource)
 
     # Stream
+    muice = Muice.get_instance()
     if muice.model_config.stream:
         stream_completions = muice.ask_stream(db_session, message)
         try:
