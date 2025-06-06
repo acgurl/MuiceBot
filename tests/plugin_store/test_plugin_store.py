@@ -10,7 +10,9 @@ from .utils import init_mocked_api, load_json_record
 
 
 @pytest.mark.asyncio
-async def test_plugin_store_show(app: App):
+async def test_plugin_store_show(app: App, mocker: MockerFixture):
+    mocker.patch("muicebot.builtin_plugins.muicebot_plugin_store.register.load_json_record", return_value={})
+
     async with app.test_matcher() as ctx:
         bot = ctx.create_bot()
         event = ob11_private_message_event(".store show")
