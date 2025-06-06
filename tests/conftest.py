@@ -1,11 +1,8 @@
-from pathlib import Path
-
 import nonebot
 import pytest
 from nonebot.adapters.onebot.v11 import Adapter as OneBotV11Adapter
 from nonebug import NONEBOT_INIT_KWARGS, NONEBOT_START_LIFESPAN, App
 from pytest_asyncio import is_async_test
-from pytest_mock import MockerFixture
 from respx import MockRouter
 
 from .models import BotInfo
@@ -26,11 +23,8 @@ def pytest_collection_modifyitems(items: list[pytest.Item]):
         async_test.add_marker(session_scope_marker, append=False)
 
 
-@pytest.fixture(scope="function", autouse=True)
-async def after_nonebot_init(after_nonebot_init: None, mocker: MockerFixture):
-    mock_path = Path(__file__).parent / "mock_files" / "models.yml"
-    mocker.patch("muicebot.config.MODELS_CONFIG_PATH", new=mock_path)
-
+@pytest.fixture(autouse=True)
+async def after_nonebot_init(after_nonebot_init: None):
     driver = nonebot.get_driver()
     driver.register_adapter(OneBotV11Adapter)
 

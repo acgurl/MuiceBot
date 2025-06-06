@@ -30,4 +30,7 @@ jobs:
       run: pipx run nb-cli orm upgrade
 
     - name: Run tests
-      run: pytest
+      run: |
+        mkdir configs
+        mv tests/mock_files/models.yml configs/models.yml
+        pytest
