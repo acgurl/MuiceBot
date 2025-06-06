@@ -45,6 +45,12 @@ dev = [
     "mypy>=1.15.0",
     "black>=25.1.0",
     "types-PyYAML",
+    "nonebot-adapter-onebot>=2.4.6",
+    "nonebug>=0.4.3",
+    "pytest>=8.4.0",
+    "pytest_asyncio>=1.0.0",
+    "pytest_mock>=2.4.6",
+    "respx>=0.22.0",
 ]
 
 [tool.nonebot]
@@ -54,6 +60,10 @@ adapters = [
 ]
 plugins = ["nonebot_plugin_alconna", "nonebot_plugin_localstore", "nonebot_plugin_apscheduler", "nonebot_plugin_session", "nonebot_plugin_userinfo", "muicebot"]
 builtin_plugins = []
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "session"
 
 [tool.black]
 line-length = 120
