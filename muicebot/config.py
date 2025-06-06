@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import atexit
 import os
 import threading
@@ -17,6 +19,8 @@ from .llm import ModelConfig
 MODELS_CONFIG_PATH = Path("configs/models.yml").resolve()
 SCHEDULES_CONFIG_PATH = Path("configs/schedules.yml").resolve()
 PLUGINS_CONFIG_PATH = Path("configs/plugins.yml").resolve()
+
+_model_config_manager: Optional["ModelConfigManager"] = None
 
 
 def load_yaml_config() -> dict:
@@ -235,8 +239,12 @@ class ModelConfigManager:
         self.observer.join()
 
 
-model_config_manager = ModelConfigManager()
-atexit.register(model_config_manager.stop_watcher)
+def get_model_config_manager() -> ModelConfigManager:
+    global _model_config_manager
+    if _model_config_manager is None:
+        _model_config_manager = ModelConfigManager()
+        atexit.register(_model_config_manager.stop_watcher)
+    return _model_config_manager
 
 
 def get_model_config(model_config_name: Optional[str] = None) -> ModelConfig:
@@ -246,4 +254,5 @@ def get_model_config(model_config_name: Optional[str] = None) -> ModelConfig:
     :model_config_name: (可选)模型配置名称。若为空，则先寻找配置了 `default: true` 的首个配置项，若失败就再寻找首个配置项
     若都不存在，则抛出 `FileNotFoundError`
     """
+    model_config_manager = get_model_config_manager()
     return model_config_manager.get_model_config(model_config_name)

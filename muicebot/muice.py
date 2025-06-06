@@ -5,7 +5,12 @@ from typing import AsyncGenerator, Optional, Union
 from nonebot import logger
 from nonebot_plugin_orm import async_scoped_session
 
-from .config import ModelConfig, get_model_config, model_config_manager, plugin_config
+from .config import (
+    ModelConfig,
+    get_model_config,
+    get_model_config_manager,
+    plugin_config,
+)
 from .database import MessageORM
 from .llm import (
     MODEL_DEPENDENCY_MAP,
@@ -51,6 +56,7 @@ class Muice:
         self._load_config()
         self._init_model()
 
+        model_config_manager = get_model_config_manager()
         model_config_manager.register_listener(self._on_config_changed)
 
         self._initialized = True
@@ -58,6 +64,7 @@ class Muice:
     def __del__(self):
         # 注销监听器
         try:
+            model_config_manager = get_model_config_manager()
             model_config_manager.unregister_listener(self._on_config_changed)
         except (AttributeError, RuntimeError) as e:
             logger.debug(f"Muice __del__ 清理失败: {e}")
