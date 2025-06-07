@@ -105,7 +105,7 @@ async def handle_migrate(session: async_scoped_session):
     old_db_version = await old_db.get_version()
 
     if old_db_version < 2:
-        msg = "就数据库版本低于 v2，无法迁移"
+        msg = "旧数据库版本低于 v2，无法迁移"
         logger.error(msg)
         await command_migrate.finish(msg)
 
