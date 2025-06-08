@@ -17,7 +17,7 @@ class Config(BaseModel):
     access_control: ScopeConfig = ScopeConfig()
 
 
-__metadata__ = PluginMetadata(
+__plugin_meta__ = PluginMetadata(
     name="blacklist_whitelist_checker",
     description="黑白名单检测",
     usage="在插件配置中填写响应配置后即可",

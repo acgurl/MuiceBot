@@ -1,5 +1,5 @@
 from types import ModuleType
-from typing import Any
+from typing import Any, Optional
 
 from pydantic import BaseModel
 
@@ -30,6 +30,8 @@ class Plugin(BaseModel):
     """插件模块对象"""
     package_name: str
     """模块包名"""
+    meta: Optional[PluginMetadata] = None
+    """插件元数据"""
 
     def __hash__(self) -> int:
         return hash(self.package_name)

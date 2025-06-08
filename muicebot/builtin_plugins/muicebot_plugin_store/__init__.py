@@ -12,7 +12,7 @@ from .store import (
     update_plugin,
 )
 
-__meta__ = PluginMetadata(name="muicebot-plugin-store", description="Muicebot 插件商店操作", usage=".store help")
+__plugin_meta__ = PluginMetadata(name="muicebot-plugin-store", description="Muicebot 插件商店操作", usage=".store help")
 
 load_store_plugin()
 

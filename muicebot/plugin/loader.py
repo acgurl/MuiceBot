@@ -18,7 +18,7 @@ from typing import Dict, Optional, Set
 import nonebot_plugin_localstore as store
 from nonebot import logger
 
-from .models import Plugin
+from .models import Plugin, PluginMetadata
 from .utils import path_to_module_name
 
 _plugins: Dict[str, Plugin] = {}
@@ -45,7 +45,11 @@ def load_plugin(plugin_path: Path | str, base_path=Path.cwd()) -> Optional[Plugi
         _declared_plugins.add(plugin_path)
 
         module = importlib.import_module(plugin_path)
-        plugin = Plugin(name=module.__name__.split(".")[-1], module=module, package_name=plugin_path)
+
+        # get plugin metadata
+        metadata: Optional[PluginMetadata] = getattr(module, "__plugin_meta__", None)
+
+        plugin = Plugin(name=module.__name__.split(".")[-1], module=module, package_name=plugin_path, meta=metadata)
 
         _plugins[plugin.package_name] = plugin
 

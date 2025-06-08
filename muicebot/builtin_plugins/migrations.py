@@ -12,7 +12,9 @@ from muicebot.database import MessageORM
 from muicebot.models import Message, Resource
 from muicebot.plugin import PluginMetadata
 
-__meta__ = PluginMetadata(name="muicebot_plugin_migrations", description="从旧数据库实现中迁移", usage=".migrate")
+__plugin_meta__ = PluginMetadata(
+    name="muicebot_plugin_migrations", description="从旧数据库实现中迁移", usage=".migrate"
+)
 
 COMMAND_PREFIXES = [".", "/"]
 
