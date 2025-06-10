@@ -17,8 +17,6 @@ from nonebot.matcher import Matcher
 from nonebot.rule import Rule
 from nonebot.typing import T_State
 
-from muicebot.muice import Muice
-
 from ..context import get_bot, get_event, get_mather
 from ..utils import is_coroutine_callable
 from ._types import ASYNC_FUNCTION_CALL_FUNC, F
@@ -92,7 +90,9 @@ class Caller:
                 elif issubclass(param_type, Matcher):
                     inject_args[name] = get_mather()
 
-                elif issubclass(param_type, Muice):
+                elif param_type.__name__ == "Muice":  # Check by type name
+                    from muicebot.muice import Muice
+
                     inject_args[name] = Muice.get_instance()
 
                 # elif param_type and issubclass(param_type, T_State):
