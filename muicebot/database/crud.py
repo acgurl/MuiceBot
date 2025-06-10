@@ -70,7 +70,7 @@ class MessageORM:
 
         :return: 消息列表
         """
-        stmt = select(Msg).where(Msg.groupid == groupid, Msg.history == 0).order_by(desc(Msg.id))
+        stmt = select(Msg).where(Msg.groupid == groupid, Msg.history == 1).order_by(desc(Msg.id))
         if limit:
             stmt = stmt.limit(limit)
         result = await session.execute(stmt)
