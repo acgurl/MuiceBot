@@ -168,6 +168,17 @@ command_whoami = on_alconna(
     block=True,
 )
 
+command_profile = on_alconna(
+    Alconna(
+        COMMAND_PREFIXES,
+        "profile",
+        Args["profile", str, "_default"],
+        meta=CommandMeta("切换消息存档", usage="profile Muika"),
+    ),
+    priority=10,
+    block=True,
+)
+
 nickname_event = on_alconna(
     Alconna(re.compile(combined_regex), Args["text?", AllParam], separators=""),
     priority=99,
@@ -319,6 +330,18 @@ async def handle_command_whoami(bot: Bot, event: Event):
     group_id = session.get_id(SessionIdType.GROUP)
     session_id = event.get_session_id()
     await UniMessage(f"用户 ID: {user_id}\n群组 ID: {group_id}\n当前会话信息: {session_id}").finish()
+
+
+@command_profile.handle()
+async def handle_command_profile(
+    event: Event, session: async_scoped_session, profile: Match[str] = AlconnaMatch("profile")
+):
+    from .database import UserORM
+
+    userid = event.get_user_id()
+    await UserORM.set_profile(session, userid, profile.result)
+    await session.commit()
+    await UniMessage("成功切换消息存档~").finish()
 
 
 @command_start.handle()
