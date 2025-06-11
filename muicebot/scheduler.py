@@ -5,6 +5,7 @@ from apscheduler.triggers.cron import CronTrigger
 from apscheduler.triggers.interval import IntervalTrigger
 from nonebot import get_bot, logger
 from nonebot_plugin_alconna.uniseg import Target, UniMessage
+from nonebot_plugin_orm import async_scoped_session
 
 from .config import get_schedule_configs
 from .models import Message
@@ -28,7 +29,9 @@ async def send_message(target_id: str, message: str, probability: float = 1):
     await UniMessage(message).send(target=target, bot=get_bot())
 
 
-async def model_ask(muice_app: Muice, target_id: str, prompt: str, probability: float = 1):
+async def model_ask(
+    muice_app: Muice, target_id: str, prompt: str, session: async_scoped_session, probability: float = 1
+):
     """
     定时任务：向模型发送消息
 
@@ -44,7 +47,7 @@ async def model_ask(muice_app: Muice, target_id: str, prompt: str, probability: 
 
     if muice_app.model and muice_app.model.is_running:
         message = Message(message=prompt, userid=f"(bot_ask){target_id}")
-        response = await muice_app.ask(message, enable_history=False, enable_plugins=False)
+        response = await muice_app.ask(session, message, enable_history=False, enable_plugins=False)
 
         target = Target(target_id)
         await UniMessage(response.text).send(target=target, bot=get_bot())

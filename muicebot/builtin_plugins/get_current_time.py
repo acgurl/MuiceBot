@@ -1,7 +1,7 @@
 from muicebot.plugin import PluginMetadata
 from muicebot.plugin.func_call import on_function_call
 
-__metadata__ = PluginMetadata(
+__plugin_meta__ = PluginMetadata(
     name="muicebot-plugin-time", description="时间插件", usage="直接调用，返回 %Y-%m-%d %H:%M:%S 格式的当前时间"
 )
 

@@ -23,11 +23,13 @@ from nonebot_plugin_alconna import (
     Match,
     MsgTarget,
     UniMessage,
+    get_message_id,
     on_alconna,
     uniseg,
 )
 from nonebot_plugin_alconna.builtins.extensions import ReplyRecordExtension
 from nonebot_plugin_alconna.uniseg import UniMsg
+from nonebot_plugin_orm import async_scoped_session
 from nonebot_plugin_session import SessionIdType, extract_session
 
 from .config import plugin_config
@@ -45,7 +47,6 @@ PLUGINS_PATH = Path("./plugins")
 MCP_CONFIG_PATH = Path("./configs/mcp.json")
 START_TIME = time.time()
 
-muice = Muice()
 scheduler = None
 connect_time = 0.0
 session_manager = SessionManager()
@@ -63,6 +64,9 @@ async def load_bot():
     logger.info(f"MuiceBot 版本: {get_version()}")
     logger.info(f"MuiceBot 数据目录: {store.get_plugin_data_dir().resolve()}")
     logger.info("加载 MuiceBot 框架...")
+
+    logger.info("初始化 Muice 实例...")
+    muice = Muice.get_instance()
 
     logger.info(f"加载模型适配器: {muice.model_loader} ...")
     if not muice.load_model():
@@ -164,6 +168,17 @@ command_whoami = on_alconna(
     block=True,
 )
 
+command_profile = on_alconna(
+    Alconna(
+        COMMAND_PREFIXES,
+        "profile",
+        Args["profile", str, "_default"],
+        meta=CommandMeta("切换消息存档", usage="profile Muika"),
+    ),
+    priority=10,
+    block=True,
+)
+
 nickname_event = on_alconna(
     Alconna(re.compile(combined_regex), Args["text?", AllParam], separators=""),
     priority=99,
@@ -185,7 +200,7 @@ at_event = on_alconna(
 async def on_bot_connect():
     global scheduler
     if not scheduler:
-        scheduler = setup_scheduler(muice)
+        scheduler = setup_scheduler(Muice.get_instance())
 
 
 @driver.on_bot_disconnect
@@ -214,6 +229,8 @@ async def handle_command_help():
 
 @command_about.handle()
 async def handle_command_about():
+    muice = Muice.get_instance()
+
     model_loader = muice.model_loader
     # plugins_list = ", ".join(get_available_plugin_names())
     mplugins_list = ", ".join(get_plugins())
@@ -242,13 +259,14 @@ async def handle_command_about():
 
 
 @command_status.handle()
-async def handle_command_status():
+async def handle_command_status(session: async_scoped_session):
     now = time.time()
     uptime = timedelta(seconds=int(now - START_TIME))
     bot_uptime = timedelta(seconds=int(now - connect_time))
+    muice = Muice.get_instance()
 
     model_status = "运行中" if muice.model and muice.model.is_running else "未启动"
-    today_usage, total_usage = await muice.database.get_model_usage()
+    today_usage, total_usage = await muice.database.get_model_usage(session)
 
     scheduler_status = "运行中" if scheduler and scheduler.running else "未启动"
 
@@ -264,32 +282,42 @@ async def handle_command_status():
 
 
 @command_reset.handle()
-async def handle_command_reset(event: Event):
+async def handle_command_reset(event: Event, session: async_scoped_session):
+    muice = Muice.get_instance()
     userid = event.get_user_id()
-    response = await muice.reset(userid)
+    response = await muice.reset(userid, session)
+
+    await session.commit()
     await command_reset.finish(response)
 
 
 @command_refresh.handle()
-async def handle_command_refresh(bot: Bot, event: Event, state: T_State, matcher: Matcher):
+async def handle_command_refresh(
+    bot: Bot, event: Event, state: T_State, matcher: Matcher, session: async_scoped_session
+):
+    muice = Muice.get_instance()
     userid = event.get_user_id()
 
     set_ctx(bot, event, state, matcher)
 
-    response = await muice.refresh(userid)
+    response = await muice.refresh(userid, session)
 
+    await session.commit()
     await _send_message(response)
 
 
 @command_undo.handle()
-async def handle_command_undo(event: Event):
+async def handle_command_undo(event: Event, session: async_scoped_session):
+    muice = Muice.get_instance()
     userid = event.get_user_id()
-    response = await muice.undo(userid)
+    response = await muice.undo(userid, session)
+    await session.commit()
     await command_undo.finish(response)
 
 
 @command_load.handle()
 async def handle_command_load(config: Match[str] = AlconnaMatch("config_name")):
+    muice = Muice.get_instance()
     config_name = config.result
     result = muice.change_model_config(config_name)
     await UniMessage(result).finish()
@@ -302,6 +330,18 @@ async def handle_command_whoami(bot: Bot, event: Event):
     group_id = session.get_id(SessionIdType.GROUP)
     session_id = event.get_session_id()
     await UniMessage(f"用户 ID: {user_id}\n群组 ID: {group_id}\n当前会话信息: {session_id}").finish()
+
+
+@command_profile.handle()
+async def handle_command_profile(
+    event: Event, session: async_scoped_session, profile: Match[str] = AlconnaMatch("profile")
+):
+    from .database import UserORM
+
+    userid = event.get_user_id()
+    await UserORM.set_profile(session, userid, profile.result)
+    await session.commit()
+    await UniMessage("成功切换消息存档~").finish()
 
 
 @command_start.handle()
@@ -343,6 +383,7 @@ async def _extract_multi_resources(message: UniMsg, event: Event) -> list[Resour
     """
     提取多个多模态文件
     """
+    muice = Muice.get_instance()
     if not muice.model_config.multimodal:
         return []
 
@@ -429,12 +470,13 @@ async def handle_supported_adapters(
     matcher: Matcher,
     target: MsgTarget,
     ext: ReplyRecordExtension,
+    db_session: async_scoped_session,
 ):
     if any((bot_message.startswith("."), bot_message.startswith("/"))):
         await UniMessage("未知的指令或权限不足").finish()
 
     # 先拿到引用消息并合并到 message (如果有)
-    if message_reply := ext.get_reply(bot_message.get_message_id()):
+    if message_reply := ext.get_reply(get_message_id(event, bot)):
         reply_message = message_reply.msg
         if isinstance(reply_message, BotMessage):
             bot_message += UniMessage("\n被引用的消息: ") + await UniMessage.generate(message=reply_message)
@@ -466,14 +508,21 @@ async def handle_supported_adapters(
     message = Message(message=message_text, userid=userid, groupid=group_id, resources=message_resource)
 
     # Stream
+    muice = Muice.get_instance()
     if muice.model_config.stream:
-        stream_completions = muice.ask_stream(message)
-        await _send_message(stream_completions)
-        return
+        stream_completions = muice.ask_stream(db_session, message)
+        try:
+            await _send_message(stream_completions)
+        finally:
+            await db_session.commit()
+            return
 
     # non-stream
-    completions = await muice.ask(message)
+    completions = await muice.ask(db_session, message)
 
     logger.info(f"生成最终回复: {completions}")
 
-    await _send_message(completions)
+    try:
+        await _send_message(completions)
+    finally:
+        await db_session.commit()

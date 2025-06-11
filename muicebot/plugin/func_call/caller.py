@@ -80,17 +80,23 @@ class Caller:
         for name, param in sig.parameters.items():
             param_type = hints.get(name, None)
 
-            if param_type and isinstance(param_type, type) and issubclass(param_type, Bot):
-                inject_args[name] = get_bot()
+            if param_type and isinstance(param_type, type):
+                if issubclass(param_type, Bot):
+                    inject_args[name] = get_bot()
 
-            elif param_type and isinstance(param_type, type) and issubclass(param_type, Event):
-                inject_args[name] = get_event()
+                elif issubclass(param_type, Event):
+                    inject_args[name] = get_event()
 
-            elif param_type and isinstance(param_type, type) and issubclass(param_type, Matcher):
-                inject_args[name] = get_mather()
+                elif issubclass(param_type, Matcher):
+                    inject_args[name] = get_mather()
 
-            # elif param_type and issubclass(param_type, T_State):
-            #     inject_args[name] = get_state()
+                elif param_type.__name__ == "Muice":  # Check by type name
+                    from muicebot.muice import Muice
+
+                    inject_args[name] = Muice.get_instance()
+
+                # elif param_type and issubclass(param_type, T_State):
+                #     inject_args[name] = get_state()
 
             # 填充默认值
             elif param.default != inspect.Parameter.empty:

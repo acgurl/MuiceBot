@@ -20,6 +20,9 @@ class Resource:
     mimetype: Optional[str] = field(default=None)
     """文件元数据类型"""
 
+    def __post_init__(self):
+        self.ensure_mimetype()
+
     def ensure_mimetype(self):
         from .utils.utils import guess_mimetype
 
@@ -27,10 +30,11 @@ class Resource:
             self.mimetype = guess_mimetype(self)
 
     def to_dict(self) -> dict:
-        return {
-            "type": self.type,
-            "path": self.path,
-        }
+        """
+        落库时存储的数据
+        (注意：与模型进行交互的多模态文件必须在本地拥有备份)
+        """
+        return {"type": self.type, "path": self.path, "mimetype": self.mimetype}
 
 
 @total_ordering
@@ -59,6 +63,8 @@ class Message:
     """多模态消息内容"""
     usage: int = -1
     """使用的总 tokens, 若模型加载器不支持则设为-1"""
+    profile: str = "_default"
+    """消息所属存档"""
 
     @property
     def format_time(self) -> datetime:

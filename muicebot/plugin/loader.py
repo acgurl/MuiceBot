@@ -18,7 +18,7 @@ from typing import Dict, Optional, Set
 import nonebot_plugin_localstore as store
 from nonebot import logger
 
-from .models import Plugin
+from .models import Plugin, PluginMetadata
 from .utils import path_to_module_name
 
 _plugins: Dict[str, Plugin] = {}
@@ -45,7 +45,11 @@ def load_plugin(plugin_path: Path | str, base_path=Path.cwd()) -> Optional[Plugi
         _declared_plugins.add(plugin_path)
 
         module = importlib.import_module(plugin_path)
-        plugin = Plugin(name=module.__name__.split(".")[-1], module=module, package_name=plugin_path)
+
+        # get plugin metadata
+        metadata: Optional[PluginMetadata] = getattr(module, "__plugin_meta__", None)
+
+        plugin = Plugin(name=module.__name__.split(".")[-1], module=module, package_name=plugin_path, meta=metadata)
 
         _plugins[plugin.package_name] = plugin
 
@@ -74,7 +78,7 @@ def load_plugins(*plugins_dirs: Path | str, base_path=Path.cwd()) -> set[Plugin]
             plugin_path = Path(os.path.join(plugin_dir_path, plugin))
             module_name = None
 
-            if plugin_path.is_file() and plugin_path.suffix == ".py":
+            if plugin_path.is_file() and plugin_path.suffix == ".py" and plugin_path.name != "__init__.py":
                 module_name = path_to_module_name(plugin_path.with_suffix(""), base_path)
             elif plugin_path.is_dir() and (plugin_path / Path("__init__.py")).exists():
                 module_name = path_to_module_name(plugin_path, base_path)
