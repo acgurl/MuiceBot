@@ -63,6 +63,8 @@ class Message:
     """多模态消息内容"""
     usage: int = -1
     """使用的总 tokens, 若模型加载器不支持则设为-1"""
+    profile: str = "_default"
+    """消息所属存档"""
 
     @property
     def format_time(self) -> datetime:
