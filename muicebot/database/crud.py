@@ -67,7 +67,7 @@ class MessageORM:
     @staticmethod
     async def get_group_history(session: async_scoped_session, groupid: str, limit: int = 0) -> List[Message]:
         """
-        获取群组的所有对话历史，返回一个列表，无结果时返回None
+        获取群组的所有对话历史，返回一个列表
 
         :param groupid: 群组id
         :param limit: (可选) 返回的最大长度，当该变量设为0时表示全部返回
