@@ -45,7 +45,7 @@ Muicebot 内置两个分别名为沐雪和沐妮卡的聊天人设（人设是�
 
 ✅ 支持基于 `nonebot_plugin_alconna` 的几条常见指令。
 
-✅ 使用 SQLite3 保存对话数据。那有人就要问了：Maintainer，Maintainer，能不能实现长期短期记忆、LangChain、FairSeq 这些记忆优化啊。以后会有的（
+✅ 基于 `nonebot-plugin-orm>=0.7.7` 提供的 ORM 层保存对话数据。那有人就要问了：Maintainer，Maintainer，能不能实现长期短期记忆、LangChain、FairSeq 这些记忆优化啊。以后会有的（
 
 ✅ 使用 Jinja2 动态生成人设提示词
 
