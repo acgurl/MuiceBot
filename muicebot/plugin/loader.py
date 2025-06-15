@@ -9,16 +9,17 @@ Functions:
     get_plugins: 获取已加载的插件列表
 """
 
-import importlib
 import inspect
 import os
 from pathlib import Path
 from typing import Dict, Optional, Set
 
 import nonebot_plugin_localstore as store
+from nonebot import load_plugin as load_plugin_as_nonebot
 from nonebot import logger
+from nonebot.plugin import PluginMetadata
 
-from .models import Plugin, PluginMetadata
+from .models import Plugin
 from .utils import path_to_module_name
 
 _plugins: Dict[str, Plugin] = {}
@@ -36,7 +37,7 @@ def load_plugin(plugin_path: Path | str, base_path=Path.cwd()) -> Optional[Plugi
     :return: 插件对象集合
     """
     try:
-        logger.info(f"加载插件: {plugin_path}")
+        logger.debug(f"加载 Muicebot 插件: {plugin_path}")
         if isinstance(plugin_path, Path):
             plugin_path = path_to_module_name(plugin_path, base_path)
 
@@ -44,19 +45,21 @@ def load_plugin(plugin_path: Path | str, base_path=Path.cwd()) -> Optional[Plugi
             raise ValueError(f"插件 {plugin_path} 包名出现冲突！")
         _declared_plugins.add(plugin_path)
 
-        module = importlib.import_module(plugin_path)
+        # module = importlib.import_module(plugin_path)
+        nb_plugin = load_plugin_as_nonebot(plugin_path)
+        assert nb_plugin
 
         # get plugin metadata
-        metadata: Optional[PluginMetadata] = getattr(module, "__plugin_meta__", None)
+        metadata: Optional[PluginMetadata] = nb_plugin.metadata
 
-        plugin = Plugin(name=module.__name__.split(".")[-1], module=module, package_name=plugin_path, meta=metadata)
+        plugin = Plugin(name=nb_plugin.module_name, module=nb_plugin.module, package_name=plugin_path, meta=metadata)
 
         _plugins[plugin.package_name] = plugin
 
         return plugin
 
     except Exception as e:
-        logger.error(f"加载插件 {plugin_path} 失败: {e}")
+        logger.error(f"加载 Muicebot 插件 {plugin_path} 失败: {e}")
         return None
 
 
@@ -132,7 +135,12 @@ def get_plugin_by_module_name(module_name: str) -> Optional[Plugin]:
     """
     通过包名获取插件对象
     """
-    return _plugins.get(module_name, None)
+    while True:
+        if module_name in _plugins:
+            return _plugins[module_name]
+        if "." not in module_name:
+            return None
+        module_name = module_name.rsplit(".", 1)[0]
 
 
 def get_plugin_data_dir() -> Path:
