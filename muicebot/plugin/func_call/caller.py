@@ -65,7 +65,7 @@ class Caller:
         self.module_name = module_name
 
         _caller_data[self._name] = self
-        logger.success(f"Function Call 函数 {self.module_name}.{self._name} 已成功加载")
+        logger.debug(f"Function Call 函数 {self.module_name}.{self._name} 已成功加载")
         return func
 
     async def _inject_dependencies(self, kwargs: dict) -> dict:
