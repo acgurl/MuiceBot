@@ -8,8 +8,7 @@ from pathlib import Path
 from typing import Callable, List, Literal, Optional
 
 import yaml as yaml_
-from nonebot import get_driver, get_plugin_config, logger
-from nonebot.config import Config
+from nonebot import get_plugin_config, logger
 from pydantic import BaseModel
 from watchdog.events import FileSystemEventHandler
 from watchdog.observers import Observer
@@ -18,27 +17,8 @@ from .llm import ModelConfig
 
 MODELS_CONFIG_PATH = Path("configs/models.yml").resolve()
 SCHEDULES_CONFIG_PATH = Path("configs/schedules.yml").resolve()
-PLUGINS_CONFIG_PATH = Path("configs/plugins.yml").resolve()
 
 _model_config_manager: Optional["ModelConfigManager"] = None
-
-
-def load_yaml_config() -> dict:
-    """
-    插件优先加载 YAML 配置，失败则返回空字典
-    """
-    try:
-        with open(PLUGINS_CONFIG_PATH, "r", encoding="utf-8") as f:
-            return yaml_.safe_load(f) or {}
-    except (FileNotFoundError, yaml_.YAMLError):
-        return {}
-
-
-driver = get_driver()
-yaml_config = load_yaml_config()
-env_config = driver.config.model_dump()
-final_config = {**env_config, **yaml_config}  # 合并配置，yaml优先
-driver.config = Config(**final_config)
 
 
 class PluginConfig(BaseModel):

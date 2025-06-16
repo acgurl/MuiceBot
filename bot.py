@@ -4,8 +4,6 @@ import sys
 import nonebot
 from nonebot.drivers import Driver
 
-PLUGINS_CONFIG_PATH = "./configs/plugins.yml"
-
 
 def load_specified_adapter(driver: Driver, adapter: str):
     """
