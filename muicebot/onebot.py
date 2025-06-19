@@ -59,6 +59,21 @@ driver = get_driver()
 adapters = get_adapters()
 
 
+def startup_plugins():
+    if PLUGINS_PATH.exists():
+        logger.info("加载外部插件...")
+        load_plugins("./plugins")
+
+    if plugin_config.enable_builtin_plugins:
+        logger.info("加载 MuiceBot 内嵌插件...")
+        builtin_plugins_path = Path(__file__).parent / "builtin_plugins"
+        muicebot_plugins_path = Path(__file__).resolve().parent.parent
+        load_plugins(builtin_plugins_path, base_path=muicebot_plugins_path)
+
+
+startup_plugins()
+
+
 @driver.on_startup
 async def load_bot():
     logger.info(f"MuiceBot 版本: {get_version()}")
@@ -74,15 +89,15 @@ async def load_bot():
         exit(1)
     logger.success(f"模型适配器加载成功: {muice.model_loader} ⭐")
 
-    if PLUGINS_PATH.exists():
-        logger.info("加载外部插件...")
-        load_plugins("./plugins")
+    # if PLUGINS_PATH.exists():
+    #     logger.info("加载外部插件...")
+    #     load_plugins("./plugins")
 
-    if plugin_config.enable_builtin_plugins:
-        logger.info("加载 MuiceBot 内嵌插件...")
-        builtin_plugins_path = Path(__file__).parent / "builtin_plugins"
-        muicebot_plugins_path = Path(__file__).resolve().parent.parent
-        load_plugins(builtin_plugins_path, base_path=muicebot_plugins_path)
+    # if plugin_config.enable_builtin_plugins:
+    #     logger.info("加载 MuiceBot 内嵌插件...")
+    #     builtin_plugins_path = Path(__file__).parent / "builtin_plugins"
+    #     muicebot_plugins_path = Path(__file__).resolve().parent.parent
+    #     load_plugins(builtin_plugins_path, base_path=muicebot_plugins_path)
 
     if MCP_CONFIG_PATH.exists():
         logger.info("加载 MCP Server 配置")
