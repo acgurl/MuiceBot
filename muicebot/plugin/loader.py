@@ -40,6 +40,8 @@ def load_plugin(plugin_path: Path | str, base_path=Path.cwd()) -> Optional[Plugi
         logger.debug(f"加载 Muicebot 插件: {plugin_path}")
         if isinstance(plugin_path, Path):
             module_name = path_to_module_name(plugin_path, base_path)
+        else:
+            module_name = path_to_module_name(Path(plugin_path), base_path)
 
         if module_name in _declared_plugins:
             raise ValueError(f"插件 {module_name} 包名出现冲突！")
