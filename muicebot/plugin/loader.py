@@ -39,11 +39,11 @@ def load_plugin(plugin_path: Path | str, base_path=Path.cwd()) -> Optional[Plugi
     try:
         logger.debug(f"加载 Muicebot 插件: {plugin_path}")
         if isinstance(plugin_path, Path):
-            plugin_path = path_to_module_name(plugin_path, base_path)
+            module_name = path_to_module_name(plugin_path, base_path)
 
-        if plugin_path in _declared_plugins:
-            raise ValueError(f"插件 {plugin_path} 包名出现冲突！")
-        _declared_plugins.add(plugin_path)
+        if module_name in _declared_plugins:
+            raise ValueError(f"插件 {module_name} 包名出现冲突！")
+        _declared_plugins.add(module_name)
 
         # module = importlib.import_module(plugin_path)
         nb_plugin = load_plugin_as_nonebot(plugin_path)
@@ -52,7 +52,7 @@ def load_plugin(plugin_path: Path | str, base_path=Path.cwd()) -> Optional[Plugi
         # get plugin metadata
         metadata: Optional[PluginMetadata] = nb_plugin.metadata
 
-        plugin = Plugin(name=nb_plugin.module_name, module=nb_plugin.module, package_name=plugin_path, meta=metadata)
+        plugin = Plugin(name=nb_plugin.module_name, module=nb_plugin.module, package_name=module_name, meta=metadata)
 
         _plugins[plugin.package_name] = plugin
 
