@@ -13,18 +13,13 @@
 <div align=center>
   <a href="#"><img src="https://wakatime.com/badge/user/637d5886-8b47-4b82-9264-3b3b9d6add67/project/a4557f7b-4d26-4105-842a-7a783cbad588.svg" alt="wakatime"></a>
   <a href="https://www.modelscope.cn/datasets/Moemuu/Muice-Dataset"><img src="https://img.shields.io/badge/ModelScope-Dataset-644cfd?link=https://www.modelscope.cn/datasets/Moemuu/Muice-Dataset" alt="ModelScope"></a>
-  <a href="https://huggingface.co/datasets/Moemu/Muice-Dataset"><img src="https://img.shields.io/badge/HuggingFace-Dataset-yellow?link=https%3A%2F%2Fhuggingface.co%2Fdatasets%2FMoemu%2FMuice-Dataset" alt="HuggingFace"></a>
+  <a href='https://qm.qq.com/q/Q5rVU7wlag'><img src="https://img.shields.io/badge/QQ群-MuiceHouse-blue" alt="QQ群组"></a>
 </div>
 <div align=center>
   <a href="https://bot.snowy.moe">📃使用文档</a>
   <a href="https://bot.snowy.moe/guide/setup.html">✨快速开始</a>
+  <a href="https://github.com/MuikaAI/Muicebot-Plugins-Index">🧩插件商店</a>
 </div>
-
-
-> [!NOTE]
->
-> 由于本项目的 Maintainer Muika(Moemu) 现已淡出互联网，且面临来自学业和考核的多重压力，此项目的开发进度可能会严重放慢，敬请谅解
-
 
 # 介绍✨
 
@@ -89,7 +84,7 @@ Muicebot 内置两个分别名为沐雪和沐妮卡的聊天人设（人设是�
 
 参考 [使用文档](https://bot.snowy.moe)
 
-# 插件商店
+# 插件商店🧩
 
 [MuikaAI/Muicebot-Plugins-Index](https://github.com/MuikaAI/Muicebot-Plugins-Index)
 
