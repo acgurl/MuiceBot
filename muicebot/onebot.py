@@ -13,6 +13,7 @@ from nonebot import (
 )
 from nonebot.adapters import Bot, Event
 from nonebot.adapters import Message as BotMessage
+from nonebot.exception import FinishedException
 from nonebot.matcher import Matcher
 from nonebot.permission import SUPERUSER
 from nonebot.rule import to_me
@@ -442,14 +443,14 @@ async def _send_message(completions: ModelCompletions | AsyncGenerator[ModelStre
             if not paragraph.strip():
                 continue  # 跳过空白文段
             if index == len(paragraphs) - 1:
-                await UniMessage(paragraph).finish()
+                await UniMessage(paragraph).send()
             await UniMessage(paragraph).send()
 
         if completions.resources:
             for resource in completions.resources:
                 await _send_multi_messages(resource)
 
-        return
+        raise FinishedException
 
     # stream
     current_paragraph = ""
