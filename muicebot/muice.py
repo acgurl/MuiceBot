@@ -255,10 +255,10 @@ class Muice:
         logger.success(f"模型调用{'成功' if response.succeed else '失败'}: {response}")
         logger.debug(f"模型调用时长: {end_time - start_time} s (token用量: {response.usage})")
 
-        await hook_manager.run(HookType.AFTER_MODEL_COMPLETION, response)
-
         message.respond = response.text
         message.usage = response.usage
+
+        await hook_manager.run(HookType.AFTER_MODEL_COMPLETION, response, message)
 
         await hook_manager.run(HookType.ON_FINISHING_CHAT, message)
 
@@ -334,7 +334,11 @@ class Muice:
         final_model_completions = ModelCompletions(
             text=total_reply, usage=item.usage, resources=total_resources.copy(), succeed=item.succeed
         )
-        await hook_manager.run(HookType.AFTER_MODEL_COMPLETION, final_model_completions)
+
+        message.respond = total_reply
+        message.usage = item.usage
+
+        await hook_manager.run(HookType.AFTER_MODEL_COMPLETION, final_model_completions, message, stream=True)
 
         # 提取挂钩函数的可能的 resources 资源
         new_resources = [r for r in final_model_completions.resources if r not in total_resources]
@@ -342,9 +346,6 @@ class Muice:
         # yield 新资源
         for r in new_resources:
             yield ModelStreamCompletions(resources=[r])
-
-        message.respond = total_reply
-        message.usage = item.usage
 
         await hook_manager.run(HookType.ON_FINISHING_CHAT, message)
 

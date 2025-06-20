@@ -40,7 +40,7 @@ class HookManager:
     def __init__(self):
         self._hooks: Dict[HookType, List["Hooked"]] = defaultdict(list)
 
-    async def _inject_dependencies(self, function: HOOK_FUNC, hook_arg: HOOK_ARGS) -> dict:
+    async def _inject_dependencies(self, function: HOOK_FUNC, *hook_args: HOOK_ARGS) -> dict:
         """
         自动解析参数并进行依赖注入
         """
@@ -54,21 +54,22 @@ class HookManager:
             if not param_type:
                 continue
 
-            # 1. Union 类型注入 hook_arg
-            if _match_union(param_type, hook_arg):
-                inject_args[name] = hook_arg
-                continue
-
-            # 2. 直接匹配 hook_arg
-            if isinstance(hook_arg, param_type):
-                inject_args[name] = hook_arg
-                continue
-
-            # 3. 依赖提供者匹配（Bot、Event、Matcher...）
-            for dep_type, provider in DEPENDENCY_PROVIDERS.items():
-                if isinstance(param_type, type) and issubclass(param_type, dep_type):
-                    inject_args[name] = provider()
+            for hook_arg in hook_args:
+                # 1. Union 类型注入 hook_arg
+                if _match_union(param_type, hook_arg):
+                    inject_args[name] = hook_arg
                     break
+
+                # 2. 直接匹配 hook_arg
+                if isinstance(hook_arg, param_type):
+                    inject_args[name] = hook_arg
+                    break
+
+                # 3. 依赖提供者匹配（Bot、Event、Matcher...）
+                for dep_type, provider in DEPENDENCY_PROVIDERS.items():
+                    if isinstance(param_type, type) and issubclass(param_type, dep_type):
+                        inject_args[name] = provider()
+                        break
 
         return inject_args
 
@@ -79,7 +80,7 @@ class HookManager:
         self._hooks[hook_type].append(hooked)
         return hooked
 
-    async def run(self, hook_type: HookType, hook_arg: HOOK_ARGS, stream: bool = False):
+    async def run(self, hook_type: HookType, *hook_args: HOOK_ARGS, stream: bool = False):
         """
         运行所有的钩子函数
 
@@ -95,7 +96,7 @@ class HookManager:
         state: T_State = {}
 
         for hooked in hookeds:
-            args = await self._inject_dependencies(hooked.function, hook_arg)
+            args = await self._inject_dependencies(hooked.function, *hook_args)
 
             if (hooked.stream is not None and hooked.stream == stream) or (
                 hooked.rule and not await hooked.rule(bot, event, state)
