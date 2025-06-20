@@ -324,6 +324,9 @@ class Muice:
             if item.resources:
                 total_resources.extend(item.resources)
 
+        if not total_reply.endswith("\n\n"):
+            yield ModelStreamCompletions("\n\n")  # 强行 yield 最后一段文字
+
         if item is None:
             raise RuntimeError("模型调用器返回的值应至少包含一个元素")
 
