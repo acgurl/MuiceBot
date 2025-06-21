@@ -122,7 +122,6 @@ async def install_plugin(plugin: str) -> str:
 
     repo_url = index[plugin]["repo"]
     module = index[plugin]["module"]
-    name = index[plugin]["name"]
     plugin_path = PLUGIN_DIR / plugin
 
     if plugin_path.exists():
@@ -153,7 +152,7 @@ async def install_plugin(plugin: str) -> str:
 
     commit = await get_plugin_commit(plugin)
 
-    register_plugin(plugin, commit, name, module)
+    register_plugin(plugin, commit, module)
 
     return f"✅ 插件 {plugin} 安装成功！"
 
@@ -188,7 +187,7 @@ async def update_plugin(plugin: str) -> str:
 
     info = load_json_record()[plugin]
     commit = await get_plugin_commit(plugin)
-    register_plugin(plugin, commit, info["name"], info["module"])
+    register_plugin(plugin, commit, info["module"])
 
     return f"✅ 插件 {plugin} 更新成功！重启后生效"
 
