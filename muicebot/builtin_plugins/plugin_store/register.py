@@ -29,7 +29,7 @@ def _save_json_record(data: dict) -> None:
         json.dump(data, f, indent=2, ensure_ascii=False)
 
 
-def register_plugin(plugin: str, commit: str, name: str, module: str) -> None:
+def register_plugin(plugin: str, commit: str, module: str) -> None:
     """
     在本地注册一个插件记录
 
@@ -39,7 +39,7 @@ def register_plugin(plugin: str, commit: str, name: str, module: str) -> None:
     :param module: 相对于 `store` 文件夹的可导入模块名
     """
     plugins = load_json_record()
-    plugins[plugin] = {"commit": commit, "module": module, "name": name}
+    plugins[plugin] = {"commit": commit, "module": module, "name": plugin}
     _save_json_record(plugins)
 
 
