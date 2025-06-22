@@ -81,7 +81,11 @@ class Ollama(BaseLLM):
         return messages
 
     async def _ask_sync(
-        self, messages: list, tools: List[dict[str, Any]], response_format: Optional[dict[str, Any]]
+        self,
+        messages: list,
+        tools: List[dict[str, Any]],
+        response_format: Optional[dict[str, Any]],
+        total_tokens: int = -1,
     ) -> ModelCompletions:
         completions = ModelCompletions()
 
@@ -130,7 +134,11 @@ class Ollama(BaseLLM):
             return completions
 
     async def _ask_stream(
-        self, messages: list, tools: List[dict[str, Any]], response_format: Optional[dict[str, Any]]
+        self,
+        messages: list,
+        tools: List[dict[str, Any]],
+        response_format: Optional[dict[str, Any]],
+        total_tokens: int = -1,
     ) -> AsyncGenerator[ModelStreamCompletions, None]:
         try:
             response = await self.client.chat(
