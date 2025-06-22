@@ -52,9 +52,6 @@ class Azure(BaseLLM):
         self.token = os.getenv("AZURE_API_KEY", self.config.api_key)
         self.endpoint = self.config.api_host if self.config.api_host else "https://models.inference.ai.azure.com"
 
-        self._tools: List[ChatCompletionsToolDefinition] = []
-        self._response_format: Optional[JsonSchemaFormat] = None
-
     def __build_multi_messages(self, request: ModelRequest) -> UserMessage:
         """
         构建多模态类型
@@ -108,16 +105,6 @@ class Azure(BaseLLM):
         if request.system:
             messages.append(SystemMessage(request.system))
 
-        if request.format == "json" and request.json_schema:
-            self._response_format = JsonSchemaFormat(
-                name="Recipe_JSON_Schema",
-                schema=request.json_schema.model_json_schema(),
-                description=request.prompt,
-                strict=True,
-            )
-        else:
-            self._response_format = None
-
         for msg in request.history:
             user_msg = (
                 UserMessage(msg.message)
@@ -144,7 +131,12 @@ class Azure(BaseLLM):
 
         return False
 
-    async def _ask_sync(self, messages: List[ChatRequestMessage]) -> ModelCompletions:
+    async def _ask_sync(
+        self,
+        messages: List[ChatRequestMessage],
+        tools: List[ChatCompletionsToolDefinition],
+        response_format: Optional[JsonSchemaFormat],
+    ) -> ModelCompletions:
         client = ChatCompletionsClient(endpoint=self.endpoint, credential=AzureKeyCredential(self.token))
 
         completions = ModelCompletions()
@@ -159,8 +151,8 @@ class Azure(BaseLLM):
                 frequency_penalty=self.frequency_penalty,
                 presence_penalty=self.presence_penalty,
                 stream=False,
-                tools=self._tools,
-                response_format=self._response_format,
+                tools=tools,
+                response_format=response_format,
             )
             finish_reason = response.choices[0].finish_reason
             self._total_tokens += response.usage.total_tokens
@@ -192,7 +184,7 @@ class Azure(BaseLLM):
                 # Append the function call result fo the chat history
                 messages.append(ToolMessage(tool_call_id=tool_call.id, content=function_return))
 
-                return await self._ask_sync(messages)
+                return await self._ask_sync(messages, tools, response_format)
 
             else:
                 completions.succeed = False
@@ -209,7 +201,12 @@ class Azure(BaseLLM):
             completions.usage = self._total_tokens
             return completions
 
-    async def _ask_stream(self, messages: List[ChatRequestMessage]) -> AsyncGenerator[ModelStreamCompletions, None]:
+    async def _ask_stream(
+        self,
+        messages: List[ChatRequestMessage],
+        tools: List[ChatCompletionsToolDefinition],
+        response_format: Optional[JsonSchemaFormat],
+    ) -> AsyncGenerator[ModelStreamCompletions, None]:
         client = ChatCompletionsClient(endpoint=self.endpoint, credential=AzureKeyCredential(self.token))
 
         try:
@@ -222,9 +219,9 @@ class Azure(BaseLLM):
                 frequency_penalty=self.frequency_penalty,
                 presence_penalty=self.presence_penalty,
                 stream=True,
-                tools=self._tools,
+                tools=tools,
                 model_extras={"stream_options": {"include_usage": True}},  # 需要显式声明获取用量
-                response_format=self._response_format,
+                response_format=response_format,
             )
 
             tool_call_id: str = ""
@@ -283,7 +280,7 @@ class Azure(BaseLLM):
                     # Append the function call result fo the chat history
                     messages.append(ToolMessage(tool_call_id=tool_call_id, content=function_return))
 
-                    async for content in self._ask_stream(messages):
+                    async for content in self._ask_stream(messages, tools, response_format):
                         yield content
 
                     return
@@ -316,9 +313,19 @@ class Azure(BaseLLM):
 
         messages = self._build_messages(request)
 
-        self._tools = self.__build_tools_definition(request.tools) if request.tools else []
+        tools = self.__build_tools_definition(request.tools) if request.tools else []
+
+        if request.format == "json" and request.json_schema:
+            response_format = JsonSchemaFormat(
+                name="Recipe_JSON_Schema",
+                schema=request.json_schema.model_json_schema(),
+                description=request.prompt,
+                strict=True,
+            )
+        else:
+            response_format = None
 
         if stream:
-            return self._ask_stream(messages)
+            return self._ask_stream(messages, tools, response_format)
 
-        return await self._ask_sync(messages)
+        return await self._ask_sync(messages, tools, response_format)

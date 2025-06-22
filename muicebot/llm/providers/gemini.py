@@ -1,4 +1,13 @@
-from typing import AsyncGenerator, Awaitable, List, Literal, Optional, Union, overload
+from typing import (
+    AsyncGenerator,
+    Awaitable,
+    List,
+    Literal,
+    Optional,
+    Type,
+    Union,
+    overload,
+)
 
 from google import genai
 from google.genai import errors
@@ -15,6 +24,7 @@ from google.genai.types import (
 )
 from httpx import ConnectError
 from nonebot import logger
+from pydantic import BaseModel
 
 from muicebot.models import Resource
 
@@ -74,9 +84,36 @@ class Gemini(BaseLLM):
             ),
         )
 
-        self.model = self.client.chats.create(model=self.model_name, config=self.gemini_config)
+    def _build_gemini_config(
+        self, tools: Optional[List[dict]], response_format: Optional[Type[BaseModel]]
+    ) -> GenerateContentConfig:
+        gemini_config = self.gemini_config.model_copy()
+        format_tools = []
 
-    def __build_user_parts(self, request: ModelRequest) -> list[Part]:
+        # build tools
+        for tool in tools if tools else []:
+            tool = tool["function"]
+            required_parameters = tool["required"]
+            del tool["required"]
+            tool["parameters"]["required"] = required_parameters
+            format_tools.append(tool)
+
+        function_tools = Tool(function_declarations=format_tools)  # type:ignore
+
+        if self.enable_search:
+            function_tools.google_search = GoogleSearch()
+
+        if tools or self.enable_search:
+            gemini_config.tools = [function_tools]
+
+        # build response format
+        if response_format:
+            gemini_config.response_mime_type = "application/json"
+            gemini_config.response_schema = response_format
+
+        return gemini_config
+
+    def _build_user_parts(self, request: ModelRequest) -> list[Part]:
         user_parts: list[Part] = [Part.from_text(text=request.prompt)]
 
         if not request.resources:
@@ -92,24 +129,6 @@ class Gemini(BaseLLM):
 
         return user_parts
 
-    def __build_tools_list(self, tools: Optional[List] = []):
-        format_tools = []
-
-        for tool in tools if tools else []:
-            tool = tool["function"]
-            required_parameters = tool["required"]
-            del tool["required"]
-            tool["parameters"]["required"] = required_parameters
-            format_tools.append(tool)
-
-        function_tools = Tool(function_declarations=format_tools)  # type:ignore
-
-        if self.enable_search:
-            function_tools.google_search = GoogleSearch()
-
-        if tools or self.enable_search:
-            self.gemini_config.tools = [function_tools]
-
     def _build_messages(self, request: ModelRequest) -> list[ContentOrDict]:
         messages: List[ContentOrDict] = []
 
@@ -117,27 +136,23 @@ class Gemini(BaseLLM):
             for index, item in enumerate(request.history):
                 messages.append(
                     Content(
-                        role="user", parts=self.__build_user_parts(ModelRequest(item.message, resources=item.resources))
+                        role="user", parts=self._build_user_parts(ModelRequest(item.message, resources=item.resources))
                     )
                 )
                 messages.append(Content(role="model", parts=[Part.from_text(text=item.respond)]))
 
-        if request.format == "json" and request.json_schema:
-            self.gemini_config.response_mime_type = "application/json"
-            self.gemini_config.response_schema = request.json_schema
-        else:
-            self.gemini_config.response_mime_type = None
-            self.gemini_config.response_schema = None
-
-        messages.append(Content(role="user", parts=self.__build_user_parts(request)))
+        messages.append(Content(role="user", parts=self._build_user_parts(request)))
 
         return messages
 
-    async def _ask_sync(self, messages: list[ContentOrDict], **kwargs) -> ModelCompletions:
+    async def _ask_sync(
+        self, messages: list[ContentOrDict], tools: Optional[List[dict]], response_format: Optional[Type[BaseModel]]
+    ) -> ModelCompletions:
+        gemini_config = self._build_gemini_config(tools, response_format)
         completions = ModelCompletions()
 
         try:
-            chat = self.client.aio.chats.create(model=self.model_name, config=self.gemini_config, history=messages[:-1])
+            chat = self.client.aio.chats.create(model=self.model_name, config=gemini_config, history=messages[:-1])
             message = messages[-1].parts  # type:ignore
             response = await chat.send_message(message=message)  # type:ignore
             if response.usage_metadata:
@@ -173,7 +188,7 @@ class Gemini(BaseLLM):
                 messages.append(Content(role="model", parts=[Part(function_call=function_call)]))
                 messages.append(Content(role="user", parts=[function_response_part]))
 
-                return await self._ask_sync(messages)
+                return await self._ask_sync(messages, tools, response_format)
 
             completions.text = completions.text or "（警告：模型无输出！）"
             completions.usage = self._total_tokens
@@ -194,11 +209,14 @@ class Gemini(BaseLLM):
             logger.error(error_message)
             return completions
 
-    async def _ask_stream(self, messages: list, **kwargs) -> AsyncGenerator[ModelStreamCompletions, None]:
+    async def _ask_stream(
+        self, messages: list, tools: Optional[List[dict]], response_format: Optional[Type[BaseModel]]
+    ) -> AsyncGenerator[ModelStreamCompletions, None]:
+        gemini_config = self._build_gemini_config(tools, response_format)
         try:
             total_tokens = 0
             stream = await self.client.aio.models.generate_content_stream(
-                model=self.model_name, contents=messages, config=self.gemini_config
+                model=self.model_name, contents=messages, config=gemini_config
             )
             stream = await stream if isinstance(stream, Awaitable) else stream
             async for chunk in stream:
@@ -238,7 +256,7 @@ class Gemini(BaseLLM):
                     messages.append(Content(role="model", parts=[Part(function_call=function_call)]))
                     messages.append(Content(role="user", parts=[function_response_part]))
 
-                    async for final_chunk in self._ask_stream(messages):
+                    async for final_chunk in self._ask_stream(messages, tools, response_format):
                         yield final_chunk
 
             totaltokens_completions = ModelStreamCompletions()
@@ -278,12 +296,11 @@ class Gemini(BaseLLM):
         self, request: ModelRequest, *, stream: bool = False
     ) -> Union[ModelCompletions, AsyncGenerator[ModelStreamCompletions, None]]:
         self._total_tokens = 0
-        self.__build_tools_list(request.tools)
-        self.gemini_config.system_instruction = request.system
 
         messages = self._build_messages(request)
+        response_format = request.json_schema if request.format == "json" else None
 
         if stream:
-            return self._ask_stream(messages)
+            return self._ask_stream(messages, request.tools, response_format)
 
-        return await self._ask_sync(messages)
+        return await self._ask_sync(messages, request.tools, response_format)

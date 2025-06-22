@@ -45,8 +45,6 @@ class Openai(BaseLLM):
         self.extra_body = self.config.extra_body
 
         self.client = openai.AsyncOpenAI(api_key=self.api_key, base_url=self.api_base, timeout=30)
-        self._tools = []
-        self._response_format: Union[ResponseFormatJSONSchema, NotGiven] = NOT_GIVEN
 
     def __build_multi_messages(self, request: ModelRequest) -> dict:
         """
@@ -88,13 +86,6 @@ class Openai(BaseLLM):
         if request.system:
             messages.append({"role": "system", "content": request.system})
 
-        if request.format == "json" and request.json_schema:
-            self._response_format = ResponseFormatJSONSchema(
-                type="json_schema", json_schema=JSONSchema(**request.json_schema.model_json_schema(), strict=True)
-            )
-        else:
-            self._response_format = NOT_GIVEN
-
         if request.history:
             for index, item in enumerate(request.history):
                 user_content = (
@@ -131,7 +122,12 @@ class Openai(BaseLLM):
 
         return True
 
-    async def _ask_sync(self, messages: list, **kwargs) -> ModelCompletions:
+    async def _ask_sync(
+        self,
+        messages: list,
+        tools: Union[List[ChatCompletionToolParam], NotGiven],
+        response_format: Union[ResponseFormatJSONSchema, NotGiven],
+    ) -> ModelCompletions:
         completions = ModelCompletions()
 
         try:
@@ -143,9 +139,9 @@ class Openai(BaseLLM):
                 max_tokens=self.max_tokens,
                 temperature=self.temperature,
                 stream=False,
-                tools=self._tools,
+                tools=tools,
                 extra_body=self.extra_body,
-                response_format=self._response_format,
+                response_format=response_format,
             )
 
             result = ""
@@ -175,7 +171,7 @@ class Openai(BaseLLM):
                         "content": function_return,
                     }
                 )
-                return await self._ask_sync(messages)
+                return await self._ask_sync(messages, tools, response_format)
 
             if message.content:  # type:ignore
                 result += message.content  # type:ignore
@@ -203,7 +199,12 @@ class Openai(BaseLLM):
 
         return completions
 
-    async def _ask_stream(self, messages: list, **kwargs) -> AsyncGenerator[ModelStreamCompletions, None]:
+    async def _ask_stream(
+        self,
+        messages: list,
+        tools: Union[List[ChatCompletionToolParam], NotGiven],
+        response_format: Union[ResponseFormatJSONSchema, NotGiven],
+    ) -> AsyncGenerator[ModelStreamCompletions, None]:
         is_insert_think_label = False
         function_id = ""
         function_name = ""
@@ -220,9 +221,9 @@ class Openai(BaseLLM):
                 temperature=self.temperature,
                 stream=True,
                 stream_options={"include_usage": True},
-                tools=self._tools,
+                tools=tools,
                 extra_body=self.extra_body,
-                response_format=self._response_format,
+                response_format=response_format,
             )
 
             async for chunk in response:
@@ -302,7 +303,7 @@ class Openai(BaseLLM):
                     }
                 )
 
-                async for chunk in self._ask_stream(messages):
+                async for chunk in self._ask_stream(messages, tools, response_format):
                     yield chunk
 
             # 处理多模态返回
@@ -347,12 +348,18 @@ class Openai(BaseLLM):
     async def ask(
         self, request: ModelRequest, *, stream: bool = False
     ) -> Union[ModelCompletions, AsyncGenerator[ModelStreamCompletions, None]]:
-        self._tools = request.tools if request.tools else NOT_GIVEN  # type:ignore
+        tools = request.tools if request.tools else NOT_GIVEN
         self._total_tokens = 0
 
         messages = self._build_messages(request)
+        if request.format == "json" and request.json_schema:
+            response_format = ResponseFormatJSONSchema(
+                type="json_schema", json_schema=JSONSchema(**request.json_schema.model_json_schema(), strict=True)
+            )
+        else:
+            response_format = NOT_GIVEN
 
         if stream:
-            return self._ask_stream(messages)
+            return self._ask_stream(messages, tools, response_format)  # type:ignore
 
-        return await self._ask_sync(messages)
+        return await self._ask_sync(messages, tools, response_format)  # type:ignore
