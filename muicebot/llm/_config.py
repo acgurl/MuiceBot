@@ -8,7 +8,7 @@ class ModelConfig(BaseModel):
     loader: str = ""
     """所使用加载器的名称，位于 llm 文件夹下，loader 开头必须大写"""
 
-    template: Optional[str] = None
+    template: Optional[str] = "Muice"
     """使用的人设模板名称"""
     template_mode: Literal["system", "user"] = "system"
     """模板嵌入模式: `system` 为嵌入到系统提示; `user` 为嵌入到用户提示中"""
