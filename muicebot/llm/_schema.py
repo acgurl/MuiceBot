@@ -1,5 +1,7 @@
 from dataclasses import dataclass, field
-from typing import List, Optional
+from typing import List, Literal, Optional, Type
+
+from pydantic import BaseModel
 
 from ..models import Message, Resource
 
@@ -15,6 +17,8 @@ class ModelRequest:
     resources: List[Resource] = field(default_factory=list)
     tools: Optional[List[dict]] = field(default_factory=list)
     system: Optional[str] = None
+    format: Literal["string", "json"] = "string"
+    json_schema: Optional[Type[BaseModel]] = None
 
 
 @dataclass

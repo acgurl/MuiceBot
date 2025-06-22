@@ -7,6 +7,10 @@ import openai
 from nonebot import logger
 from openai import NOT_GIVEN, NotGiven
 from openai.types.chat import ChatCompletionMessage, ChatCompletionToolParam
+from openai.types.shared_params.response_format_json_schema import (
+    JSONSchema,
+    ResponseFormatJSONSchema,
+)
 
 from muicebot.models import Resource
 
@@ -42,6 +46,7 @@ class Openai(BaseLLM):
 
         self.client = openai.AsyncOpenAI(api_key=self.api_key, base_url=self.api_base, timeout=30)
         self._tools = []
+        self._response_format: Union[ResponseFormatJSONSchema, NotGiven] = NOT_GIVEN
 
     def __build_multi_messages(self, request: ModelRequest) -> dict:
         """
@@ -82,6 +87,13 @@ class Openai(BaseLLM):
 
         if request.system:
             messages.append({"role": "system", "content": request.system})
+
+        if request.format == "json" and request.json_schema:
+            self._response_format = ResponseFormatJSONSchema(
+                type="json_schema", json_schema=JSONSchema(**request.json_schema.model_json_schema(), strict=True)
+            )
+        else:
+            self._response_format = NOT_GIVEN
 
         if request.history:
             for index, item in enumerate(request.history):
@@ -133,6 +145,7 @@ class Openai(BaseLLM):
                 stream=False,
                 tools=self._tools,
                 extra_body=self.extra_body,
+                response_format=self._response_format,
             )
 
             result = ""
@@ -209,6 +222,7 @@ class Openai(BaseLLM):
                 stream_options={"include_usage": True},
                 tools=self._tools,
                 extra_body=self.extra_body,
+                response_format=self._response_format,
             )
 
             async for chunk in response:
