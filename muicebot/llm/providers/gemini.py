@@ -146,7 +146,11 @@ class Gemini(BaseLLM):
         return messages
 
     async def _ask_sync(
-        self, messages: list[ContentOrDict], tools: Optional[List[dict]], response_format: Optional[Type[BaseModel]]
+        self,
+        messages: list[ContentOrDict],
+        tools: Optional[List[dict]],
+        response_format: Optional[Type[BaseModel]],
+        total_tokens: int = 0,
     ) -> ModelCompletions:
         gemini_config = self._build_gemini_config(tools, response_format)
         completions = ModelCompletions()
@@ -157,7 +161,7 @@ class Gemini(BaseLLM):
             response = await chat.send_message(message=message)  # type:ignore
             if response.usage_metadata:
                 total_token_count = response.usage_metadata.total_token_count
-                self._total_tokens += total_token_count if total_token_count else -1
+                total_tokens += total_token_count if total_token_count else 0
 
             if response.text:
                 completions.text = response.text
@@ -188,10 +192,10 @@ class Gemini(BaseLLM):
                 messages.append(Content(role="model", parts=[Part(function_call=function_call)]))
                 messages.append(Content(role="user", parts=[function_response_part]))
 
-                return await self._ask_sync(messages, tools, response_format)
+                return await self._ask_sync(messages, tools, response_format, total_tokens)
 
             completions.text = completions.text or "（警告：模型无输出！）"
-            completions.usage = self._total_tokens
+            completions.usage = total_tokens
             return completions
 
         except errors.APIError as e:
@@ -210,11 +214,15 @@ class Gemini(BaseLLM):
             return completions
 
     async def _ask_stream(
-        self, messages: list, tools: Optional[List[dict]], response_format: Optional[Type[BaseModel]]
+        self,
+        messages: list,
+        tools: Optional[List[dict]],
+        response_format: Optional[Type[BaseModel]],
+        total_tokens: int = 0,
     ) -> AsyncGenerator[ModelStreamCompletions, None]:
         gemini_config = self._build_gemini_config(tools, response_format)
         try:
-            total_tokens = 0
+            current_total_tokens = 0
             stream = await self.client.aio.models.generate_content_stream(
                 model=self.model_name, contents=messages, config=gemini_config
             )
@@ -227,7 +235,7 @@ class Gemini(BaseLLM):
                     yield stream_completions
 
                 if chunk.usage_metadata and chunk.usage_metadata.total_token_count:
-                    total_tokens = chunk.usage_metadata.total_token_count
+                    current_total_tokens = chunk.usage_metadata.total_token_count
 
                 if (
                     chunk.candidates
@@ -256,13 +264,16 @@ class Gemini(BaseLLM):
                     messages.append(Content(role="model", parts=[Part(function_call=function_call)]))
                     messages.append(Content(role="user", parts=[function_response_part]))
 
-                    async for final_chunk in self._ask_stream(messages, tools, response_format):
+                    async for final_chunk in self._ask_stream(
+                        messages, tools, response_format, total_tokens + current_total_tokens
+                    ):
                         yield final_chunk
+                    return
 
             totaltokens_completions = ModelStreamCompletions()
 
-            self._total_tokens += total_tokens
-            totaltokens_completions.usage = self._total_tokens
+            total_tokens += current_total_tokens
+            totaltokens_completions.usage = total_tokens
             yield totaltokens_completions
 
         except errors.APIError as e:
@@ -295,8 +306,6 @@ class Gemini(BaseLLM):
     async def ask(
         self, request: ModelRequest, *, stream: bool = False
     ) -> Union[ModelCompletions, AsyncGenerator[ModelStreamCompletions, None]]:
-        self._total_tokens = 0
-
         messages = self._build_messages(request)
         response_format = request.json_schema if request.format == "json" else None
 
