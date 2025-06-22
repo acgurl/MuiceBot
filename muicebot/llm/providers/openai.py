@@ -127,6 +127,7 @@ class Openai(BaseLLM):
         messages: list,
         tools: Union[List[ChatCompletionToolParam], NotGiven],
         response_format: Union[ResponseFormatJSONSchema, NotGiven],
+        total_tokens: int = 0,
     ) -> ModelCompletions:
         completions = ModelCompletions()
 
@@ -146,7 +147,7 @@ class Openai(BaseLLM):
 
             result = ""
             message = response.choices[0].message  # type:ignore
-            self._total_tokens += response.usage.total_tokens if response.usage else -1
+            total_tokens += response.usage.total_tokens if response.usage else 0
 
             if (
                 hasattr(message, "reasoning_content")  # type:ignore
@@ -171,7 +172,7 @@ class Openai(BaseLLM):
                         "content": function_return,
                     }
                 )
-                return await self._ask_sync(messages, tools, response_format)
+                return await self._ask_sync(messages, tools, response_format, total_tokens)
 
             if message.content:  # type:ignore
                 result += message.content  # type:ignore
@@ -182,7 +183,7 @@ class Openai(BaseLLM):
                 completions.resources = [Resource(type="audio", raw=wav_bytes)]
 
             completions.text = result or "（警告：模型无输出！）"
-            completions.usage = self._total_tokens
+            completions.usage = total_tokens
 
         except openai.APIConnectionError as e:
             error_message = f"API 连接错误: {e}"
@@ -204,6 +205,7 @@ class Openai(BaseLLM):
         messages: list,
         tools: Union[List[ChatCompletionToolParam], NotGiven],
         response_format: Union[ResponseFormatJSONSchema, NotGiven],
+        total_tokens: int = 0,
     ) -> AsyncGenerator[ModelStreamCompletions, None]:
         is_insert_think_label = False
         function_id = ""
@@ -231,8 +233,8 @@ class Openai(BaseLLM):
 
                 # 获取 usage （最后一个包中返回）
                 if chunk.usage:
-                    self._total_tokens += chunk.usage.total_tokens
-                    stream_completions.usage = self._total_tokens
+                    total_tokens += chunk.usage.total_tokens
+                    stream_completions.usage = total_tokens
 
                 if not chunk.choices:
                     yield stream_completions
@@ -303,8 +305,9 @@ class Openai(BaseLLM):
                     }
                 )
 
-                async for chunk in self._ask_stream(messages, tools, response_format):
+                async for chunk in self._ask_stream(messages, tools, response_format, total_tokens):
                     yield chunk
+                return
 
             # 处理多模态返回
             if audio_string:
@@ -349,7 +352,6 @@ class Openai(BaseLLM):
         self, request: ModelRequest, *, stream: bool = False
     ) -> Union[ModelCompletions, AsyncGenerator[ModelStreamCompletions, None]]:
         tools = request.tools if request.tools else NOT_GIVEN
-        self._total_tokens = 0
 
         messages = self._build_messages(request)
         if request.format == "json" and request.json_schema:

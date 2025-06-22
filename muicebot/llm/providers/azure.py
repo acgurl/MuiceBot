@@ -136,10 +136,12 @@ class Azure(BaseLLM):
         messages: List[ChatRequestMessage],
         tools: List[ChatCompletionsToolDefinition],
         response_format: Optional[JsonSchemaFormat],
+        total_tokens: int = 0,
     ) -> ModelCompletions:
         client = ChatCompletionsClient(endpoint=self.endpoint, credential=AzureKeyCredential(self.token))
 
         completions = ModelCompletions()
+        current_total_tokens = total_tokens
 
         try:
             response = await client.complete(
@@ -155,7 +157,8 @@ class Azure(BaseLLM):
                 response_format=response_format,
             )
             finish_reason = response.choices[0].finish_reason
-            self._total_tokens += response.usage.total_tokens
+            if response.usage:
+                current_total_tokens += response.usage.total_tokens
 
             if finish_reason == CompletionsFinishReason.STOPPED:
                 completions.text = response.choices[0].message.content
@@ -174,6 +177,7 @@ class Azure(BaseLLM):
                 if (tool_calls is None) or (not self._tool_messages_precheck(tool_calls=tool_calls)):
                     completions.succeed = False
                     completions.text = "(模型内部错误: tool_calls 内容为空)"
+                    completions.usage = current_total_tokens
                     return completions
 
                 tool_call = tool_calls[0]
@@ -184,7 +188,7 @@ class Azure(BaseLLM):
                 # Append the function call result fo the chat history
                 messages.append(ToolMessage(tool_call_id=tool_call.id, content=function_return))
 
-                return await self._ask_sync(messages, tools, response_format)
+                return await self._ask_sync(messages, tools, response_format, current_total_tokens)
 
             else:
                 completions.succeed = False
@@ -198,7 +202,7 @@ class Azure(BaseLLM):
 
         finally:
             await client.close()
-            completions.usage = self._total_tokens
+            completions.usage = current_total_tokens
             return completions
 
     async def _ask_stream(
@@ -206,8 +210,10 @@ class Azure(BaseLLM):
         messages: List[ChatRequestMessage],
         tools: List[ChatCompletionsToolDefinition],
         response_format: Optional[JsonSchemaFormat],
+        total_tokens: int = 0,
     ) -> AsyncGenerator[ModelStreamCompletions, None]:
         client = ChatCompletionsClient(endpoint=self.endpoint, credential=AzureKeyCredential(self.token))
+        current_total_tokens = total_tokens
 
         try:
             response = await client.complete(
@@ -232,8 +238,8 @@ class Azure(BaseLLM):
                 stream_completions = ModelStreamCompletions()
 
                 if chunk.usage:  # chunk.usage 只会在最后一个包中被提供，此时choices为空
-                    self._total_tokens += chunk.usage.total_tokens if chunk.usage else 0
-                    stream_completions.usage = self._total_tokens
+                    current_total_tokens += chunk.usage.total_tokens if chunk.usage else 0
+                    stream_completions.usage = current_total_tokens
 
                 if not chunk.choices:
                     yield stream_completions
@@ -280,7 +286,7 @@ class Azure(BaseLLM):
                     # Append the function call result fo the chat history
                     messages.append(ToolMessage(tool_call_id=tool_call_id, content=function_return))
 
-                    async for content in self._ask_stream(messages, tools, response_format):
+                    async for content in self._ask_stream(messages, tools, response_format, current_total_tokens):
                         yield content
 
                     return
@@ -309,8 +315,6 @@ class Azure(BaseLLM):
     async def ask(
         self, request: ModelRequest, *, stream: bool = False
     ) -> Union[ModelCompletions, AsyncGenerator[ModelStreamCompletions, None]]:
-        self._total_tokens = 0
-
         messages = self._build_messages(request)
 
         tools = self.__build_tools_definition(request.tools) if request.tools else []

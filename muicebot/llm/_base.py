@@ -50,14 +50,16 @@ class BaseLLM(metaclass=ABCMeta):
         self.is_running = True
         return True
 
-    async def _ask_sync(self, messages: list, tools: Any, response_format: Any) -> "ModelCompletions":
+    async def _ask_sync(
+        self, messages: list, tools: Any, response_format: Any, total_tokens: int = 0
+    ) -> "ModelCompletions":
         """
         同步模型调用
         """
         raise NotImplementedError
 
     def _ask_stream(
-        self, messages: list, tools: Any, response_format: Any
+        self, messages: list, tools: Any, response_format: Any, total_tokens: int = 0
     ) -> AsyncGenerator["ModelStreamCompletions", None]:
         """
         流式输出
