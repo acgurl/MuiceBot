@@ -1,4 +1,4 @@
-from typing import AsyncGenerator, List, Literal, Union, overload
+from typing import AsyncGenerator, List, Literal, Optional, Union, overload
 
 import ollama
 from nonebot import logger
@@ -36,6 +36,7 @@ class Ollama(BaseLLM):
         self.stream = self.config.stream
 
         self._tools: List[dict] = []
+        self._format: Optional[dict] = None
 
     def load(self) -> bool:
         try:
@@ -72,6 +73,11 @@ class Ollama(BaseLLM):
         if request.system:
             messages.append({"role": "system", "content": request.system})
 
+        if request.format == "json" and request.json_schema:
+            self._format = request.json_schema.model_json_schema()
+        else:
+            self._format = None
+
         for index, item in enumerate(request.history):
             messages.append(self.__build_multi_messages(ModelRequest(item.message, resources=item.resources)))
             messages.append({"role": "assistant", "content": item.respond})
@@ -91,6 +97,7 @@ class Ollama(BaseLLM):
                 messages=messages,
                 tools=self._tools,
                 stream=False,
+                format=self._format,
                 options={
                     "temperature": self.temperature,
                     "top_k": self.top_k,
@@ -135,6 +142,7 @@ class Ollama(BaseLLM):
                 messages=messages,
                 tools=self._tools,
                 stream=True,
+                format=self._format,
                 options={
                     "temperature": self.temperature,
                     "top_k": self.top_k,

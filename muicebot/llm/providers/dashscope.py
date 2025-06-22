@@ -2,14 +2,7 @@ import asyncio
 import json
 from dataclasses import dataclass
 from functools import partial
-from typing import (
-    AsyncGenerator,
-    Generator,
-    List,
-    Literal,
-    Union,
-    overload,
-)
+from typing import AsyncGenerator, Generator, List, Literal, Optional, Union, overload
 
 import dashscope
 from dashscope.api_entities.dashscope_response import (
@@ -102,6 +95,7 @@ class Dashscope(BaseLLM):
 
         self._tools: List[dict] = []
         self._last_call_total_tokens = 0
+        self._response_format: Optional[dict] = None
 
         self.extra_headers = (
             {"X-DashScope-DataInspection": '{"input":"cip","output":"cip"}'} if self.config.content_security else {}
@@ -137,6 +131,12 @@ class Dashscope(BaseLLM):
 
         if request.system:
             messages.append({"role": "system", "content": request.system})
+
+        if request.format == "json" and request.json_schema:
+            logger.warning("该模型加载器不支持传入 Json Schema 模型，请确保您已经在模型提示词中传入了相关 json 字段")
+            self._response_format = {"type": "json_object"}
+        else:
+            self._response_format = None
 
         for msg in request.history:
             user_msg = (
@@ -303,6 +303,7 @@ class Dashscope(BaseLLM):
                     headers=self.extra_headers,
                     enable_thinking=self.enable_thinking,
                     thinking_budget=self.thinking_budget,
+                    response_format=self._response_format,
                 ),
             )
         else:
@@ -322,6 +323,7 @@ class Dashscope(BaseLLM):
                     parallel_tool_calls=True,
                     enable_search=self.enable_search,
                     incremental_output=self.stream,
+                    response_format=self._response_format,
                 ),
             )
 

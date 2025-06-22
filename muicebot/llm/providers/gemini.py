@@ -1,4 +1,4 @@
-from typing import AsyncGenerator, List, Literal, Optional, Union, overload
+from typing import AsyncGenerator, Awaitable, List, Literal, Optional, Union, overload
 
 from google import genai
 from google.genai import errors
@@ -122,6 +122,13 @@ class Gemini(BaseLLM):
                 )
                 messages.append(Content(role="model", parts=[Part.from_text(text=item.respond)]))
 
+        if request.format == "json" and request.json_schema:
+            self.gemini_config.response_mime_type = "application/json"
+            self.gemini_config.response_schema = request.json_schema
+        else:
+            self.gemini_config.response_mime_type = None
+            self.gemini_config.response_schema = None
+
         messages.append(Content(role="user", parts=self.__build_user_parts(request)))
 
         return messages
@@ -193,6 +200,7 @@ class Gemini(BaseLLM):
             stream = await self.client.aio.models.generate_content_stream(
                 model=self.model_name, contents=messages, config=self.gemini_config
             )
+            stream = await stream if isinstance(stream, Awaitable) else stream
             async for chunk in stream:
                 stream_completions = ModelStreamCompletions()
 

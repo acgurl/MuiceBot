@@ -17,6 +17,7 @@ from azure.ai.inference.models import (
     ImageDetailLevel,
     ImageUrl,
     InputAudio,
+    JsonSchemaFormat,
     SystemMessage,
     TextContentItem,
     ToolMessage,
@@ -52,6 +53,7 @@ class Azure(BaseLLM):
         self.endpoint = self.config.api_host if self.config.api_host else "https://models.inference.ai.azure.com"
 
         self._tools: List[ChatCompletionsToolDefinition] = []
+        self._response_format: Optional[JsonSchemaFormat] = None
 
     def __build_multi_messages(self, request: ModelRequest) -> UserMessage:
         """
@@ -106,6 +108,16 @@ class Azure(BaseLLM):
         if request.system:
             messages.append(SystemMessage(request.system))
 
+        if request.format == "json" and request.json_schema:
+            self._response_format = JsonSchemaFormat(
+                name="Recipe_JSON_Schema",
+                schema=request.json_schema.model_json_schema(),
+                description=request.prompt,
+                strict=True,
+            )
+        else:
+            self._response_format = None
+
         for msg in request.history:
             user_msg = (
                 UserMessage(msg.message)
@@ -148,6 +160,7 @@ class Azure(BaseLLM):
                 presence_penalty=self.presence_penalty,
                 stream=False,
                 tools=self._tools,
+                response_format=self._response_format,
             )
             finish_reason = response.choices[0].finish_reason
             self._total_tokens += response.usage.total_tokens
@@ -211,6 +224,7 @@ class Azure(BaseLLM):
                 stream=True,
                 tools=self._tools,
                 model_extras={"stream_options": {"include_usage": True}},  # 需要显式声明获取用量
+                response_format=self._response_format,
             )
 
             tool_call_id: str = ""
