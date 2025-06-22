@@ -93,9 +93,7 @@ class Dashscope(BaseLLM):
         self.enable_thinking = self.config.enable_thinking
         self.thinking_budget = self.config.thinking_budget
 
-        self._tools: List[dict] = []
         self._last_call_total_tokens = 0
-        self._response_format: Optional[dict] = None
 
         self.extra_headers = (
             {"X-DashScope-DataInspection": '{"input":"cip","output":"cip"}'} if self.config.content_security else {}
@@ -126,17 +124,11 @@ class Dashscope(BaseLLM):
 
         return {"role": "user", "content": user_content}
 
-    def _build_messages(self, request: ModelRequest) -> list:
+    def _build_messages(self, request: ModelRequest) -> List[dict]:
         messages = []
 
         if request.system:
             messages.append({"role": "system", "content": request.system})
-
-        if request.format == "json" and request.json_schema:
-            logger.warning("该模型加载器不支持传入 Json Schema 模型，请确保您已经在模型提示词中传入了相关 json 字段")
-            self._response_format = {"type": "json_object"}
-        else:
-            self._response_format = None
 
         for msg in request.history:
             user_msg = (
@@ -279,7 +271,9 @@ class Dashscope(BaseLLM):
 
         return await self._ask(messages)  # type:ignore
 
-    async def _ask(self, messages: list) -> Union[ModelCompletions, AsyncGenerator[ModelStreamCompletions, None]]:
+    async def _ask(
+        self, messages: list, tools: List[dict], response_format: Optional[dict]
+    ) -> Union[ModelCompletions, AsyncGenerator[ModelStreamCompletions, None]]:
         loop = asyncio.get_event_loop()
 
         # 因为 Dashscope 对于多模态模型的接口不同，所以这里不能统一函数
@@ -296,14 +290,14 @@ class Dashscope(BaseLLM):
                     top_p=self.top_p,
                     repetition_penalty=self.repetition_penalty,
                     stream=self.stream,
-                    tools=self._tools,
+                    tools=tools,
                     parallel_tool_calls=True,
                     enable_search=self.enable_search,
                     incremental_output=self.stream,  # 给他调成一样的：这个参数只支持流式调用时设置为True
                     headers=self.extra_headers,
                     enable_thinking=self.enable_thinking,
                     thinking_budget=self.thinking_budget,
-                    response_format=self._response_format,
+                    response_format=response_format,
                 ),
             )
         else:
@@ -319,11 +313,11 @@ class Dashscope(BaseLLM):
                     top_p=self.top_p,
                     repetition_penalty=self.repetition_penalty,
                     stream=self.stream,
-                    tools=self._tools,
+                    tools=tools,
                     parallel_tool_calls=True,
                     enable_search=self.enable_search,
                     incremental_output=self.stream,
-                    response_format=self._response_format,
+                    response_format=response_format,
                 ),
             )
 
@@ -346,7 +340,12 @@ class Dashscope(BaseLLM):
         self._last_call_total_tokens = 0
         self.stream = stream if stream is not None else False
 
-        self._tools = request.tools if request.tools else []
+        tools = request.tools if request.tools else []
         messages = self._build_messages(request)
+        if request.format == "json" and request.json_schema:
+            logger.warning("该模型加载器不支持传入 Json Schema 模型，请确保您已经在模型提示词中传入了相关 json 字段")
+            response_format = {"type": "json_object"}
+        else:
+            response_format = None
 
-        return await self._ask(messages)
+        return await self._ask(messages, tools, response_format)

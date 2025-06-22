@@ -1,4 +1,4 @@
-from typing import AsyncGenerator, List, Literal, Optional, Union, overload
+from typing import Any, AsyncGenerator, List, Literal, Optional, Union, overload
 
 import ollama
 from nonebot import logger
@@ -35,9 +35,6 @@ class Ollama(BaseLLM):
         self.frequency_penalty = self.config.frequency_penalty or 1
         self.stream = self.config.stream
 
-        self._tools: List[dict] = []
-        self._format: Optional[dict] = None
-
     def load(self) -> bool:
         try:
             self.client = ollama.AsyncClient(host=self.host)
@@ -73,11 +70,6 @@ class Ollama(BaseLLM):
         if request.system:
             messages.append({"role": "system", "content": request.system})
 
-        if request.format == "json" and request.json_schema:
-            self._format = request.json_schema.model_json_schema()
-        else:
-            self._format = None
-
         for index, item in enumerate(request.history):
             messages.append(self.__build_multi_messages(ModelRequest(item.message, resources=item.resources)))
             messages.append({"role": "assistant", "content": item.respond})
@@ -88,16 +80,18 @@ class Ollama(BaseLLM):
 
         return messages
 
-    async def _ask_sync(self, messages: list) -> ModelCompletions:
+    async def _ask_sync(
+        self, messages: list, tools: List[dict[str, Any]], response_format: Optional[dict[str, Any]]
+    ) -> ModelCompletions:
         completions = ModelCompletions()
 
         try:
             response = await self.client.chat(
                 model=self.model,
                 messages=messages,
-                tools=self._tools,
+                tools=tools,
                 stream=False,
-                format=self._format,
+                format=response_format,
                 options={
                     "temperature": self.temperature,
                     "top_k": self.top_k,
@@ -122,7 +116,7 @@ class Ollama(BaseLLM):
 
                 messages.append(response.message)
                 messages.append({"role": "tool", "content": str(function_return), "name": tool.function.name})
-                return await self._ask_sync(messages)
+                return await self._ask_sync(messages, tools, response_format)
 
             completions.text = "模型调用错误：未知错误"
             completions.succeed = False
@@ -135,14 +129,16 @@ class Ollama(BaseLLM):
             completions.text = error_info
             return completions
 
-    async def _ask_stream(self, messages: list) -> AsyncGenerator[ModelStreamCompletions, None]:
+    async def _ask_stream(
+        self, messages: list, tools: List[dict[str, Any]], response_format: Optional[dict[str, Any]]
+    ) -> AsyncGenerator[ModelStreamCompletions, None]:
         try:
             response = await self.client.chat(
                 model=self.model,
                 messages=messages,
-                tools=self._tools,
+                tools=tools,
                 stream=True,
-                format=self._format,
+                format=response_format,
                 options={
                     "temperature": self.temperature,
                     "top_k": self.top_k,
@@ -175,7 +171,7 @@ class Ollama(BaseLLM):
                     messages.append(chunk.message)  # type:ignore
                     messages.append({"role": "tool", "content": str(function_return), "name": tool.function.name})
 
-                    async for content in self._ask_stream(messages):
+                    async for content in self._ask_stream(messages, tools, response_format):
                         yield content
 
         except ollama.ResponseError as e:
@@ -198,10 +194,14 @@ class Ollama(BaseLLM):
     async def ask(
         self, request: ModelRequest, *, stream: bool = False
     ) -> Union[ModelCompletions, AsyncGenerator[ModelStreamCompletions, None]]:
-        self._tools = request.tools if request.tools else []
+        tools = request.tools if request.tools else []
         messages = self._build_messages(request)
+        if request.format == "json" and request.json_schema:
+            format = request.json_schema.model_json_schema()
+        else:
+            format = None
 
         if stream:
-            return self._ask_stream(messages)
+            return self._ask_stream(messages, tools, format)
 
-        return await self._ask_sync(messages)
+        return await self._ask_sync(messages, tools, format)

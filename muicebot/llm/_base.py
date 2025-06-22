@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from abc import ABCMeta, abstractmethod
-from typing import AsyncGenerator, Literal, Union, overload
+from typing import Any, AsyncGenerator, Literal, Union, overload
 
 from ._config import ModelConfig
 from ._schema import ModelCompletions, ModelRequest, ModelStreamCompletions
@@ -50,13 +50,15 @@ class BaseLLM(metaclass=ABCMeta):
         self.is_running = True
         return True
 
-    async def _ask_sync(self, messages: list) -> "ModelCompletions":
+    async def _ask_sync(self, messages: list, tools: Any, response_format: Any) -> "ModelCompletions":
         """
         同步模型调用
         """
         raise NotImplementedError
 
-    def _ask_stream(self, messages: list) -> AsyncGenerator["ModelStreamCompletions", None]:
+    def _ask_stream(
+        self, messages: list, tools: Any, response_format: Any
+    ) -> AsyncGenerator["ModelStreamCompletions", None]:
         """
         流式输出
         """
