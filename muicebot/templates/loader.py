@@ -36,7 +36,7 @@ def generate_prompt_from_template(template_name: str, userid: str, is_private: b
     """
     获取提示词
     """
-    env = Environment(loader=FileSystemLoader(SEARCH_PATH))
+    env = Environment(loader=FileSystemLoader(SEARCH_PATH), autoescape=True)
 
     if not template_name.endswith((".j2", ".jinja2")):
         template_name += ".jinja2"
