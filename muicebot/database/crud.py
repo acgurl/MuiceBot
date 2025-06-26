@@ -27,6 +27,21 @@ class MessageORM:
         )
 
     @staticmethod
+    async def get_orm_model_by_message(session: async_scoped_session, message: Message) -> Msg:
+        """
+        通过 Message 获得 ORM 对象
+        """
+        # 只查三个属性即可
+        result = await session.execute(
+            select(Msg).where(
+                Msg.time == message.time,
+                Msg.message == message.message,
+                Msg.respond == message.respond,
+            )
+        )
+        return result.scalar_one()
+
+    @staticmethod
     async def add_item(session: async_scoped_session, message: Message):
         """
         将消息保存到数据库
