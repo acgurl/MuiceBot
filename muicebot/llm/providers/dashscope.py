@@ -221,8 +221,7 @@ class Dashscope(BaseLLM):
                 return
 
             # 更新 token 消耗
-            current_chunk_total_tokens = chunk.usage.total_tokens
-            total_tokens += current_chunk_total_tokens
+            total_tokens = chunk.usage.total_tokens
             stream_completions.usage = total_tokens
 
             # 优先判断是否是工具调用（OpenAI-style function calling）
