@@ -241,8 +241,9 @@ class Muice:
             else []
         )
         system = self.system_prompt if self.system_prompt else None
+        resources = message.resources if self.model_config.multimodal else []
 
-        model_request = ModelRequest(prompt, history, message.resources, tools, system)
+        model_request = ModelRequest(prompt, history, resources, tools, system)
         await hook_manager.run(HookType.BEFORE_MODEL_COMPLETION, model_request)
 
         start_time = time.perf_counter()
@@ -304,8 +305,9 @@ class Muice:
             else []
         )
         system = self.system_prompt if self.system_prompt else None
+        resources = message.resources if self.model_config.multimodal else []
 
-        model_request = ModelRequest(prompt, history, message.resources, tools, system)
+        model_request = ModelRequest(prompt, history, resources, tools, system)
         await hook_manager.run(HookType.BEFORE_MODEL_COMPLETION, model_request)
 
         start_time = time.perf_counter()
