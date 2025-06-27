@@ -53,7 +53,7 @@ class String(Parameter):
 
 class Integer(Parameter):
     type: str = ParamTypes.INTEGER
-    properties: dict[str, Any] = Field(default_factory=lambda: {"minimum": 0, "maximum": 100})
+    properties: dict[str, Any] = Field(default_factory=dict, examples=[{"minimum": 0, "maximum": 100}])
 
     minimum: int | None = None
     maximum: int | None = None
