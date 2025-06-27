@@ -23,6 +23,20 @@ class Resource:
     def __post_init__(self):
         self.ensure_mimetype()
 
+    def __hash__(self) -> int:
+        return hash(self.get_file())
+
+    def get_file(self) -> Union[str, bytes, BytesIO]:
+        """
+        从所有可能的值中获得一个文件对象
+
+        :raise FileNotFoundError: 此实例没有引用任何一个文件
+        """
+        result = self.path or self.url or self.raw
+        if result is not None:
+            return result
+        raise FileNotFoundError("该实例没有一个具体的文件对象！")
+
     def ensure_mimetype(self):
         from .utils.utils import guess_mimetype
 
