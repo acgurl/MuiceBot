@@ -399,10 +399,6 @@ async def _extract_multi_resources(message: UniMsg, event: Event) -> list[Resour
     """
     提取多个多模态文件
     """
-    muice = Muice.get_instance()
-    if not muice.model_config.multimodal:
-        return []
-
     resources = []
 
     message_audio = message.get(uniseg.Audio) + message.get(uniseg.Voice)
