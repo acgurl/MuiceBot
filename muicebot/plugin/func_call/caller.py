@@ -9,18 +9,20 @@
 """
 
 import inspect
-from typing import Any, Optional, get_type_hints
+from typing import Any, Optional, Type, get_type_hints
 
 from nonebot import logger
 from nonebot.adapters import Bot, Event
 from nonebot.matcher import Matcher
 from nonebot.rule import Rule
 from nonebot.typing import T_State
+from pydantic import BaseModel
+from typing_extensions import deprecated
 
 from ..context import get_bot, get_event, get_mather
 from ..utils import is_coroutine_callable
 from ._types import ASYNC_FUNCTION_CALL_FUNC, F
-from .parameter import Parameter
+from .parameter import FunctionCallJsonSchema, Parameter
 from .utils import async_wrap
 
 _caller_data: dict[str, "Caller"] = {}
@@ -28,7 +30,7 @@ _caller_data: dict[str, "Caller"] = {}
 
 
 class Caller:
-    def __init__(self, description: str, rule: Optional[Rule] = None):
+    def __init__(self, description: str, params: Optional[Type[BaseModel]] = None, rule: Optional[Rule] = None):
         self._name: str = ""
         """函数名称"""
         self._description: str = description
@@ -37,6 +39,8 @@ class Caller:
         """启用规则"""
         self._parameters: dict[str, Parameter] = {}
         """函数参数字典"""
+        self._parameters_model: Optional[Type[BaseModel]] = params
+        """函数参数 pydantic 模型"""
         self.function: ASYNC_FUNCTION_CALL_FUNC
         """函数对象"""
         self.default: dict[str, Any] = {}
@@ -108,6 +112,7 @@ class Caller:
 
         return inject_args
 
+    @deprecated("由于此方法缺乏灵活性，请改用 `on_function_call` 中的 params 参数并传入 pydantic 模型")
     def params(self, **kwargs: Parameter) -> "Caller":
         self._parameters.update(kwargs)
         return self
@@ -127,8 +132,23 @@ class Caller:
         """
         生成函数描述信息
 
+        Note:
+            如果通过 `_parameters_model` 提供了 pydantic 模型，则该模型优先于动态添加的 `_parameters`。
+            这意味着参数验证和注入将根据 pydantic 模型来处理，而通过 `params()` 方法添加的任何参数都将被忽略。
+            使用 `_parameters_model` 可以获得更强大和类型安全的参数验证。
+
         :return: 可用于 Function_call 的字典
         """
+        if self._parameters_model:
+            return {
+                "type": "function",
+                "function": {
+                    "name": self._name,
+                    "description": self._description,
+                    "parameters": self._parameters_model.model_json_schema(schema_generator=FunctionCallJsonSchema),
+                },
+            }
+
         if not self._parameters:
             properties = {
                 "dummy_param": {"type": "string", "description": "为了兼容性设置的一个虚拟参数，因此不需要填写任何值"}
@@ -152,7 +172,7 @@ class Caller:
         }
 
 
-def on_function_call(description: str, rule: Optional[Rule] = None) -> Caller:
+def on_function_call(description: str, params: Optional[Type[BaseModel]] = None, rule: Optional[Rule] = None) -> Caller:
     """
     返回一个Caller类，可用于装饰一个函数，使其注册为一个可被AI调用的function call函数
 
@@ -161,7 +181,7 @@ def on_function_call(description: str, rule: Optional[Rule] = None) -> Caller:
 
     :return: Caller对象
     """
-    caller = Caller(description=description, rule=rule)
+    caller = Caller(description=description, params=params, rule=rule)
     return caller
 
 
