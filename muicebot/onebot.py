@@ -1,8 +1,10 @@
+import os
 import re
 import time
 from datetime import timedelta
 from pathlib import Path
 from typing import AsyncGenerator, Literal
+from urllib.parse import urlparse
 
 import nonebot_plugin_localstore as store
 from arclet.alconna import Alconna, AllParam, Args
@@ -365,6 +367,26 @@ async def handle_command_start():
     pass
 
 
+def _get_media_filename(media: uniseg.segment.Media, type: Literal["audio", "image", "video", "file"]) -> str:
+    """
+    给多模态文件分配一个独一无二的文件名
+    """
+    _default_suffix = {"audio": "mp3", "image": "png", "video": "mp4", "file": ""}
+
+    assert media.url  # 只能在 url 不为空时使用
+
+    if media.name:
+        file_suffix = media.name.split(".")[-1] if media.name.count(".") else _default_suffix[type]
+    else:
+        path = urlparse(media.url).path
+        _, ext = os.path.splitext(path)
+        file_suffix = ext.lstrip(".") if ext else _default_suffix[type]
+
+    file_name = f"{time.time_ns()}.{file_suffix}"
+
+    return file_name
+
+
 async def _extract_multi_resource(
     message: UniMessage, type: Literal["audio", "image", "video", "file"], event: Event
 ) -> list[Resource]:
@@ -380,7 +402,7 @@ async def _extract_multi_resource(
             if resource.path is not None:
                 path = str(resource.path)
             elif resource.url is not None:
-                path = await download_file(resource.url, file_name=resource.name)
+                path = await download_file(resource.url, file_name=_get_media_filename(resource, type))
             elif resource.origin is not None:
                 logger.warning("无法通过通用方式获取文件URL，回退至适配器自有方式...")
                 path = await get_file_via_adapter(resource.origin, event)  # type:ignore
