@@ -20,8 +20,11 @@ from ..models import Resource
 from ..plugin.context import get_event
 from .adapters import ADAPTER_CLASSES
 
-IMG_DIR = store.get_plugin_data_dir() / ".cache" / "images"
-IMG_DIR.mkdir(parents=True, exist_ok=True)
+FILES_DIR = store.get_plugin_data_dir() / "files"
+FILES_CACHED_DIR = store.get_plugin_cache_dir() / "files"
+
+FILES_DIR.mkdir(parents=True, exist_ok=True)
+FILES_CACHED_DIR.mkdir(parents=True, exist_ok=True)
 
 User_Agent = (
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
@@ -30,23 +33,28 @@ User_Agent = (
 )
 
 
-async def download_file(file_url: str, file_name: Optional[str] = None, proxy: Optional[str] = None) -> str:
+async def download_file(
+    file_url: str, file_name: Optional[str] = None, proxy: Optional[str] = None, cache: bool = False
+) -> str:
     """
-    保存文件至本地目录
+    保存文件至本地目录(在未提供后缀的情况下, 默认为.jpg后缀)
 
     :param file_url: 图片在线地址
     :param file_name: 要保存的文件名
     :param proxy: 代理地址
+    :param cache: 保存至缓存目录
 
     :return: 保存后的本地目录
     """
     ssl_context = ssl.create_default_context()
     ssl_context.set_ciphers("DEFAULT")
-    file_name = file_name if file_name else str(time.time_ns()) + ".jpg"
+    file_subfix = file_url.split(".")[-1].lower() if "." in file_url else "jpg"
+    file_name = file_name if file_name else str(time.time_ns()) + file_subfix
 
     async with httpx.AsyncClient(proxy=proxy, verify=ssl_context) as client:
         r = await client.get(file_url, headers={"User-Agent": User_Agent})
-        local_path = (IMG_DIR / file_name).resolve()
+        file_dir = FILES_CACHED_DIR if cache else FILES_DIR
+        local_path = (file_dir / file_name).resolve()
         with open(local_path, "wb") as file:
             file.write(r.content)
         return str(local_path)
