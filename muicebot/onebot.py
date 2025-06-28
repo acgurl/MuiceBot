@@ -440,6 +440,7 @@ async def _send_message(completions: ModelCompletions | AsyncGenerator[ModelStre
                 continue  # 跳过空白文段
             if index == len(paragraphs) - 1:
                 await UniMessage(paragraph).send()
+                break
             await UniMessage(paragraph).send()
 
         if completions.resources:
