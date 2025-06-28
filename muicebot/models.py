@@ -2,7 +2,10 @@ from dataclasses import asdict, dataclass, field
 from datetime import datetime
 from functools import total_ordering
 from io import BytesIO
+from mimetypes import guess_extension
 from typing import List, Literal, Optional, Union
+
+from .utils.utils import guess_mimetype
 
 
 @dataclass
@@ -18,7 +21,9 @@ class Resource:
     raw: Optional[Union[bytes, BytesIO]] = field(default=None)
     """二进制数据（只使用于模型返回且不保存到数据库中）"""
     mimetype: Optional[str] = field(default=None)
-    """文件元数据类型"""
+    """文件元数据类型(eg. `image/jpeg`)"""
+    extension: Optional[str] = field(default=None)
+    """文件扩展名(eg. `.jpg`)"""
 
     def __post_init__(self):
         self.ensure_mimetype()
@@ -38,10 +43,12 @@ class Resource:
         raise FileNotFoundError("该实例没有一个具体的文件对象！")
 
     def ensure_mimetype(self):
-        from .utils.utils import guess_mimetype
-
-        if not self.mimetype:
-            self.mimetype = guess_mimetype(self)
+        """
+        保证 mimetype 是确定的
+        """
+        self.mimetype = guess_mimetype(self)
+        if self.mimetype:
+            self.extension = guess_extension(self.mimetype)
 
     def to_dict(self) -> dict:
         """

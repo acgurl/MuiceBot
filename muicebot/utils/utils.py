@@ -1,10 +1,11 @@
 import base64
-import mimetypes
 import os
 import ssl
 import sys
 import time
 from importlib.metadata import PackageNotFoundError, version
+from io import BytesIO
+from mimetypes import guess_type
 from typing import Optional
 
 import fleep
@@ -206,18 +207,33 @@ def guess_mimetype(resource: Resource) -> Optional[str]:
     """
     尝试获取 minetype 类型
     """
-    # raw 不落库，因此无法从 raw 判断
-    if resource.path and os.path.exists(resource.path):
+    if resource.url:
+        return guess_type(resource.url)[0]
+
+    elif resource.path and os.path.exists(resource.path):
         try:
             with open(resource.path, "rb") as file:
                 header = file.read(128)
-                info = fleep.get(header)
-                if info.mime:
-                    return info.mime[0]  # type:ignore
-                else:
-                    return mimetypes.guess_type(resource.path)[0]
-        except Exception:
-            return mimetypes.guess_type(resource.path)[0]
-    elif resource.url:
-        return mimetypes.guess_type(resource.url)[0]
+        except Exception as e:
+            logger.warning(f"读取文件头时发生错误: {e} | {resource}")
+            header = None
+
+    elif resource.raw:
+        try:
+            header = resource.raw.read(128) if isinstance(resource.raw, BytesIO) else resource.raw[:128]
+        except Exception as e:
+            logger.warning(f"读取原始数据头时发生错误: {e} | {resource}")
+            return None
+
+    else:
+        logger.warning(f"此实例无法获取元类型! {resource}")
+        return None
+
+    if header:
+        info = fleep.get(header)
+        if info.mime:
+            return info.mime[0]
+    elif resource.path:
+        return guess_type(resource.path)[0]
+
     return None
