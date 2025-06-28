@@ -5,8 +5,6 @@ from io import BytesIO
 from mimetypes import guess_extension
 from typing import List, Literal, Optional, Union
 
-from .utils.utils import guess_mimetype
-
 
 @dataclass
 class Resource:
@@ -46,6 +44,8 @@ class Resource:
         """
         保证 mimetype 是确定的
         """
+        from .utils.utils import guess_mimetype
+
         self.mimetype = guess_mimetype(self)
         if self.mimetype:
             self.extension = guess_extension(self.mimetype)
