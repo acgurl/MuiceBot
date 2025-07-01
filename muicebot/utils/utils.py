@@ -6,6 +6,7 @@ import time
 from importlib.metadata import PackageNotFoundError, version
 from io import BytesIO
 from mimetypes import guess_type
+from pathlib import Path
 from typing import Optional
 
 import fleep
@@ -231,6 +232,11 @@ def guess_mimetype(resource: Resource) -> Optional[str]:
 
     if header:
         info = fleep.get(header)
+
+        # fleep 对于文档类文件失准，如果有后缀就不判断了
+        if info.type and info.type[0] == "document" and Path(resource.path).suffix:
+            return None
+
         if info.mime:
             return info.mime[0]
     elif resource.path:
