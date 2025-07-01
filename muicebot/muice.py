@@ -89,7 +89,7 @@ class Muice:
         try:
             self.model = load_model(self.model_config)
 
-        except ImportError as e:
+        except (ImportError, ModuleNotFoundError) as e:
             import sys
 
             logger.critical(f"导入模型加载器 '{self.model_loader}' 失败：{e}")
