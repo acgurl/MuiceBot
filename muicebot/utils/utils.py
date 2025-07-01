@@ -50,7 +50,7 @@ async def download_file(
     ssl_context = ssl.create_default_context()
     ssl_context.set_ciphers("DEFAULT")
     file_subfix = file_url.split(".")[-1].lower() if "." in file_url else "jpg"
-    file_name = file_name if file_name else str(time.time_ns()) + file_subfix
+    file_name = file_name if file_name else f"{time.time_ns()}.{file_subfix}"
 
     async with httpx.AsyncClient(proxy=proxy, verify=ssl_context) as client:
         r = await client.get(file_url, headers={"User-Agent": User_Agent})
