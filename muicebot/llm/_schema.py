@@ -1,9 +1,14 @@
+from __future__ import annotations
+
 from dataclasses import dataclass, field
-from typing import List, Literal, Optional, Type
+from typing import TYPE_CHECKING, List, Literal, Optional, Type
 
 from pydantic import BaseModel
 
 from ..models import Message, Resource
+
+if TYPE_CHECKING:
+    from numpy import ndarray
 
 
 @dataclass
@@ -30,7 +35,7 @@ class ModelCompletions:
     text: str = ""
     usage: int = -1
     resources: List[Resource] = field(default_factory=list)
-    succeed: Optional[bool] = True
+    succeed: bool = True
 
 
 @dataclass
@@ -42,4 +47,21 @@ class ModelStreamCompletions:
     chunk: str = ""
     usage: int = -1
     resources: Optional[List[Resource]] = field(default_factory=list)
-    succeed: Optional[bool] = True
+    succeed: bool = True
+
+
+@dataclass
+class EmbeddingsBatchResult:
+    """
+    嵌入输出
+    """
+
+    embeddings: List[List[float]]
+    usage: int = -1
+    succeed: bool = True
+
+    @property
+    def array(self) -> List["ndarray"]:
+        from numpy import array
+
+        return [array(embedding) for embedding in self.embeddings]
