@@ -7,12 +7,18 @@ from nonebot_plugin_orm import get_scoped_session
 
 from ..database.crud import UsageORM
 from ..plugin.loader import _get_caller_plugin_name
-from ._schema import ModelCompletions, ModelRequest, ModelStreamCompletions
+from ._schema import (
+    EmbeddingsBatchResult,
+    ModelCompletions,
+    ModelRequest,
+    ModelStreamCompletions,
+)
 
 if TYPE_CHECKING:
-    from ._base import BaseLLM
+    from ._base import BaseLLM, EmbeddingModel
 
 ASK_FUNC: TypeAlias = Callable[..., Awaitable[Union[ModelCompletions, AsyncGenerator[ModelStreamCompletions, None]]]]
+EMBED_FUNC: TypeAlias = Callable[..., Awaitable[EmbeddingsBatchResult]]
 
 
 def record_plugin_usage(func: ASK_FUNC):
@@ -50,5 +56,24 @@ def record_plugin_usage(func: ASK_FUNC):
                 await UsageORM.save_usage(session, plugin_name, total_usage)
 
         return generator_wrapper()
+
+    return wrapper
+
+
+def record_plugin_embedding_usage(func: EMBED_FUNC):
+    """
+    记录插件嵌入用量的装饰器
+    """
+
+    @wraps(func)
+    async def wrapper(self: "EmbeddingModel", texts: list[str]):
+        plugin_name = _get_caller_plugin_name() or "muicebot"
+        result = await func(self, texts)
+
+        if result.succeed and result.usage > 0:
+            session = get_scoped_session()
+            await UsageORM.save_usage(session, plugin_name, result.usage, "embedding")
+
+        return result
 
     return wrapper

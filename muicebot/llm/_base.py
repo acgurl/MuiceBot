@@ -119,6 +119,18 @@ class EmbeddingModel(ABC):
     def __init__(self, config: EmbeddingConfig):
         self.config = config
 
+    def __init_subclass__(cls, **kwargs):
+        """
+        对实现类中的 `embed` 函数包装 `record_plugin_embedding_usage` 装饰器
+        """
+        from ._wrapper import record_plugin_embedding_usage
+
+        super().__init_subclass__(**kwargs)
+
+        original_embed = cls.embed
+        decorated_embed = record_plugin_embedding_usage(original_embed)
+        setattr(cls, "embed", decorated_embed)
+
     def _require(self, *require_fields: str):
         """
         通用校验方法：检查指定的配置项是否存在，不存在则抛出错误
