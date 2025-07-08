@@ -28,6 +28,23 @@ class BaseLLM(ABC):
         self.is_running = False
         """模型状态"""
 
+    def __init_subclass__(cls, **kwargs):
+        """
+        对实现类中的 `ask` 函数包装 `record_plugin_usage` 装饰器
+        """
+        from ._wrapper import record_plugin_usage
+
+        super().__init_subclass__(**kwargs)
+
+        # 1. Get the original 'ask' method from the new subclass
+        original_ask = cls.ask
+
+        # 2. Wrap it with the decorator
+        decorated_ask = record_plugin_usage(original_ask)
+
+        # 3. Replace the original method on the subclass with the decorated version
+        setattr(cls, "ask", decorated_ask)
+
     def _require(self, *require_fields: str):
         """
         通用校验方法：检查指定的配置项是否存在，不存在则抛出错误

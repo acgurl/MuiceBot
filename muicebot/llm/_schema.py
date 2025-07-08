@@ -33,9 +33,13 @@ class ModelCompletions:
     """
 
     text: str = ""
+    """输出文本内容"""
     usage: int = -1
+    """总调用用量"""
     resources: List[Resource] = field(default_factory=list)
+    """模型输出多模态资源列表"""
     succeed: bool = True
+    """调用成功（如不成功会在 `text` 中输出错误信息）"""
 
 
 @dataclass
@@ -45,9 +49,13 @@ class ModelStreamCompletions:
     """
 
     chunk: str = ""
+    """输出文本块"""
     usage: int = -1
+    """总调用用量（累增，一般取最后一个块的用量）"""
     resources: Optional[List[Resource]] = field(default_factory=list)
+    """模型输出多模态资源列表"""
     succeed: bool = True
+    """调用成功（如不成功会在 `chunk` 中输出错误信息）"""
 
 
 @dataclass
