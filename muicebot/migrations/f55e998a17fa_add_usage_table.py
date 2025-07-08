@@ -29,7 +29,7 @@ def upgrade(name: str = "") -> None:
         sa.Column("type", sa.String(), nullable=False),
         sa.Column("date", sa.String(), nullable=False),
         sa.Column("tokens", sa.Integer(), nullable=True, default=0),
-        sa.PrimaryKeyConstraint("plugin", name=op.f("pk_muicebot_usage")),
+        sa.PrimaryKeyConstraint("plugin", "type", "date", name=op.f("pk_muicebot_usage")),
         info={"bind_key": "muicebot"},
     )
     # ### end Alembic commands ###
