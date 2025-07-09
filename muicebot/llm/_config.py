@@ -118,6 +118,15 @@ class EmbeddingConfig(BaseModel):
     # """
     # 未知该配置项的实用性，先注释掉
 
+    def __hash__(self) -> int:
+        return hash(self.provider + self.model + self.api_host)
+
+    def __eq__(self, other) -> bool:
+        if not isinstance(other, EmbeddingConfig):
+            return NotImplemented
+
+        return self.provider == other.provider and self.model == other.model and self.api_host == other.api_host
+
     @field_validator("provider")
     @classmethod
     def check_model_loader(cls, provider: str) -> str:

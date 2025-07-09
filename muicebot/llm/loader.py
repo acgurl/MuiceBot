@@ -7,6 +7,9 @@ from ._base import BaseLLM, EmbeddingModel
 from ._config import EmbeddingConfig, ModelConfig
 from .registry import get_embedding_class, get_llm_class
 
+_embedding_instance: dict[EmbeddingConfig, EmbeddingModel] = {}
+"""嵌入实例缓存"""
+
 
 def load_model(config: ModelConfig) -> BaseLLM:
     """
@@ -29,7 +32,7 @@ def load_model(config: ModelConfig) -> BaseLLM:
 
 def load_embedding_model(config: EmbeddingConfig) -> EmbeddingModel:
     """
-    获得一个嵌入模型实例
+    获得一个嵌入模型实例，如果存在相同的配置，则返回缓存实例
     """
     provider = config.provider.lower()
 
@@ -40,4 +43,4 @@ def load_embedding_model(config: EmbeddingConfig) -> EmbeddingModel:
 
     EmbeddingClass = get_embedding_class(provider)
 
-    return EmbeddingClass(config)
+    return _embedding_instance.setdefault(config, EmbeddingClass(config))
