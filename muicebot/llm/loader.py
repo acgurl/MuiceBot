@@ -3,9 +3,9 @@ from importlib.util import find_spec
 
 from nonebot import logger
 
-from ._base import BaseLLM
-from ._config import ModelConfig
-from .registry import get_llm_class
+from ._base import BaseLLM, EmbeddingModel
+from ._config import EmbeddingConfig, ModelConfig
+from .registry import get_embedding_class, get_llm_class
 
 
 def load_model(config: ModelConfig) -> BaseLLM:
@@ -25,3 +25,19 @@ def load_model(config: ModelConfig) -> BaseLLM:
     LLMClass = get_llm_class(provider)
 
     return LLMClass(config)
+
+
+def load_embedding_model(config: EmbeddingConfig) -> EmbeddingModel:
+    """
+    获得一个嵌入模型实例
+    """
+    provider = config.provider.lower()
+
+    builtin_provider = f"muicebot.llm.embeddings.{provider}"
+    if find_spec(builtin_provider) is not None:
+        logger.debug(f"加载内嵌模型模块: {provider}...")
+        importlib.import_module(builtin_provider)
+
+    EmbeddingClass = get_embedding_class(provider)
+
+    return EmbeddingClass(config)
