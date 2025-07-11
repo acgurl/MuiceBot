@@ -77,3 +77,27 @@ def record_plugin_embedding_usage(func: EMBED_FUNC):
         return result
 
     return wrapper
+
+
+def cache(func: EMBED_FUNC):
+    """
+    缓存嵌入向量的装饰器
+    """
+
+    @wraps(func)
+    async def wrapper(self: "EmbeddingModel", texts: list[str]):
+        if not self.enable_embedding_cache:
+            return await func(self, texts)
+
+        results = []
+        for text in texts:
+            embedding = self._load_embedding_from_cache(text)
+            if embedding is not None:
+                results.append(embedding)
+            else:
+                result = await func(self, [text])
+                self._save_to_cache(text, result.embeddings[0])
+                results.append(result.embeddings[0])
+        return EmbeddingsBatchResult(succeed=True, embeddings=results)
+
+    return wrapper

@@ -43,6 +43,8 @@ class PluginConfig(BaseModel):
     """默认使用人设模板名称"""
     thought_process_mode: Literal[0, 1, 2] = 2
     """针对 Deepseek-R1 等思考模型的思考过程提取模式"""
+    enable_embedding_cache: bool = True
+    """启用嵌入缓存"""
 
 
 plugin_config = get_plugin_config(PluginConfig)
