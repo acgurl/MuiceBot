@@ -170,7 +170,7 @@ class EmbeddingModel(ABC):
 
         # 根据文本和模型名称生成缓存键
         content = f"{self.config.model}:{text}"
-        cache_key = hashlib.md5(content.encode("utf-8")).hexdigest()
+        cache_key = hashlib.md5(content.encode("utf-8"), usedforsecurity=False).hexdigest()
 
         return self.cache_dir / cache_key
 
