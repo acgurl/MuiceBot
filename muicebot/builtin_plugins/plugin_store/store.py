@@ -42,7 +42,7 @@ async def get_plugin_commit(plugin: str) -> str:
     process = await asyncio.create_subprocess_exec(
         "git",
         "log",
-        '--pretty=format:"%h"',
+        "--pretty=format:%h",
         "-1",
         cwd=plugin_path,
         stdout=asyncio.subprocess.PIPE,
