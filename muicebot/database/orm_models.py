@@ -24,6 +24,7 @@ class User(Model):
 
 
 class Usage(Model):
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     plugin: Mapped[str] = mapped_column(String, primary_key=True)
     type: Mapped[str] = mapped_column(String, nullable=False)
     date: Mapped[str] = mapped_column(String, nullable=False)
