@@ -63,6 +63,8 @@ adapters = get_adapters()
 
 
 def startup_plugins():
+    load_embedding_model_config()
+
     if PLUGINS_PATH.exists():
         logger.info("加载外部插件...")
         load_plugins("./plugins")
@@ -90,7 +92,6 @@ async def load_bot():
     if not muice.load_model():
         logger.error("模型加载失败，请检查配置项是否正确")
         exit(1)
-    load_embedding_model_config()
     logger.success(f"模型适配器加载成功: {muice.model_provider} ⭐")
 
     # if PLUGINS_PATH.exists():
