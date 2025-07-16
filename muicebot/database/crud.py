@@ -237,8 +237,6 @@ class UsageORM:
 
         if usage is not None:
             usage.tokens += total_tokens
-            await session.commit()
             return
 
         session.add(Usage(plugin=plugin, type=type, date=date, tokens=total_tokens))
-        await session.commit()

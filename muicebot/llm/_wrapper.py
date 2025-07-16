@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 from functools import wraps
 from typing import TYPE_CHECKING, AsyncGenerator, Awaitable, Callable, TypeAlias, Union
 
@@ -20,6 +21,8 @@ if TYPE_CHECKING:
 ASK_FUNC: TypeAlias = Callable[..., Awaitable[Union[ModelCompletions, AsyncGenerator[ModelStreamCompletions, None]]]]
 EMBED_FUNC: TypeAlias = Callable[..., Awaitable[EmbeddingsBatchResult]]
 
+_usage_write_lock = asyncio.Lock()
+
 
 def record_plugin_usage(func: ASK_FUNC):
     """
@@ -35,9 +38,12 @@ def record_plugin_usage(func: ASK_FUNC):
 
         # Handle non-streaming response
         if isinstance(response, ModelCompletions):
-            session = get_scoped_session()
             total_usage = response.usage if response.usage > 0 else 0
-            await UsageORM.save_usage(session, plugin_name, total_usage)
+
+            async with _usage_write_lock:
+                session = get_scoped_session()
+                await UsageORM.save_usage(session, plugin_name, total_usage)
+
             return response
 
         # Handle streaming response
@@ -52,8 +58,9 @@ def record_plugin_usage(func: ASK_FUNC):
                     total_usage = chunk.usage if chunk.usage > 0 else 0
                     yield chunk
             finally:
-                session = get_scoped_session()
-                await UsageORM.save_usage(session, plugin_name, total_usage)
+                async with _usage_write_lock:
+                    session = get_scoped_session()
+                    await UsageORM.save_usage(session, plugin_name, total_usage)
 
         return generator_wrapper()
 
@@ -71,8 +78,9 @@ def record_plugin_embedding_usage(func: EMBED_FUNC):
         result = await func(self, texts)
 
         if result.succeed and result.usage > 0:
-            session = get_scoped_session()
-            await UsageORM.save_usage(session, plugin_name, result.usage, "embedding")
+            async with _usage_write_lock:
+                session = get_scoped_session()
+                await UsageORM.save_usage(session, plugin_name, result.usage, "embedding")
 
         return result
 
