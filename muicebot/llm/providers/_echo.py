@@ -6,10 +6,12 @@ from .. import (
     ModelConfig,
     ModelRequest,
     ModelStreamCompletions,
+    register,
 )
 from ..utils.images import get_file_base64
 
 
+@register("_echo")
 class Echo(BaseLLM):
     """
     一个模拟用模型类，不产生实际模型调用，只返回请求信息
