@@ -95,14 +95,15 @@ def get_schedule_configs() -> List[Schedule]:
 class ConfigFileHandler(FileSystemEventHandler):
     """配置文件变化处理器"""
 
-    def __init__(self, callback: Callable):
+    def __init__(self, path: Path, callback: Callable):
+        self.path = path
         self.callback = callback
         self.last_modified = time.time()
         # 防止一次修改触发多次回调
         self.cooldown = 1  # 冷却时间（秒）
 
     def on_modified(self, event):
-        if event.is_directory:  # 检查是否是文件而不是目录
+        if not os.path.samefile(event.src_path, self.path):
             return
 
         current_time = time.time()
@@ -174,8 +175,8 @@ class ModelConfigManager:
             self.observer.stop()
 
         self.observer = Observer()
-        event_handler = ConfigFileHandler(self._on_config_changed)
-        self.observer.schedule(event_handler, str(Path(MODELS_CONFIG_PATH).parent), recursive=False)
+        event_handler = ConfigFileHandler(MODELS_CONFIG_PATH, self._on_config_changed)
+        self.observer.schedule(event_handler, str(MODELS_CONFIG_PATH.parent), recursive=False)
         self.observer.start()
 
     def _on_config_changed(self):
