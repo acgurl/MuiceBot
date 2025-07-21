@@ -45,7 +45,10 @@ class Muice:
         if self._initialized:
             return
 
-        self.model_config = get_model_config()
+        self._model_config_manager = get_model_config_manager()
+
+        self.model_config = self._model_config_manager.get_model_config()
+        self.model_config_name = self._model_config_manager.get_name_from_config(self.model_config)
 
         self.database = MessageORM()
         self.max_history_epoch = plugin_config.max_history_epoch
@@ -56,8 +59,7 @@ class Muice:
         self._load_config()
         self._init_model()
 
-        model_config_manager = get_model_config_manager()
-        model_config_manager.register_listener(self._on_config_changed)
+        self._model_config_manager.register_listener(self._on_config_changed)
 
         self._initialized = True
 
@@ -112,30 +114,44 @@ class Muice:
 
         return True
 
-    def _on_config_changed(self, new_config: ModelConfig, old_config: ModelConfig):
+    def _on_config_changed(self, new_config: ModelConfig, old_config: Optional[ModelConfig] = None):
         """配置文件变更时的回调函数"""
         logger.info("检测到配置文件变更，自动重载模型...")
         # 更新配置
+        old_config_name = self.model_config_name
         self.model_config = new_config
+        self.model_config_name = self._model_config_manager.get_name_from_config(new_config)
 
         # 重新加载模型
         self._load_config()
         self._init_model()
         self.load_model()
-        logger.success(f"模型自动重载完成: {old_config.provider} -> {new_config.provider}")
+        logger.success(f"模型自动重载完成: {old_config_name} -> {self.model_config_name}")
 
-    def change_model_config(self, config_name: str) -> str:
+    def change_model_config(self, config_name: Optional[str] = None, reload: bool = False) -> str:
         """
         更换模型配置文件并重新加载模型
+
+        :param config_name: 模型配置名称
+        :param reload: 是否处于重载状态（`config_name` 此时应该为空）
+
+        :return: 切换状态提示
         """
+        if reload and not config_name:
+            config_name = self.model_config_name
+
         try:
             self.model_config = get_model_config(config_name)
+            self.model_config_name = self._model_config_manager.get_name_from_config(self.model_config)
         except (ValueError, FileNotFoundError) as e:
             return str(e)
 
         self._load_config()
         self._init_model()
         self.load_model()
+
+        if reload:
+            return f"已成功重载模型配置文件: {config_name}"
 
         return f"已成功加载 {config_name}" if config_name else "未指定模型配置名，已加载默认模型配置"
 

@@ -199,6 +199,14 @@ command_profile = on_alconna(
     block=True,
 )
 
+command_reload = on_alconna(
+    Alconna(COMMAND_PREFIXES, "reload", meta=CommandMeta("重新加载模型配置文件")),
+    priority=10,
+    block=True,
+    permission=SUPERUSER,
+)
+
+
 nickname_event = on_alconna(
     Alconna(re.compile(combined_regex), Args["text?", AllParam], separators=""),
     priority=99,
@@ -243,6 +251,8 @@ async def handle_command_help():
         "undo 撤回上一个对话\n"
         "whoami 输出当前用户信息\n"
         "load <config_name> 加载模型\n"
+        "profile <profile_name> 切换消息存档\n"
+        "reload 重新加载模型配置\n"
         "（支持的命令前缀：“.”、“/”）"
     )
 
@@ -362,6 +372,12 @@ async def handle_command_profile(
     await UserORM.set_profile(session, userid, profile.result)
     await session.commit()
     await UniMessage("成功切换消息存档~").finish()
+
+
+@command_reload.handle()
+async def handle_command_reload():
+    result = Muice.get_instance().change_model_config(reload=True)
+    await UniMessage(result).finish()
 
 
 @command_start.handle()

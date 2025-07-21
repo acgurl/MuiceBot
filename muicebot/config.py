@@ -135,7 +135,7 @@ class ModelConfigManager:
         self.configs: dict[str, ModelConfig] = {}
         """所有模型配置"""
         self.default_config = None
-        """默认模型配置"""
+        """默认模型配置（非主 Muice 使用模型）"""
         self.observer: Optional[BaseObserver] = None
         """文件监视器"""
         self._listeners: List[Callable] = []
@@ -147,7 +147,9 @@ class ModelConfigManager:
         self._initialized = True
 
     def _load_configs(self):
-        """加载配置文件"""
+        """
+        加载配置文件，并设置默认模型
+        """
         if not os.path.isfile(MODELS_CONFIG_PATH):
             raise FileNotFoundError("configs/models.yml 不存在！请先创建")
 
@@ -183,7 +185,7 @@ class ModelConfigManager:
         """配置文件变化时的回调函数"""
         try:
             # old_configs = self.configs.copy()
-            old_default = self.default_config
+            old_default = self.default_config.model_copy() if self.default_config else None
 
             self._load_configs()
 
@@ -221,6 +223,21 @@ class ModelConfigManager:
         else:
             logger.warning(f"指定的模型配置 '{model_config_name}' 不存在！")
             raise ValueError(f"指定的模型配置 '{model_config_name}' 不存在！")
+
+    def get_name_from_config(self, config: ModelConfig) -> str:
+        """
+        从配置对象获取配置名称
+
+        :param config: ModelConfig 实例
+        :return: 相应配置在配置文件中的配置名
+
+        :raise ValueError: 当配置不存在时
+        """
+        for key, value in self.configs.items():
+            if value == config:
+                return key
+
+        raise ValueError("指定的配置对象不存在")
 
     def stop_watcher(self):
         """停止文件监视器"""
