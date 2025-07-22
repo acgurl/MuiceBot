@@ -193,12 +193,16 @@ def get_version() -> str:
         return "Unknown"
 
 
-async def get_username(user_id: Optional[str] = None) -> str:
+async def get_username(user_id: Optional[str] = None, event: Optional[Event] = None) -> str:
     """
     获取当前对话的用户名，如果失败就返回用户id
+
+    :param user_id: 用户ID，如果空则从事件中获取
+    :param event: Nonebot 事件对象，如果空则从 Muicebot 上下文中获取
+    （注意：必须保证是在 Muice 事件处理流程[即普通对话事件]中才可为空）
     """
     bot = get_bot()
-    event = get_event()
+    event = event or get_event()
     user_id = user_id if user_id else event.get_user_id()
     user_info = await get_user_info(bot, event, user_id)
     return user_info.user_name if user_info else user_id
