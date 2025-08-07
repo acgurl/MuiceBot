@@ -42,8 +42,8 @@ store_cmd = on_alconna(
 async def install(name: Match[str]):
     if not name.available:
         await store_cmd.finish("必须传入一个插件名")
-    result = await install_plugin(name.result)
-    await store_cmd.finish(result)
+
+    await install_plugin(name.result)
 
 
 @store_cmd.assign("list")

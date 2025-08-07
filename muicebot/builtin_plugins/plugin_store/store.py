@@ -5,6 +5,7 @@ from typing import Optional
 
 import aiohttp
 from nonebot import logger
+from nonebot_plugin_alconna import UniMessage
 
 from muicebot.plugin import load_plugin
 
@@ -110,24 +111,28 @@ async def get_installed_plugins_info() -> str:
     return "\n".join(plugins_info) or "本地还未安装商店插件~"
 
 
-async def install_plugin(plugin: str) -> str:
+async def install_plugin(plugin: str) -> None:
     """
     通过 git clone 安装指定插件
     """
     if not (index := await get_index()):
-        return "❌ 无法获取插件索引文件，请检查控制台日志"
+        await UniMessage("❌ 无法获取插件索引文件，请检查控制台日志").finish()
+        return
 
     if plugin not in index:
-        return f"❌ 插件 {plugin} 不存在于索引中！请检查插件名称是否正确"
+        await UniMessage(f"❌ 插件 {plugin} 不存在于索引中！请检查插件名称是否正确").finish()
+        return
 
     repo_url = index[plugin]["repo"]
     module = index[plugin]["module"]
     plugin_path = PLUGIN_DIR / plugin
 
     if plugin_path.exists():
-        return f"⚠️ 插件 {plugin} 已存在，无需安装。"
+        await UniMessage(f"⚠️ 插件 {plugin} 已存在，无需安装。").finish()
+        return
 
     logger.info(f"获取插件: {repo_url}")
+    await UniMessage(f"准备安装插件 {plugin}...").send()
     try:
         process = await asyncio.create_subprocess_exec(
             "git",
@@ -140,21 +145,29 @@ async def install_plugin(plugin: str) -> str:
         stdout, stderr = await process.communicate()
 
         if process.returncode != 0:
-            return f"❌ 安装失败：{stderr.decode().strip()}"
-
-        if not await install_dependencies(plugin_path):
-            return "❌ 插件依赖安装失败！请检查控制台输出"
+            await UniMessage(f"❌ 插件 {plugin} 克隆失败: {stderr.decode().strip()}").finish()
+            return
 
     except FileNotFoundError:
-        return "❌ 请确保已安装 Git 并配置到 PATH。"
+        await UniMessage("❌ 请确保已安装 Git 并配置到 PATH。").finish()
+        return
 
+    logger.info(f"插件 {plugin} 克隆完成，路径: {plugin_path}")
+    await UniMessage("正在安装插件依赖...").send()
+
+    if not await install_dependencies(plugin_path):
+        await UniMessage("❌ 插件依赖安装失败！请检查控制台输出").finish()
+        return
+
+    logger.info(f"插件 {plugin} 安装完成，开始加载...")
+    await UniMessage("加载插件...").send()
     load_plugin(plugin_path / module)
 
     commit = await get_plugin_commit(plugin)
 
     register_plugin(plugin, commit, module)
 
-    return f"✅ 插件 {plugin} 安装成功！"
+    await UniMessage(f"✅ 插件 {plugin} 安装成功！").finish()
 
 
 async def update_plugin(plugin: str) -> str:
