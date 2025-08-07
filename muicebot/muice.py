@@ -275,6 +275,11 @@ class Muice:
         message.respond = response.text
         message.usage = response.usage
 
+        if message.respond.strip() == "":
+            msg = "模型回复为空，可能是模型未能正确处理请求，请检查模型配置或输入内容。"
+            logger.warning(msg)
+            return ModelCompletions(msg, succeed=False)
+
         await hook_manager.run(HookType.AFTER_MODEL_COMPLETION, response, message)
 
         await hook_manager.run(HookType.ON_FINISHING_CHAT, message)
@@ -342,7 +347,7 @@ class Muice:
             if item.resources:
                 total_resources.extend(item.resources)
 
-        if not total_reply.endswith("\n\n"):
+        if total_reply.strip() and not total_reply.endswith("\n\n"):
             yield ModelStreamCompletions("\n\n")  # 强行 yield 最后一段文字
 
         if item is None:
@@ -358,6 +363,12 @@ class Muice:
 
         message.respond = total_reply
         message.usage = item.usage
+
+        if total_reply.strip() == "":
+            msg = "模型回复为空，可能是模型未能正确处理请求，请检查模型配置或输入内容。"
+            logger.warning(msg)
+            yield ModelStreamCompletions(msg, succeed=False)
+            return
 
         await hook_manager.run(HookType.AFTER_MODEL_COMPLETION, final_model_completions, message, stream=True)
 
