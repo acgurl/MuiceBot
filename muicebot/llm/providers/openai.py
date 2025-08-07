@@ -145,6 +145,8 @@ class Openai(BaseLLM):
                 response_format=response_format,
             )
 
+            logger.debug(f"OpenAI response: id={response.id}, choices={response.choices}, usage={response.usage}")
+
             result = ""
             message = response.choices[0].message  # type:ignore
             total_tokens += response.usage.total_tokens if response.usage else 0
@@ -230,6 +232,8 @@ class Openai(BaseLLM):
 
             async for chunk in response:
                 stream_completions = ModelStreamCompletions()
+
+                logger.debug(f"OpenAI response: id={chunk.id}, choices={chunk.choices}, usage={chunk.usage}")
 
                 # 获取 usage （最后一个包中返回）
                 if chunk.usage:
