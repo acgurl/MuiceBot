@@ -1,0 +1,104 @@
+"""
+Agent工具函数模块
+"""
+
+from typing import List, Dict, Any
+from .config import AgentConfigManager
+from ..plugin.func_call import get_function_calls
+from ..plugin.mcp import get_mcp_list
+
+async def get_agent_list() -> List[Dict[str, Any]]:
+    """
+    获取所有可用Agent的信息列表，格式化为工具调用格式
+    
+    Returns:
+        List[Dict[str, Any]]: Agent信息列表，格式化为工具调用格式
+    """
+    agent_tools = []
+    config_manager = AgentConfigManager()
+    agents = config_manager.list_agents()
+    
+    # 为每个Agent创建工具描述
+    for agent_name in agents:
+        try:
+            config = config_manager.get_agent_config(agent_name)
+            # 检查Agent是否启用工具调用
+            if config.function_call:
+                # 获取Agent可用的工具列表
+                available_tools = await _get_agent_available_tools(config.tools_list)
+                if available_tools:
+                    tools_description = ", ".join([tool.get("function", {}).get("name", "unknown")
+                                                 for tool in available_tools])
+                    agent_tool = {
+                        "type": "function",
+                        "function": {
+                            "name": f"agent_{agent_name}",
+                            "description": f"调用{agent_name} Agent处理任务。该Agent可以使用以下工具: {tools_description}",
+                            "parameters": {
+                                "type": "object",
+                                "properties": {
+                                    "task": {
+                                        "type": "string",
+                                        "description": f"要交给{agent_name} Agent处理的任务描述"
+                                    }
+                                },
+                                "required": ["task"]
+                            }
+                        }
+                    }
+                else:
+                    # 如果没有可用工具，提供一个通用的Agent工具
+                    agent_tool = {
+                        "type": "function",
+                        "function": {
+                            "name": f"agent_{agent_name}",
+                            "description": f"调用{agent_name} Agent处理任务。",
+                            "parameters": {
+                                "type": "object",
+                                "properties": {
+                                    "task": {
+                                        "type": "string",
+                                        "description": f"要交给{agent_name} Agent处理的任务描述"
+                                    }
+                                },
+                                "required": ["task"]
+                            }
+                        }
+                    }
+                agent_tools.append(agent_tool)
+        except Exception:
+            # 如果获取Agent配置失败，跳过该Agent
+            continue
+    
+    return agent_tools
+
+async def _get_agent_available_tools(tools_list: List[str]) -> List[Dict[str, Any]]:
+    """
+    获取Agent可用的工具列表
+    
+    Args:
+        tools_list: Agent配置的工具名称列表
+        
+    Returns:
+        List[Dict[str, Any]]: 可用工具列表
+    """
+    available_tools = []
+    
+    # 获取Function Call工具
+    function_calls = get_function_calls()
+    for tool_name in tools_list:
+        if tool_name in function_calls:
+            available_tools.append(function_calls[tool_name].data())
+            
+    # 获取MCP工具
+    try:
+        mcp_tools = await get_mcp_list()
+        for tool in mcp_tools:
+            # 检查工具名称是否在配置的工具列表中
+            if tool.get("function", {}).get("name") in tools_list:
+                available_tools.append(tool)
+    except Exception:
+        # 如果MCP工具加载失败，继续使用Function Call工具
+        pass
+        
+    return available_tools
