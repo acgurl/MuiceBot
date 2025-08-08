@@ -22,50 +22,49 @@ async def get_agent_list() -> List[Dict[str, Any]]:
     for agent_name in agents:
         try:
             config = config_manager.get_agent_config(agent_name)
-            # 检查Agent是否启用工具调用
-            if config.function_call:
-                # 获取Agent可用的工具列表
-                available_tools = await _get_agent_available_tools(config.tools_list)
-                if available_tools:
-                    tools_description = ", ".join([tool.get("function", {}).get("name", "unknown")
-                                                 for tool in available_tools])
-                    agent_tool = {
-                        "type": "function",
-                        "function": {
-                            "name": f"agent_{agent_name}",
-                            "description": f"调用{agent_name} Agent处理任务。该Agent可以使用以下工具: {tools_description}",
-                            "parameters": {
-                                "type": "object",
-                                "properties": {
-                                    "task": {
-                                        "type": "string",
-                                        "description": f"要交给{agent_name} Agent处理的任务描述"
-                                    }
-                                },
-                                "required": ["task"]
-                            }
+            # Agent本身就是工具，无论是否启用工具调用都应该添加到工具列表中
+            # 获取Agent可用的工具列表
+            available_tools = await _get_agent_available_tools(config.tools_list)
+            if available_tools:
+                tools_description = ", ".join([tool.get("function", {}).get("name", "unknown")
+                                             for tool in available_tools])
+                agent_tool = {
+                    "type": "function",
+                    "function": {
+                        "name": f"agent_{agent_name}",
+                        "description": f"调用{agent_name} Agent处理任务。该Agent可以使用以下工具: {tools_description}",
+                        "parameters": {
+                            "type": "object",
+                            "properties": {
+                                "task": {
+                                    "type": "string",
+                                    "description": f"要交给{agent_name} Agent处理的任务描述"
+                                }
+                            },
+                            "required": ["task"]
                         }
                     }
-                else:
-                    # 如果没有可用工具，提供一个通用的Agent工具
-                    agent_tool = {
-                        "type": "function",
-                        "function": {
-                            "name": f"agent_{agent_name}",
-                            "description": f"调用{agent_name} Agent处理任务。",
-                            "parameters": {
-                                "type": "object",
-                                "properties": {
-                                    "task": {
-                                        "type": "string",
-                                        "description": f"要交给{agent_name} Agent处理的任务描述"
-                                    }
-                                },
-                                "required": ["task"]
-                            }
+                }
+            else:
+                # 如果没有可用工具，提供一个通用的Agent工具
+                agent_tool = {
+                    "type": "function",
+                    "function": {
+                        "name": f"agent_{agent_name}",
+                        "description": f"调用{agent_name} Agent处理任务。",
+                        "parameters": {
+                            "type": "object",
+                            "properties": {
+                                "task": {
+                                    "type": "string",
+                                    "description": f"要交给{agent_name} Agent处理的任务描述"
+                                }
+                            },
+                            "required": ["task"]
                         }
                     }
-                agent_tools.append(agent_tool)
+                }
+            agent_tools.append(agent_tool)
         except Exception:
             # 如果获取Agent配置失败，跳过该Agent
             continue
