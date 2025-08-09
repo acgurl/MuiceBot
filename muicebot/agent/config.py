@@ -1,9 +1,51 @@
 import yaml
 from pathlib import Path
-from typing import Dict, List
-from .models import AgentConfig
+from typing import Dict, List, Optional
+from pydantic import BaseModel, field_validator
+from ..llm._config import ModelConfig
 
 AGENTS_CONFIG_PATH = Path("configs/agents.yml")
+
+class AgentConfig(ModelConfig):
+    """Agent配置模型，继承自ModelConfig"""
+    tools_list: Optional[List[str]] = None
+    max_loop_count: int = 5
+    api_call_interval: float = 1.0  # API调用间隔，单位为秒
+    
+    def __init__(self, **data):
+        # 处理 tools_list 为 None 的情况
+        if 'tools_list' not in data or data['tools_list'] is None:
+            data['tools_list'] = []
+        super().__init__(**data)
+    
+    @field_validator('max_loop_count')
+    @classmethod
+    def validate_max_loop_count(cls, v):
+        """验证最大循环次数"""
+        if not isinstance(v, int) or v <= 0:
+            raise ValueError('max_loop_count 必须是正整数')
+        return v
+    
+    @field_validator('api_call_interval')
+    @classmethod
+    def validate_api_call_interval(cls, v):
+        """验证API调用间隔"""
+        if not isinstance(v, (int, float)) or v < 0:
+            raise ValueError('api_call_interval 必须是非负数')
+        return v
+
+class AgentResponse(BaseModel):
+    """Agent响应模型"""
+    result: str
+    need_continue: bool = False
+    next_agent: Optional[str] = None
+    next_task: Optional[str] = None
+
+class AgentToolCall(BaseModel):
+    """Agent工具调用模型"""
+    name: str
+    arguments: dict
+    result: Optional[str] = None
 
 class AgentConfigManager:
     """Agent配置管理器"""
@@ -14,73 +56,25 @@ class AgentConfigManager:
         
     def _load_configs(self):
         """加载Agent配置文件"""
+        # 合并检查配置文件不存在和配置文件为空的情况
         if not AGENTS_CONFIG_PATH.exists():
-            # 如果配置文件不存在，创建一个默认的Agent配置
-            AGENTS_CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
-            default_config = {
-                "assistant": {
-                    "function_call": True,
-                    "stream": False,
-                    "multimodal": False,
-                    "api_host": "",
-                    "api_key": "",
-                    "tools_list": []
-                }
-            }
-            with open(AGENTS_CONFIG_PATH, 'w', encoding='utf-8') as f:
-                yaml.dump(default_config, f, allow_unicode=True)
-            # 加载默认配置
-            self._configs["assistant"] = AgentConfig(**default_config["assistant"])
+            # 如果配置文件不存在，不自动创建默认配置
+            # 用户需要明确决定是否使用Agent
+            self._configs = {}
             return
             
         with open(AGENTS_CONFIG_PATH, 'r', encoding='utf-8') as f:
             configs_dict = yaml.safe_load(f)
             
+        # 如果配置文件为空或解析失败，不自动创建默认配置
         if not configs_dict:
-            # 如果配置文件为空，创建一个默认的Agent配置
-            default_config = {
-                "assistant": {
-                    "function_call": True,
-                    "stream": False,
-                    "multimodal": False,
-                    "api_host": "",
-                    "api_key": "",
-                    "tools_list": []
-                }
-            }
-            with open(AGENTS_CONFIG_PATH, 'w', encoding='utf-8') as f:
-                yaml.dump(default_config, f, allow_unicode=True)
-            # 加载默认配置
-            self._configs["assistant"] = AgentConfig(**default_config["assistant"])
+            self._configs = {}
             return
             
+        # 加载配置项
+        self._configs = {}
         for name, config in configs_dict.items():
-            # 设置默认值
-            if 'function_call' not in config:
-                # 默认启用工具调用
-                config['function_call'] = True
-                
-            if 'stream' not in config:
-                # 默认不使用流式输出
-                config['stream'] = False
-                
-            if 'multimodal' not in config:
-                # 默认不使用多模态
-                config['multimodal'] = False
-                
-            if 'api_host' not in config:
-                # 默认API主机为空
-                config['api_host'] = ""
-                
-            if 'api_key' not in config:
-                # 默认API密钥为空
-                config['api_key'] = ""
-                
-            if 'tools_list' not in config or config['tools_list'] is None:
-                # 默认工具列表为空列表
-                config['tools_list'] = []
-                
-            # 继承ModelConfig的字段并添加Agent特有的字段
+            # 使用Pydantic模型验证配置项
             self._configs[name] = AgentConfig(**config)
             
     def get_agent_config(self, agent_name: str) -> AgentConfig:

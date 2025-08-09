@@ -1,6 +1,7 @@
 from typing import Tuple
 from .manager import AgentManager
-from .models import AgentResponse
+from .config import AgentResponse
+from nonebot import logger
 
 class AgentCommunication:
     """Agent与主模型通信接口"""
@@ -11,22 +12,29 @@ class AgentCommunication:
     async def request_agent_assistance(self, agent_name: str, task: str, userid: str = "", is_private: bool = False) -> str:
         """请求Agent协助"""
         try:
-            response = await self.agent_manager.dispatch_agent_task(agent_name, task, userid, is_private)
-            result, continue_chain = await self.agent_manager.handle_agent_response(response)
+            logger.info(f"开始请求Agent协助: agent_name={agent_name}, task={task}, userid={userid}, is_private={is_private}")
             
-            # 处理任务链循环
-            loop_count = 0
-            max_loops = self.agent_manager.config_manager.get_agent_config(agent_name).max_loop_count
-            
-            while continue_chain and loop_count < max_loops:
-                response = await self.agent_manager.dispatch_agent_task(agent_name, result, userid, is_private)
+            # 调用Agent执行任务
+            try:
+                response = await self.agent_manager.dispatch_agent_task(agent_name, task, userid, is_private)
                 result, continue_chain = await self.agent_manager.handle_agent_response(response)
-                loop_count += 1
-                
+                logger.info(f"Agent调用完成: result长度={len(result)}")
+            except Exception as e:
+                logger.error(f"Agent调用失败: {e}")
+                return f"Agent调用失败: {str(e)}"
+            
+            logger.info(f"Agent协助请求完成")
             return result
+            
         except Exception as e:
+            logger.error(f"Agent协助请求发生未预期错误: {e}")
             return f"Agent调用失败: {str(e)}"
             
     def reload_configs(self):
         """重新加载配置"""
-        self.agent_manager.reload_configs()
+        try:
+            logger.info("重新加载Agent配置")
+            self.agent_manager.reload_configs()
+            logger.info("Agent配置重新加载完成")
+        except Exception as e:
+            logger.error(f"重新加载Agent配置失败: {e}")

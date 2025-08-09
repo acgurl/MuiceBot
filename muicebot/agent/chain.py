@@ -1,5 +1,5 @@
 from typing import List, Optional
-from .models import AgentResponse
+from .config import AgentResponse
 
 class TaskChain:
     """任务链管理"""

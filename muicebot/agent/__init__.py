@@ -2,7 +2,7 @@
 MuiceBot Agent Module
 """
 
-from .models import AgentConfig, AgentResponse
+from .config import AgentConfig, AgentResponse
 from .config import AgentConfigManager
 from .core import Agent
 from .manager import AgentManager
