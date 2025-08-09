@@ -30,11 +30,13 @@ async def get_agent_list() -> List[Dict[str, Any]]:
                                              for tool in available_tools])
                 # 获取Agent配置中的最大循环次数
                 max_loops = config.max_loop_count
+                # 使用配置中的description字段，如果没有则使用默认描述
+                agent_description = config.description or f"调用{agent_name} Agent处理任务。该Agent可以使用以下工具: {tools_description}。这是一个任务链工具，最多可以循环调用{max_loops}次。请根据任务的复杂程度和完成情况决定是否需要继续调用。"
                 agent_tool = {
                     "type": "function",
                     "function": {
                         "name": f"agent_{agent_name}",
-                        "description": f"调用{agent_name} Agent处理任务。该Agent可以使用以下工具: {tools_description}。这是一个任务链工具，最多可以循环调用{max_loops}次。请根据任务的复杂程度和完成情况决定是否需要继续调用。",
+                        "description": agent_description,
                         "parameters": {
                             "type": "object",
                             "properties": {
@@ -51,11 +53,13 @@ async def get_agent_list() -> List[Dict[str, Any]]:
                 # 如果没有可用工具，提供一个通用的Agent工具
                 # 获取Agent配置中的最大循环次数
                 max_loops = config.max_loop_count
+                # 使用配置中的description字段，如果没有则使用默认描述
+                agent_description = config.description or f"调用{agent_name} Agent处理任务。注意：如果Agent的处理结果不完整或需要进一步处理，你可以再次调用该Agent或其他Agent继续处理，最多可以循环调用{max_loops}次。"
                 agent_tool = {
                     "type": "function",
                     "function": {
                         "name": f"agent_{agent_name}",
-                        "description": f"调用{agent_name} Agent处理任务。注意：如果Agent的处理结果不完整或需要进一步处理，你可以再次调用该Agent或其他Agent继续处理，最多可以循环调用{max_loops}次。",
+                        "description": agent_description,
                         "parameters": {
                             "type": "object",
                             "properties": {

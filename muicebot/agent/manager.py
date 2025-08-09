@@ -44,11 +44,8 @@ class AgentManager:
             except Exception as e:
                 logger.error(f"Agent实例创建失败: {agent_name}, 错误: {e}")
                 raise
-        else:
-            logger.debug(f"使用已存在的Agent实例: {agent_name}")
-            # 重置调用计数器
-            self._agents[agent_name].call_count = 0
         
+        logger.debug(f"使用Agent实例: {agent_name}")
         return self._agents[agent_name]
         
     async def handle_agent_response(self, response: AgentResponse) -> tuple[str, bool]:

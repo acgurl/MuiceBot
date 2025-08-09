@@ -11,6 +11,7 @@ class AgentConfig(ModelConfig):
     """Agent配置模型，继承自ModelConfig"""
     tools_list: Optional[List[str]] = None
     max_loop_count: int = 5  # 默认最大循环次数
+    description: Optional[str] = None  # Agent描述
     
     def __init__(self, **data):
         # 处理 tools_list 为 None 的情况
@@ -54,13 +55,16 @@ class AgentResponse(BaseModel):
     next_agent: Optional[str] = None
     next_task: Optional[str] = None
 
-def format_agent_output(agent_name: str, result: str) -> str:
+def format_agent_output(agent_name: str, result: str, need_continue: bool = False, next_agent: str = None, next_task: str = None) -> str:
     """
     格式化Agent输出，使其能够被主模型正确识别和利用
     
     Args:
         agent_name: Agent名称
         result: Agent原始结果
+        need_continue: 是否需要继续调用其他Agent
+        next_agent: 下一个要调用的Agent名称
+        next_task: 下一个要执行的任务
         
     Returns:
         格式化后的输出字符串
@@ -73,7 +77,15 @@ def format_agent_output(agent_name: str, result: str) -> str:
 {result}
 [AGENT_ANALYSIS_END]
 
-请基于以上分析结果直接回答用户问题，不要对Agent进行分析或评价。
+处理指导:
+1. 请仔细分析以上Agent的分析结果
+2. 判断是否需要进一步处理或调用其他专业Agent
+3. 如果需要继续调用，请明确指出要调用哪个Agent以及具体任务
+4. 如果不需要继续调用，请直接基于以上分析结果回答用户问题
+
+是否建议继续调用: {"是" if need_continue else "否"}
+{"建议调用的Agent: " + next_agent if next_agent else ""}
+{"建议执行的任务: " + next_task if next_task else ""}
 """
     return formatted_output.strip()
 

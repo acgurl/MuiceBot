@@ -1,4 +1,6 @@
 from typing import List, Optional
+import time
+import asyncio
 from .config import AgentResponse, AgentConfig
 
 class TaskChain:
@@ -13,6 +15,8 @@ class TaskChain:
             
         self.current_loop = 0
         self.history: List[AgentResponse] = []
+        self.call_count = 0  # 调用计数器
+        self.last_call_time = 0.0  # 上次调用时间
         
     def add_response(self, response: AgentResponse):
         """添加响应到历史记录"""
@@ -23,8 +27,9 @@ class TaskChain:
         if self.current_loop >= self.max_loops:
             return False
             
+        # 如果是第一次调用且没有历史记录，应该继续执行
         if not self.history:
-            return False
+            return True
             
         last_response = self.history[-1]
         return last_response.need_continue
@@ -43,6 +48,36 @@ class TaskChain:
     def increment_loop(self):
         """增加循环计数"""
         self.current_loop += 1
+        
+    def increment_call_count(self):
+        """增加调用计数"""
+        self.call_count += 1
+        
+    def check_loop_limit(self) -> tuple[bool, str]:
+        """
+        检查是否超过循环限制
+        
+        Returns:
+            tuple[bool, str]: (是否超过限制, 限制信息)
+        """
+        if self.call_count > self.max_loops:
+            return True, f"调用次数已达到最大限制 {self.max_loops}，无法继续调用"
+        return False, ""
+        
+    async def wait_api_interval(self):
+        """
+        在调用之间添加API调用间隔
+        """
+        if self.call_count > 1:  # 第一次调用不需要等待
+            current_time = time.time()
+            time_since_last_call = current_time - self.last_call_time
+            api_call_interval = AgentConfig.get_default_api_call_interval()
+            if time_since_last_call < api_call_interval:
+                wait_time = api_call_interval - time_since_last_call
+                await asyncio.sleep(wait_time)
+            self.last_call_time = time.time()
+        else:
+            self.last_call_time = time.time()
         
     def reset(self):
         """重置任务链"""

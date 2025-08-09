@@ -17,8 +17,7 @@ class Agent:
         # 使用现有的load_model函数加载模型
         self.model = load_model(config)
         self.tools = self._load_tools(config.tools_list)
-        self.call_count = 0  # 调用计数器
-        self.last_call_time = 0.0  # 上次调用时间
+        # Agent不再直接管理调用计数，由TaskChain管理
         
     def _load_tools(self, tools_list: List[str]) -> List[dict]:
         """加载Agent可调用的工具"""
@@ -47,31 +46,10 @@ class Agent:
         """执行任务"""
         from nonebot import logger
         
-        # 增加调用计数
-        self.call_count += 1
-        logger.info(f"Agent开始执行任务: task={task[:50]}..., userid={userid}, is_private={is_private}, 调用次数={self.call_count}")
+        logger.info(f"Agent开始执行任务: task={task[:50]}..., userid={userid}, is_private={is_private}")
         logger.info(f"Agent配置: function_call={self.config.function_call}, tools_list={self.config.tools_list}")
         
-        # 检查是否超过最大循环次数
-        if self.call_count > self.config.max_loop_count:
-            logger.warning(f"Agent调用次数已达到最大限制 {self.config.max_loop_count}")
-            return AgentResponse(
-                result=f"Agent调用次数已达到最大限制 {self.config.max_loop_count}，无法继续调用",
-                need_continue=False
-            )
-        
-        # 在调用之间添加API调用间隔
-        if self.call_count > 1:  # 第一次调用不需要等待
-            current_time = time.time()
-            time_since_last_call = current_time - self.last_call_time
-            api_call_interval = AgentConfig.get_default_api_call_interval()
-            if time_since_last_call < api_call_interval:
-                wait_time = api_call_interval - time_since_last_call
-                logger.info(f"Agent调用间隔控制: 等待 {wait_time:.2f} 秒")
-                await asyncio.sleep(wait_time)
-            self.last_call_time = time.time()
-        else:
-            self.last_call_time = time.time()
+        # Agent不再直接处理循环调用逻辑，这些由TaskChain处理
         
         # 准备提示词和工具列表
         prompt = self._prepare_prompt(task, userid, is_private)
@@ -127,15 +105,25 @@ class Agent:
         result = model_response.text
         logger.debug(f"Agent响应解析完成: 结果长度={len(result)}")
         
+        # 尝试从模型响应中提取是否需要继续调用的信息
+        need_continue = False
+        next_agent = None
+        next_task = None
+        
+        # 简单的解析逻辑，实际实现中可以根据更复杂的规则来判断
+        # 这里只是一个示例，实际应用中可能需要更复杂的解析逻辑
+        if "需要继续" in result or "继续调用" in result:
+            need_continue = True
+            # 这里可以添加更复杂的逻辑来提取next_agent和next_task
+            # 例如通过正则表达式或其他解析方法
+        
         # 使用格式化函数包装Agent输出，确保主模型能正确识别和利用
-        formatted_result = format_agent_output(self.agent_name, result)
+        formatted_result = format_agent_output(self.agent_name, result, need_continue, next_agent, next_task)
         logger.debug(f"Agent输出格式化完成: 格式化后长度={len(formatted_result)}")
         
-        # Agent只返回结果，不决定是否继续调用
-        # 继续调用的决定权在muicebot
         return AgentResponse(
             result=formatted_result,
-            need_continue=False,
-            next_agent=None,
-            next_task=None
+            need_continue=need_continue,
+            next_agent=next_agent,
+            next_task=next_task
         )
