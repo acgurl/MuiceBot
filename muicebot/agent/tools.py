@@ -17,8 +17,10 @@ async def agent_function_call_handler(func: str, arguments: Optional[dict] = Non
         mcp_result = await handle_mcp_tool(func, arguments)
         if mcp_result:
             return mcp_result
-    except Exception:
-        pass
+    except Exception as e:
+        from nonebot import logger
+
+        logger.warning(f"MCP工具调用失败: func={func}, error={e}")
 
     # 工具未找到
     return f"未知工具: {func}"

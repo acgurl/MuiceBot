@@ -78,8 +78,10 @@ async def get_agent_list() -> List[Dict[str, Any]]:
                     },
                 }
             agent_tools.append(agent_tool)
-        except Exception:
-            # 如果获取Agent配置失败，跳过该Agent
+        except Exception as e:
+            from nonebot import logger
+
+            logger.warning(f"获取Agent配置失败，跳过该Agent: agent_name={agent_name}, error={e}")
             continue
 
     return agent_tools
@@ -111,8 +113,9 @@ async def _get_agent_available_tools(tools_list: Optional[List[str]]) -> List[Di
             # 检查工具名称是否在配置的工具列表中
             if tool.get("function", {}).get("name") in tools_list:
                 available_tools.append(tool)
-    except Exception:
-        # 如果MCP工具加载失败，继续使用Function Call工具
-        pass
+    except Exception as e:
+        from nonebot import logger
+
+        logger.warning(f"MCP工具加载失败，仅使用Function Call工具: error={e}")
 
     return available_tools

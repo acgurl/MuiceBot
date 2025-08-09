@@ -36,9 +36,10 @@ class Agent:
                 # 检查工具名称是否在配置的工具列表中
                 if tool.get("function", {}).get("name") in tools_list:
                     available_tools.append(tool)
-        except Exception:
-            # 如果MCP工具加载失败，继续使用Function Call工具
-            pass
+        except Exception as e:
+            from nonebot import logger
+
+            logger.warning(f"MCP工具加载失败，仅使用Function Call工具: error={e}")
 
         return available_tools
 
