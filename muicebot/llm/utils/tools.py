@@ -2,9 +2,9 @@ from typing import Any
 
 from nonebot import logger
 
+from muicebot.agent.communication import AgentCommunication
 from muicebot.plugin.func_call import get_function_calls
 from muicebot.plugin.mcp import handle_mcp_tool
-from muicebot.agent.communication import AgentCommunication
 
 
 async def function_call_handler(func: str, arguments: dict[str, str] | None = None) -> Any:

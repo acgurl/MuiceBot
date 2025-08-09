@@ -5,6 +5,8 @@ from typing import AsyncGenerator, Optional, Union
 from nonebot import logger
 from nonebot_plugin_orm import async_scoped_session
 
+from .agent import get_agent_list
+from .agent.communication import AgentCommunication
 from .config import (
     ModelConfig,
     get_model_config,
@@ -26,8 +28,6 @@ from .plugin.hook import HookType, hook_manager
 from .plugin.mcp import get_mcp_list
 from .templates import generate_prompt_from_template
 from .utils.utils import get_username
-from .agent.communication import AgentCommunication
-from .agent import get_agent_list
 
 
 class Muice:
@@ -131,10 +131,10 @@ class Muice:
         self._load_config()
         self._init_model()
         self.load_model()
-        
+
         # 重新加载Agent配置
         self.agent_communication.reload_configs()
-        
+
         logger.success(f"模型自动重载完成: {old_config_name} -> {self.model_config_name}")
 
     def change_model_config(self, config_name: Optional[str] = None, reload: bool = False) -> str:
@@ -251,16 +251,16 @@ class Muice:
             agent_name, task = self._extract_agent_task(message.message)
             if agent_name and task:
                 logger.info(f"检测到Agent协助请求: agent_name={agent_name}, task={task}")
-                
+
                 # 调用Agent获取结果
                 agent_result = await self.agent_communication.request_agent_assistance(
                     agent_name, task, message.userid, message.groupid == "-1"
                 )
-                
+
                 # 将Agent结果作为上下文继续对话
                 message.message = f"基于以下信息回答用户问题:\n\n{agent_result}\n\n用户问题: {message.message}"
                 logger.info(f"Agent协助处理完成，更新后的消息长度: {len(message.message)}")
-            
+
         # 调用原有的ask方法，muicebot会根据工具提示词自行决定是否需要继续调用Agent
         return await self.ask(session, message, enable_history, enable_plugins)
 
@@ -289,7 +289,7 @@ class Muice:
                 if " " in agent_part:
                     agent_name, task = agent_part.split(" ", 1)
                     return agent_name.strip(), task.strip()
-        
+
         return "", message
 
     async def ask(
@@ -381,16 +381,16 @@ class Muice:
             agent_name, task = self._extract_agent_task(message.message)
             if agent_name and task:
                 logger.info(f"检测到Agent协助请求(流式): agent_name={agent_name}, task={task}")
-                
+
                 # 调用Agent获取结果
                 agent_result = await self.agent_communication.request_agent_assistance(
                     agent_name, task, message.userid, message.groupid == "-1"
                 )
-                
+
                 # 将Agent结果作为上下文继续对话
                 message.message = f"基于以下信息回答用户问题:\n\n{agent_result}\n\n用户问题: {message.message}"
                 logger.info(f"Agent协助处理完成(流式)，更新后的消息长度: {len(message.message)}")
-            
+
         # 调用原有的ask_stream方法，muicebot会根据工具提示词自行决定是否需要继续调用Agent
         async for chunk in self.ask_stream(session, message, enable_history, enable_plugins):
             yield chunk
