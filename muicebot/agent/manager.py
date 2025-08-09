@@ -39,7 +39,7 @@ class AgentManager:
             logger.info(f"创建新的Agent实例: {agent_name}")
             try:
                 config = self.config_manager.get_agent_config(agent_name)
-                self._agents[agent_name] = Agent(config)
+                self._agents[agent_name] = Agent(config, agent_name)
                 logger.info(f"Agent实例创建成功: {agent_name}")
             except Exception as e:
                 logger.error(f"Agent实例创建失败: {agent_name}, 错误: {e}")

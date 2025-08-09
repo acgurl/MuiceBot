@@ -5,14 +5,15 @@ from ..llm import load_model, ModelRequest
 from ..plugin.func_call import get_function_calls
 from ..plugin.mcp import get_mcp_list, handle_mcp_tool
 from ..templates import generate_prompt_from_template
-from .config import AgentConfig, AgentResponse
+from .config import AgentConfig, AgentResponse, format_agent_output
 from .tools import agent_function_call_handler
 
 class Agent:
     """Agent核心类"""
     
-    def __init__(self, config: AgentConfig):
+    def __init__(self, config: AgentConfig, agent_name: str = ""):
         self.config = config
+        self.agent_name = agent_name or getattr(config, 'name', 'Agent')
         # 使用现有的load_model函数加载模型
         self.model = load_model(config)
         self.tools = self._load_tools(config.tools_list)
@@ -125,10 +126,14 @@ class Agent:
         result = model_response.text
         logger.debug(f"Agent响应解析完成: 结果长度={len(result)}")
         
+        # 使用格式化函数包装Agent输出，确保主模型能正确识别和利用
+        formatted_result = format_agent_output(self.agent_name, result)
+        logger.debug(f"Agent输出格式化完成: 格式化后长度={len(formatted_result)}")
+        
         # Agent只返回结果，不决定是否继续调用
         # 继续调用的决定权在muicebot
         return AgentResponse(
-            result=result,
+            result=formatted_result,
             need_continue=False,
             next_agent=None,
             next_task=None

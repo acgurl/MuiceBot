@@ -41,6 +41,29 @@ class AgentResponse(BaseModel):
     next_agent: Optional[str] = None
     next_task: Optional[str] = None
 
+def format_agent_output(agent_name: str, result: str) -> str:
+    """
+    格式化Agent输出，使其能够被主模型正确识别和利用
+    
+    Args:
+        agent_name: Agent名称
+        result: Agent原始结果
+        
+    Returns:
+        格式化后的输出字符串
+    """
+    # 使用特殊标记包装Agent输出，帮助主模型识别这是工具返回的结果
+    formatted_output = f"""
+[AGENT_ANALYSIS_RESULT]
+来源: {agent_name}
+内容:
+{result}
+[AGENT_ANALYSIS_END]
+
+请基于以上分析结果直接回答用户问题，不要对Agent进行分析或评价。
+"""
+    return formatted_output.strip()
+
 class AgentToolCall(BaseModel):
     """Agent工具调用模型"""
     name: str
