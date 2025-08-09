@@ -1,3 +1,4 @@
+import os
 import yaml
 from pathlib import Path
 from typing import Dict, List, Optional
@@ -9,16 +10,20 @@ AGENTS_CONFIG_PATH = Path("configs/agents.yml")
 class AgentConfig(ModelConfig):
     """Agent配置模型，继承自ModelConfig"""
     tools_list: Optional[List[str]] = None
-    max_loop_count: int = 5
-    api_call_interval: float = 1.0  # API调用间隔，单位为秒
+    max_loop_count: int = 5  # 默认最大循环次数
     
     def __init__(self, **data):
         # 处理 tools_list 为 None 的情况
         if 'tools_list' not in data or data['tools_list'] is None:
             data['tools_list'] = []
+        
+        # 如果没有指定max_loop_count，使用默认值
+        if 'max_loop_count' not in data:
+            data['max_loop_count'] = self.get_default_max_loop_count()
+            
         super().__init__(**data)
     
-    @field_validator('max_loop_count')
+    @field_validator('max_loop_count', check_fields=False)
     @classmethod
     def validate_max_loop_count(cls, v):
         """验证最大循环次数"""
@@ -26,13 +31,21 @@ class AgentConfig(ModelConfig):
             raise ValueError('max_loop_count 必须是正整数')
         return v
     
-    @field_validator('api_call_interval')
     @classmethod
-    def validate_api_call_interval(cls, v):
-        """验证API调用间隔"""
-        if not isinstance(v, (int, float)) or v < 0:
-            raise ValueError('api_call_interval 必须是非负数')
-        return v
+    def get_default_max_loop_count(cls):
+        """获取默认最大循环次数"""
+        try:
+            return int(os.getenv('MUICE_AGENT_MAX_LOOP_COUNT', '5'))
+        except ValueError:
+            return 5
+    
+    @classmethod
+    def get_default_api_call_interval(cls):
+        """获取默认API调用间隔"""
+        try:
+            return float(os.getenv('MUICE_AGENT_API_CALL_INTERVAL', '1.0'))
+        except ValueError:
+            return 1.0
 
 class AgentResponse(BaseModel):
     """Agent响应模型"""
@@ -63,6 +76,7 @@ def format_agent_output(agent_name: str, result: str) -> str:
 请基于以上分析结果直接回答用户问题，不要对Agent进行分析或评价。
 """
     return formatted_output.strip()
+
 
 class AgentToolCall(BaseModel):
     """Agent工具调用模型"""

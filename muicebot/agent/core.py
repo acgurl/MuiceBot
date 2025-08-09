@@ -64,8 +64,9 @@ class Agent:
         if self.call_count > 1:  # 第一次调用不需要等待
             current_time = time.time()
             time_since_last_call = current_time - self.last_call_time
-            if time_since_last_call < self.config.api_call_interval:
-                wait_time = self.config.api_call_interval - time_since_last_call
+            api_call_interval = AgentConfig.get_default_api_call_interval()
+            if time_since_last_call < api_call_interval:
+                wait_time = api_call_interval - time_since_last_call
                 logger.info(f"Agent调用间隔控制: 等待 {wait_time:.2f} 秒")
                 await asyncio.sleep(wait_time)
             self.last_call_time = time.time()

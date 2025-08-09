@@ -1,11 +1,16 @@
 from typing import List, Optional
-from .config import AgentResponse
+from .config import AgentResponse, AgentConfig
 
 class TaskChain:
     """任务链管理"""
     
-    def __init__(self, max_loops: int = 5):
-        self.max_loops = max_loops
+    def __init__(self, max_loops: Optional[int] = None):
+        # 如果没有指定max_loops，则从Agent配置中获取默认值
+        if max_loops is None:
+            self.max_loops = AgentConfig.get_default_max_loop_count()
+        else:
+            self.max_loops = max_loops
+            
         self.current_loop = 0
         self.history: List[AgentResponse] = []
         
