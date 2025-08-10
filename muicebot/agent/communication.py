@@ -49,11 +49,11 @@ class AgentCommunication:
             logger.error(f"Agent协助请求发生未预期错误: {e}")
             return f"Agent调用失败: {str(e)}"
 
-    def reload_configs(self):
+    async def reload_configs(self):
         """重新加载配置"""
         try:
             logger.info("重新加载Agent配置")
-            self.agent_manager.reload_configs()
+            await self.agent_manager.reload_configs()
             # 重置任务链
             self.task_chain.reset()
             logger.info("Agent配置重新加载完成")

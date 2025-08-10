@@ -1,10 +1,9 @@
 from typing import List, Optional
 
 from ..llm import ModelRequest, load_model
-from ..plugin.func_call import get_function_calls
-from ..plugin.mcp import get_mcp_list
 from ..templates import generate_prompt_from_template
 from .config import AgentConfig, AgentResponse, format_agent_output
+from .tools import load_agent_tools
 
 
 class Agent:
@@ -19,29 +18,8 @@ class Agent:
         # Agent不再直接管理调用计数，由TaskChain管理
 
     async def _load_tools(self, tools_list: Optional[List[str]]) -> List[dict]:
-        """加载Agent可调用的工具"""
-        available_tools = []
-        tools_list = tools_list or []
-
-        # 获取Function Call工具
-        function_calls = get_function_calls()
-        for tool_name in tools_list:
-            if tool_name in function_calls:
-                available_tools.append(function_calls[tool_name].data())
-
-        # 获取MCP工具
-        try:
-            mcp_tools = await get_mcp_list()
-            for tool in mcp_tools:
-                # 检查工具名称是否在配置的工具列表中
-                if tool.get("function", {}).get("name") in tools_list:
-                    available_tools.append(tool)
-        except Exception as e:
-            from nonebot import logger
-
-            logger.warning(f"MCP工具加载失败，仅使用Function Call工具: error={e}")
-
-        return available_tools
+        """加载Agent可调用的工具 - 使用通用工具加载函数"""
+        return await load_agent_tools(self.agent_name, tools_list)
 
     async def execute(self, task: str, userid: str = "", is_private: bool = False) -> AgentResponse:
         """执行任务"""

@@ -2,11 +2,10 @@
 Agent工具函数模块
 """
 
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
-from ..plugin.func_call import get_function_calls
-from ..plugin.mcp import get_mcp_list
 from .config import AgentConfigManager
+from .tools import load_agent_tools
 
 
 async def get_agent_list() -> List[Dict[str, Any]]:
@@ -25,8 +24,8 @@ async def get_agent_list() -> List[Dict[str, Any]]:
         try:
             config = config_manager.get_agent_config(agent_name)
             # Agent本身就是工具，无论是否启用工具调用都应该添加到工具列表中
-            # 获取Agent可用的工具列表
-            available_tools = await _get_agent_available_tools(config.tools_list)
+            # 获取Agent可用的工具列表 - 使用通用工具加载函数
+            available_tools = await load_agent_tools(agent_name, config.tools_list)
 
             # 获取Agent配置中的最大循环次数
             max_loops = config.max_loop_count
@@ -80,37 +79,3 @@ async def get_agent_list() -> List[Dict[str, Any]]:
             continue
 
     return agent_tools
-
-
-async def _get_agent_available_tools(tools_list: Optional[List[str]]) -> List[Dict[str, Any]]:
-    """
-    获取Agent可用的工具列表
-
-    Args:
-        tools_list: Agent配置的工具名称列表
-
-    Returns:
-        List[Dict[str, Any]]: 可用工具列表
-    """
-    available_tools = []
-    tools_list = tools_list or []
-
-    # 获取Function Call工具
-    function_calls = get_function_calls()
-    for tool_name in tools_list:
-        if tool_name in function_calls:
-            available_tools.append(function_calls[tool_name].data())
-
-    # 获取MCP工具
-    try:
-        mcp_tools = await get_mcp_list()
-        for tool in mcp_tools:
-            # 检查工具名称是否在配置的工具列表中
-            if tool.get("function", {}).get("name") in tools_list:
-                available_tools.append(tool)
-    except Exception as e:
-        from nonebot import logger
-
-        logger.warning(f"MCP工具加载失败，仅使用Function Call工具: error={e}")
-
-    return available_tools

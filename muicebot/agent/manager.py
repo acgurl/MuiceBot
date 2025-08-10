@@ -1,5 +1,6 @@
 from .config import AgentConfigManager, AgentResponse
 from .core import Agent
+from .tools import refresh_agent_tools
 
 
 class AgentManager:
@@ -75,8 +76,26 @@ class AgentManager:
         logger.info("Agent响应处理完成，结果已返回")
         return response.result, False
 
-    def reload_configs(self):
-        """重新加载配置"""
+    async def reload_configs(self):
+        """重新加载配置并刷新工具缓存"""
+        from nonebot import logger
+
+        logger.info("开始重新加载Agent配置...")
+
+        # 重新加载配置
         self.config_manager.reload_configs()
+
         # 清空已缓存的Agent实例，以便重新创建
         self._agents.clear()
+
+        # 刷新所有Agent的工具缓存
+        logger.info("刷新所有Agent的工具缓存...")
+        agent_names = self.config_manager.list_agents()
+        for agent_name in agent_names:
+            try:
+                await refresh_agent_tools(agent_name)
+                logger.debug(f"Agent工具缓存刷新成功: {agent_name}")
+            except Exception as e:
+                logger.warning(f"Agent工具缓存刷新失败: {agent_name}, error={e}")
+
+        logger.info("Agent配置和工具缓存重载完成")
