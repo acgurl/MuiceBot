@@ -180,8 +180,17 @@ async def agent_function_call_handler(func: str, arguments: Optional[dict] = Non
     Returns:
         工具调用结果
     """
-    # 直接使用muicebot的通用工具调用机制
-    return await function_call_handler(func, arguments)
+    # 获取Muice实例并传入agent_handler
+    try:
+        from ..muice import Muice
+
+        muice_instance = Muice.get_instance()
+        return await function_call_handler(func, arguments, muice_instance._handle_agent_tool_call)
+    except Exception as e:
+        from nonebot import logger
+
+        logger.warning(f"获取Muice实例失败，使用无agent_handler的方式调用: {e}")
+        return await function_call_handler(func, arguments)
 
 
 def clear_agent_tool_cache(agent_name: Optional[str] = None):
