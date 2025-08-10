@@ -8,7 +8,7 @@ class AgentCommunication:
     """Agent与主模型通信接口"""
 
     def __init__(self):
-        self.agent_manager = AgentManager()
+        self.agent_manager = AgentManager.get_instance()
         self.task_chain = TaskChain()
 
     async def request_agent_assistance(

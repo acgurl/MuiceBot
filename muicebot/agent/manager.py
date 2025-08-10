@@ -5,9 +5,27 @@ from .core import Agent
 class AgentManager:
     """Agent管理器"""
 
+    _instance = None
+    _initialized = False
+
+    def __new__(cls):
+        if cls._instance is None:
+            cls._instance = super().__new__(cls)
+            cls._instance._initialized = False
+        return cls._instance
+
     def __init__(self):
+        if self._initialized:
+            return
+
         self.config_manager = AgentConfigManager()
         self._agents: dict = {}
+        self._initialized = True
+
+    @staticmethod
+    def get_instance():
+        """获取AgentManager单例实例"""
+        return AgentManager()
 
     async def dispatch_agent_task(
         self, agent_name: str, task: str, userid: str = "", is_private: bool = False
