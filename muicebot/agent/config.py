@@ -3,7 +3,7 @@ from pathlib import Path
 from typing import Dict, List, Optional
 
 import yaml
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel
 
 from ..llm._config import ModelConfig
 
@@ -28,29 +28,58 @@ class AgentConfig(ModelConfig):
 
         super().__init__(**data)
 
-    @field_validator("max_loop_count", check_fields=False)
-    @classmethod
-    def validate_max_loop_count(cls, v):
-        """验证最大循环次数"""
-        if not isinstance(v, int) or v <= 0:
-            raise ValueError("max_loop_count 必须是正整数")
-        return v
-
     @classmethod
     def get_default_max_loop_count(cls):
         """获取默认最大循环次数"""
-        try:
-            return int(os.getenv("MUICE_AGENT_MAX_LOOP_COUNT", "5"))
-        except ValueError:
+        env_value = os.getenv("MUICE_AGENT_MAX_LOOP_COUNT")
+
+        # 检查用户是否设置了环境变量
+        if env_value is None:
+            # 用户未设置环境变量，使用默认值
+            from nonebot import logger
+
+            logger.debug("环境变量 MUICE_AGENT_MAX_LOOP_COUNT 未设置，使用默认值 5")
             return 5
+
+        # 用户设置了环境变量，校验其值
+        if env_value.isdigit() and int(env_value) > 0:
+            try:
+                return int(env_value)
+            except ValueError:
+                pass
+
+        # 如果校验失败，使用默认值
+        from nonebot import logger
+
+        logger.warning(f"环境变量 MUICE_AGENT_MAX_LOOP_COUNT 的值 '{env_value}' 不是有效的正整数，使用默认值 5")
+        return 5
 
     @classmethod
     def get_default_api_call_interval(cls):
         """获取默认API调用间隔"""
-        try:
-            return float(os.getenv("MUICE_AGENT_API_CALL_INTERVAL", "1.0"))
-        except ValueError:
+        env_value = os.getenv("MUICE_AGENT_API_CALL_INTERVAL")
+
+        # 检查用户是否设置了环境变量
+        if env_value is None:
+            # 用户未设置环境变量，使用默认值
+            from nonebot import logger
+
+            logger.debug("环境变量 MUICE_AGENT_API_CALL_INTERVAL 未设置，使用默认值 1.0")
             return 1.0
+
+        # 用户设置了环境变量，校验其值
+        try:
+            value = float(env_value)
+            if value >= 0:
+                return value
+        except ValueError:
+            pass
+
+        # 如果校验失败，使用默认值
+        from nonebot import logger
+
+        logger.warning(f"环境变量 MUICE_AGENT_API_CALL_INTERVAL 的值 '{env_value}' 不是有效的非负数，使用默认值 1.0")
+        return 1.0
 
 
 class AgentResponse(BaseModel):
