@@ -238,7 +238,7 @@ class Muice:
         enable_plugins: bool = True,
     ) -> ModelCompletions:
         """
-        支持Agent协助的询问方法
+        支持Agent协助的询问方法（已弃用，请使用ask方法）
 
         :param session: 数据库会话
         :param message: 消息文本
@@ -246,51 +246,9 @@ class Muice:
         :param enable_plugins: 是否启用工具插件
         :return: 模型回复
         """
-        # 检查是否需要Agent协助
-        if self._need_agent_assistance(message.message):
-            agent_name, task = self._extract_agent_task(message.message)
-            if agent_name and task:
-                logger.info(f"检测到Agent协助请求: agent_name={agent_name}, task={task}")
-
-                # 调用Agent获取结果
-                agent_result = await self.agent_communication.request_agent_assistance(
-                    agent_name, task, message.userid, message.groupid == "-1"
-                )
-
-                # 将Agent结果作为上下文继续对话
-                message.message = f"基于以下信息回答用户问题:\n\n{agent_result}\n\n用户问题: {message.message}"
-                logger.info(f"Agent协助处理完成，更新后的消息长度: {len(message.message)}")
-
-        # 调用原有的ask方法，muicebot会根据工具提示词自行决定是否需要继续调用Agent
+        logger.warning("ask_with_agent_assistance方法已弃用，请使用ask方法")
+        # 直接调用ask方法，让模型根据工具提示词自行决定是否需要调用Agent
         return await self.ask(session, message, enable_history, enable_plugins)
-
-    def _need_agent_assistance(self, message: str) -> bool:
-        """判断是否需要Agent协助"""
-        # 简单实现：检查消息中是否包含特定关键词
-        # 实际实现中可以根据更复杂的规则来判断
-        agent_keywords = ["@agent", "@助手", "请使用", "使用以下工具"]
-        return any(keyword in message for keyword in agent_keywords)
-
-    def _extract_agent_task(self, message: str) -> tuple[str, str]:
-        """提取Agent名称和任务"""
-        # 简单实现：根据特定格式提取
-        # 实际实现中可以使用更复杂的解析逻辑
-        if "@agent" in message:
-            parts = message.split("@agent", 1)
-            if len(parts) > 1:
-                agent_part = parts[1].strip()
-                if ":" in agent_part:
-                    agent_name, task = agent_part.split(":", 1)
-                    return agent_name.strip(), task.strip()
-        elif "请使用" in message:
-            parts = message.split("请使用", 1)
-            if len(parts) > 1:
-                agent_part = parts[1].strip()
-                if " " in agent_part:
-                    agent_name, task = agent_part.split(" ", 1)
-                    return agent_name.strip(), task.strip()
-
-        return "", message
 
     async def ask(
         self,
@@ -368,7 +326,7 @@ class Muice:
         enable_plugins: bool = True,
     ) -> AsyncGenerator[ModelStreamCompletions, None]:
         """
-        支持Agent协助的流式询问方法
+        支持Agent协助的流式询问方法（已弃用，请使用ask_stream方法）
 
         :param session: 数据库会话
         :param message: 消息文本
@@ -376,22 +334,8 @@ class Muice:
         :param enable_plugins: 是否启用工具插件
         :return: 模型回复
         """
-        # 检查是否需要Agent协助
-        if self._need_agent_assistance(message.message):
-            agent_name, task = self._extract_agent_task(message.message)
-            if agent_name and task:
-                logger.info(f"检测到Agent协助请求(流式): agent_name={agent_name}, task={task}")
-
-                # 调用Agent获取结果
-                agent_result = await self.agent_communication.request_agent_assistance(
-                    agent_name, task, message.userid, message.groupid == "-1"
-                )
-
-                # 将Agent结果作为上下文继续对话
-                message.message = f"基于以下信息回答用户问题:\n\n{agent_result}\n\n用户问题: {message.message}"
-                logger.info(f"Agent协助处理完成(流式)，更新后的消息长度: {len(message.message)}")
-
-        # 调用原有的ask_stream方法，muicebot会根据工具提示词自行决定是否需要继续调用Agent
+        logger.warning("ask_stream_with_agent_assistance方法已弃用，请使用ask_stream方法")
+        # 直接调用ask_stream方法，让模型根据工具提示词自行决定是否需要调用Agent
         async for chunk in self.ask_stream(session, message, enable_history, enable_plugins):
             yield chunk
 

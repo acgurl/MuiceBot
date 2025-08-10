@@ -19,10 +19,20 @@ async def function_call_handler(func: str, arguments: dict[str, str] | None = No
         task = arguments.get("task", "") if arguments else ""
         if agent_name and task:
             # 调用Agent处理任务
-            agent_comm = AgentCommunication()
-            result = await agent_comm.request_agent_assistance(agent_name, task)
-            logger.success(f"Agent {agent_name} 执行成功，返回: {result}")
-            return result
+            try:
+                from ..muice import Muice
+
+                muice_instance = Muice.get_instance()
+                result = await muice_instance.agent_communication.request_agent_assistance(agent_name, task)
+                logger.success(f"Agent {agent_name} 执行成功，返回: {result}")
+                return result
+            except Exception as e:
+                logger.error(f"获取Muice实例失败，使用新建AgentCommunication: {e}")
+                # 降级处理：创建新的AgentCommunication实例
+                agent_comm = AgentCommunication()
+                result = await agent_comm.request_agent_assistance(agent_name, task)
+                logger.success(f"Agent {agent_name} 执行成功，返回: {result}")
+                return result
 
     if func_caller := get_function_calls().get(func):
         logger.info(f"Function call 请求 {func}, 参数: {arguments}")
