@@ -7,7 +7,7 @@ from muicebot.agent.manager import AgentManager
 class AgentCommunication:
     """Agent与主模型通信接口"""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.agent_manager = AgentManager.get_instance()
         self.task_chain = TaskChain()
 
@@ -24,10 +24,11 @@ class AgentCommunication:
             self.task_chain.increment_call_count()
 
             # 检查是否超过任务链的最大循环次数
-            is_limited, limit_info = self.task_chain.check_loop_limit()
-            if is_limited:
-                logger.warning(f"任务链{limit_info}")
-                return f"任务链{limit_info}。请重新开始新的任务。"
+            try:
+                self.task_chain.check_loop_limit()
+            except TaskChain.MaxLoopLimitExceededError as e:
+                logger.warning(f"任务链{str(e)}")
+                return f"任务链{str(e)}。请重新开始新的任务。"
 
             # 等待API调用间隔
             await self.task_chain.wait_api_interval()
@@ -49,7 +50,7 @@ class AgentCommunication:
             logger.error(f"Agent协助请求发生未预期错误: {e}")
             return f"Agent调用失败: {str(e)}"
 
-    async def reload_configs(self):
+    async def reload_configs(self) -> None:
         """重新加载配置"""
         try:
             logger.info("重新加载Agent配置")
