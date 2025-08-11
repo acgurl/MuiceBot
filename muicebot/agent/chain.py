@@ -64,3 +64,5 @@ class TaskChain:
     def reset(self) -> None:
         """重置调用计数"""
         self.current_loop = 0
+        self.call_count = 0
+        self.last_call_time = 0.0
