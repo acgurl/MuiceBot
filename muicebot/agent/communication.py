@@ -23,12 +23,12 @@ class AgentCommunication:
             # 增加调用计数
             self.task_chain.increment_call_count()
 
-            # 检查是否超过任务链的最大循环次数
+            # 检查是否超过最大调用次数
             try:
                 self.task_chain.check_loop_limit()
             except TaskChain.MaxLoopLimitExceededError as e:
-                logger.warning(f"任务链{str(e)}")
-                return f"任务链{str(e)}。请重新开始新的任务。"
+                logger.warning(f"{str(e)}")
+                return f"{str(e)}。请重新开始新的任务。"
 
             # 等待API调用间隔
             await self.task_chain.wait_api_interval()
@@ -36,10 +36,10 @@ class AgentCommunication:
             # 调用Agent执行任务
             try:
                 response = await self.agent_manager.dispatch_agent_task(agent_name, task, userid, is_private)
-                self.task_chain.add_response(response)
                 self.task_chain.increment_loop()
-                result, continue_chain = await self.agent_manager.handle_agent_response(response)
+                result = await self.agent_manager.handle_agent_response(response)
                 logger.info(f"Agent调用完成: result长度={len(result)}")
+
             except Exception as e:
                 logger.error(f"Agent调用失败: {e}")
                 return f"Agent调用失败: {str(e)}"
@@ -55,7 +55,7 @@ class AgentCommunication:
         try:
             logger.info("重新加载Agent配置")
             await self.agent_manager.reload_configs()
-            # 重置任务链
+            # 重置调用计数
             self.task_chain.reset()
             logger.info("Agent配置重新加载完成")
         except Exception as e:

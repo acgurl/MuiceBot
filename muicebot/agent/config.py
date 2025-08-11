@@ -1,102 +1,43 @@
-import os
 from pathlib import Path
 from typing import Dict, List, Optional
 
 import yaml
-from pydantic import BaseModel
+from nonebot import get_plugin_config
+from pydantic import BaseModel, Field
 
 from muicebot.llm._config import ModelConfig
 
 AGENTS_CONFIG_PATH = Path("configs/agents.yml")
 
 
+class AgentPluginConfig(BaseModel):
+    """Agent配置模型"""
+
+    max_loop_count: int = Field(default=5, description="最大循环次数")
+    api_call_interval: float = Field(default=1.0, description="API调用间隔")
+
+
+agent_plugin_config = get_plugin_config(AgentPluginConfig)
+
+
 class AgentConfig(ModelConfig):
     """Agent配置模型，继承自ModelConfig"""
 
-    tools_list: Optional[List[str]] = None
-    max_loop_count: int = 5  # 默认最大循环次数
-    description: Optional[str] = None  # Agent描述
-
-    def __init__(self, **data):
-        # 处理 tools_list 为 None 的情况
-        if "tools_list" not in data or data["tools_list"] is None:
-            data["tools_list"] = []
-
-        # 如果没有指定max_loop_count，使用默认值
-        if "max_loop_count" not in data:
-            data["max_loop_count"] = self.get_default_max_loop_count()
-
-        super().__init__(**data)
-
-    @classmethod
-    def get_default_max_loop_count(cls):
-        """获取默认最大循环次数"""
-        env_value = os.getenv("MUICE_AGENT_MAX_LOOP_COUNT")
-
-        # 检查用户是否设置了环境变量
-        if env_value is None:
-            # 用户未设置环境变量，使用默认值
-            from nonebot import logger
-
-            logger.debug("环境变量 MUICE_AGENT_MAX_LOOP_COUNT 未设置，使用默认值 5")
-            return 5
-
-        # 用户设置了环境变量，校验其值
-        if env_value.isdigit() and int(env_value) > 0:
-            try:
-                return int(env_value)
-            except ValueError:
-                pass
-
-        # 如果校验失败，使用默认值
-        from nonebot import logger
-
-        logger.warning(f"环境变量 MUICE_AGENT_MAX_LOOP_COUNT 的值 '{env_value}' 不是有效的正整数，使用默认值 5")
-        return 5
-
-    @classmethod
-    def get_default_api_call_interval(cls):
-        """获取默认API调用间隔"""
-        env_value = os.getenv("MUICE_AGENT_API_CALL_INTERVAL")
-
-        # 检查用户是否设置了环境变量
-        if env_value is None:
-            # 用户未设置环境变量，使用默认值
-            from nonebot import logger
-
-            logger.debug("环境变量 MUICE_AGENT_API_CALL_INTERVAL 未设置，使用默认值 1.0")
-            return 1.0
-
-        # 用户设置了环境变量，校验其值
-        try:
-            value = float(env_value)
-            if value >= 0:
-                return value
-        except ValueError:
-            pass
-
-        # 如果校验失败，使用默认值
-        from nonebot import logger
-
-        logger.warning(f"环境变量 MUICE_AGENT_API_CALL_INTERVAL 的值 '{env_value}' 不是有效的非负数，使用默认值 1.0")
-        return 1.0
+    tools_list: List[str] = Field(default_factory=list, description="Agent可用的工具列表")
+    max_loop_count: int = Field(default=5, description="最大循环次数")
+    description: Optional[str] = Field(default=None, description="Agent描述")
 
 
 class AgentResponse(BaseModel):
     """Agent响应模型"""
 
     result: str
-    need_continue: bool = False
-    next_agent: Optional[str] = None
-    next_task: Optional[str] = None
+    # Agent 只返回分析结果
 
 
 def format_agent_output(
     agent_name: str,
     result: str,
-    need_continue: bool = False,
-    next_agent: Optional[str] = None,
-    next_task: Optional[str] = None,
 ) -> str:
     """
     格式化Agent输出，使其能够被主模型正确识别和利用
@@ -104,9 +45,6 @@ def format_agent_output(
     Args:
         agent_name: Agent名称
         result: Agent原始结果
-        need_continue: 是否需要继续调用其他Agent
-        next_agent: 下一个要调用的Agent名称
-        next_task: 下一个要执行的任务
 
     Returns:
         格式化后的输出字符串
@@ -118,16 +56,6 @@ def format_agent_output(
 内容:
 {result}
 [AGENT_ANALYSIS_END]
-
-处理指导:
-1. 请仔细分析以上Agent的分析结果
-2. 判断是否需要进一步处理或调用其他专业Agent
-3. 如果需要继续调用，请明确指出要调用哪个Agent以及具体任务
-4. 如果不需要继续调用，请直接基于以上分析结果回答用户问题
-
-是否建议继续调用: {"是" if need_continue else "否"}
-{"建议调用的Agent: " + next_agent if next_agent else ""}
-{"建议执行的任务: " + next_task if next_task else ""}
 """
     return formatted_output.strip()
 
@@ -197,7 +125,7 @@ class AgentConfigManager:
 
         config = self._configs[agent_name]
         # 检查是否启用工具调用且工具列表不为空
-        return config.function_call and config.tools_list is not None and len(config.tools_list) > 0
+        return config.function_call and len(config.tools_list) > 0
 
     def get_available_tools(self, agent_name: str) -> List[str]:
         """
@@ -209,6 +137,6 @@ class AgentConfigManager:
         config = self._configs[agent_name]
         # 只有在启用工具调用时才返回工具列表
         if config.function_call:
-            return config.tools_list or []
+            return config.tools_list
         else:
             return []

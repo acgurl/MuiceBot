@@ -43,12 +43,12 @@ class AgentManager:
 
             # 执行任务
             response = await agent.execute(task, userid, is_private)
-            logger.info(f"Agent任务执行完成: {agent_name}, need_continue={response.need_continue}")
+            logger.info(f"Agent任务执行完成: {agent_name}")
 
             return response
         except Exception as e:
             logger.error(f"Agent任务分发失败: {e}")
-            return AgentResponse(result=f"任务分发失败: {str(e)}", need_continue=False)
+            return AgentResponse(result=f"任务分发失败: {str(e)}")
 
     def _get_or_create_agent(self, agent_name: str) -> Agent:
         """获取或创建Agent实例"""
@@ -67,14 +67,12 @@ class AgentManager:
         logger.debug(f"使用Agent实例: {agent_name}")
         return self._agents[agent_name]
 
-    async def handle_agent_response(self, response: AgentResponse) -> tuple[str, bool]:
+    async def handle_agent_response(self, response: AgentResponse) -> str:
         """处理Agent返回的结果"""
         from nonebot import logger
 
-        # Agent只返回结果，不决定是否继续调用
-        # 继续调用的决定权在muicebot
         logger.info("Agent响应处理完成，结果已返回")
-        return response.result, False
+        return response.result
 
     async def reload_configs(self):
         """重新加载配置并刷新工具缓存"""

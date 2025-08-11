@@ -27,9 +27,6 @@ async def get_agent_list() -> List[Dict[str, Any]]:
             # 获取Agent可用的工具列表 - 使用通用工具加载函数
             available_tools = await load_agent_tools(agent_name, config.tools_list)
 
-            # 获取Agent配置中的最大循环次数
-            max_loops = config.max_loop_count
-
             if available_tools:
                 tools_description = ", ".join(
                     [tool.get("function", {}).get("name", "unknown") for tool in available_tools]
@@ -39,8 +36,7 @@ async def get_agent_list() -> List[Dict[str, Any]]:
                     config.description
                     or f"调用{agent_name} Agent处理复杂任务。该Agent具备多种工具能力，可以使用以下工具: {tools_description}。"
                     f"当用户请求涉及复杂分析、数据处理、信息检索或多步骤操作时，应该调用此Agent。"
-                    f"这是一个智能任务链工具，最多可以循环调用{max_loops}次以确保任务完整完成。"
-                    f"请根据任务的复杂程度和完成质量决定是否需要继续调用此Agent。"
+                    f"Agent将专注于分析并提供专业结果，后续决策由主模型控制。"
                 )
             else:
                 # 如果没有可用工具，提供一个通用的Agent工具
@@ -48,9 +44,8 @@ async def get_agent_list() -> List[Dict[str, Any]]:
                 agent_description = (
                     config.description
                     or f"调用{agent_name} Agent处理通用任务。此Agent适用于处理各种类型的请求，"
-                    f"包括问答、分析、总结、创作等。如果Agent的处理结果不完整或需要进一步处理，"
-                    f"你可以再次调用该Agent或其他Agent继续处理，最多可以循环调用{max_loops}次。"
-                    f"当任务需要多轮交互或逐步完善时，请充分利用此功能。"
+                    f"包括问答、分析、总结、创作等。Agent将专注于分析并提供专业结果，"
+                    f"后续决策由主模型控制。"
                 )
 
             agent_tool = {

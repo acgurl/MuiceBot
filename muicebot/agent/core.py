@@ -11,11 +11,10 @@ class Agent:
 
     def __init__(self, config: AgentConfig, agent_name: str = ""):
         self.config = config
-        self.agent_name = agent_name or getattr(config, "name", "Agent")
+        self.agent_name = agent_name or "Agent"
         # 使用现有的load_model函数加载模型
         self.model = load_model(config)
         self.tools: List[dict] = []  # 初始化为空列表，工具将在需要时异步加载
-        # Agent不再直接管理调用计数，由TaskChain管理
 
     async def _load_tools(self, tools_list: Optional[List[str]]) -> List[dict]:
         """加载Agent可调用的工具 - 使用通用工具加载函数"""
@@ -27,8 +26,6 @@ class Agent:
 
         logger.info(f"Agent开始执行任务: task={task[:50]}..., userid={userid}, is_private={is_private}")
         logger.info(f"Agent配置: function_call={self.config.function_call}, tools_list={self.config.tools_list}")
-
-        # Agent不再直接处理循环调用逻辑，这些由TaskChain处理
 
         # 准备提示词和工具列表
         prompt = self._prepare_prompt(task, userid, is_private)
@@ -49,22 +46,16 @@ class Agent:
             logger.debug(f"Agent模型响应内容: {response.text[:200]}...")
         except Exception as e:
             logger.error(f"Agent模型调用失败: {e}")
-            return AgentResponse(result=f"模型调用失败: {str(e)}", need_continue=False)
+            return AgentResponse(result=f"模型调用失败: {str(e)}")
 
         # 解析响应并构造AgentResponse
         try:
             agent_response = self._parse_response(response)
-            logger.info(
-                f"Agent响应解析完成: result长度={len(agent_response.result)}, need_continue={agent_response.need_continue}"
-            )
-            if agent_response.need_continue:
-                logger.info(
-                    f"Agent请求继续调用: next_agent={agent_response.next_agent}, next_task={agent_response.next_task}"
-                )
+            logger.info(f"Agent响应解析完成: result长度={len(agent_response.result)}")
             return agent_response
         except Exception as e:
             logger.error(f"Agent响应解析失败: {e}")
-            return AgentResponse(result=f"响应解析失败: {str(e)}", need_continue=False)
+            return AgentResponse(result=f"响应解析失败: {str(e)}")
 
     def _prepare_prompt(self, task: str, userid: str, is_private: bool) -> str:
         """准备提示词"""
@@ -87,22 +78,8 @@ class Agent:
         result = model_response.text
         logger.debug(f"Agent响应解析完成: 结果长度={len(result)}")
 
-        # 尝试从模型响应中提取是否需要继续调用的信息
-        need_continue = False
-        next_agent = None
-        next_task = None
-
-        # 简单的解析逻辑，实际实现中可以根据更复杂的规则来判断
-        # 这里只是一个示例，实际应用中可能需要更复杂的解析逻辑
-        if "需要继续" in result or "继续调用" in result:
-            need_continue = True
-            # 这里可以添加更复杂的逻辑来提取next_agent和next_task
-            # 例如通过正则表达式或其他解析方法
-
         # 使用格式化函数包装Agent输出，确保主模型能正确识别和利用
-        formatted_result = format_agent_output(self.agent_name, result, need_continue, next_agent, next_task)
+        formatted_result = format_agent_output(self.agent_name, result)
         logger.debug(f"Agent输出格式化完成: 格式化后长度={len(formatted_result)}")
 
-        return AgentResponse(
-            result=formatted_result, need_continue=need_continue, next_agent=next_agent, next_task=next_task
-        )
+        return AgentResponse(result=formatted_result)
