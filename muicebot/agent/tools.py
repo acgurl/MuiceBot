@@ -1,10 +1,9 @@
 import asyncio
 from threading import Lock
-from typing import Any, Dict, List, Optional
+from typing import Dict, List, Optional
 
 from nonebot import logger
 
-from muicebot.llm.utils.tools import function_call_handler
 from muicebot.plugin.func_call import get_function_list
 from muicebot.plugin.mcp import get_mcp_list
 
@@ -104,6 +103,18 @@ class AgentToolLoader:
         except Exception as e:
             logger.warning(f"MCP工具加载失败，仅使用Function Call工具: error={e}")
 
+        # 获取所有可用的Agent工具
+        try:
+            from muicebot.agent.utils import get_agent_list
+
+            agent_tools = await get_agent_list()
+            for tool in agent_tools:
+                tool_name = tool.get("function", {}).get("name")
+                if tool_name in tools_list:
+                    available_tools.append(tool)
+        except Exception as e:
+            logger.warning(f"Agent工具加载失败，仅使用Function Call和MCP工具: error={e}")
+
         return available_tools
 
     def clear_agent_cache(self, agent_name: Optional[str] = None):
@@ -163,28 +174,6 @@ async def load_agent_tools(agent_name: str, tools_list: Optional[List[str]] = No
         工具列表
     """
     return await _tool_loader.load_agent_tools(agent_name, tools_list)
-
-
-async def agent_function_call_handler(func: str, arguments: Optional[dict] = None) -> Any:
-    """
-    处理Agent的工具调用 - 使用muicebot的通用工具调用机制
-
-    Args:
-        func: 工具名称
-        arguments: 工具参数
-
-    Returns:
-        工具调用结果
-    """
-    # 获取Muice实例并传入agent_handler
-    try:
-        from muicebot.muice import Muice
-
-        muice_instance = Muice.get_instance()
-        return await function_call_handler(func, arguments, muice_instance._handle_agent_tool_call)
-    except Exception as e:
-        logger.warning(f"获取Muice实例失败，使用无agent_handler的方式调用: {e}")
-        return await function_call_handler(func, arguments)
 
 
 def clear_agent_tool_cache(agent_name: Optional[str] = None):

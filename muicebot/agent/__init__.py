@@ -3,7 +3,6 @@ MuiceBot Agent Module
 """
 
 from muicebot.agent.chain import TaskChain
-from muicebot.agent.communication import AgentCommunication
 from muicebot.agent.config import AgentConfig, AgentConfigManager, AgentResponse
 from muicebot.agent.core import Agent
 from muicebot.agent.manager import AgentManager
@@ -15,7 +14,6 @@ __all__ = [
     "AgentConfigManager",
     "Agent",
     "AgentManager",
-    "AgentCommunication",
     "TaskChain",
     "get_agent_list",
 ]

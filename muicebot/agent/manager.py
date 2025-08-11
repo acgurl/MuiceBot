@@ -30,11 +30,9 @@ class AgentManager:
         """获取AgentManager单例实例"""
         return AgentManager()
 
-    async def dispatch_agent_task(
-        self, agent_name: str, task: str, userid: str = "", is_private: bool = False
-    ) -> AgentResponse:
+    async def dispatch_agent_task(self, agent_name: str, task: str) -> AgentResponse:
         """分发任务给指定Agent"""
-        logger.info(f"开始分发Agent任务: agent_name={agent_name}, task={task[:50]}..., userid={userid}")
+        logger.info(f"开始分发Agent任务: agent_name={agent_name}, task={task[:50]}...")
 
         try:
             # 获取或创建Agent实例
@@ -42,7 +40,7 @@ class AgentManager:
             logger.info(f"Agent实例获取/创建成功: {agent_name}")
 
             # 执行任务
-            response = await agent.execute(task, userid, is_private)
+            response = await agent.execute(task)
             logger.info(f"Agent任务执行完成: {agent_name}")
 
             return response

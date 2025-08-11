@@ -7,7 +7,9 @@ from typing import Any, Dict, List
 from nonebot import logger
 from pydantic import BaseModel, Field
 
+from muicebot.agent.communication import AgentCommunication
 from muicebot.agent.config import AgentConfigManager
+from muicebot.agent.manager import AgentManager
 
 
 class AgentTaskParameters(BaseModel):
@@ -66,3 +68,47 @@ async def get_agent_list() -> List[Dict[str, Any]]:
             continue
 
     return agent_tools
+
+
+def get_agent_lists() -> Dict[str, Any]:
+    """
+    获取所有可用Agent的字典，格式类似于get_function_calls()
+
+    Returns:
+        Dict[str, Any]: Agent字典，键为Agent名称，值为Agent对象
+    """
+    agent_dict = {}
+    config_manager = AgentConfigManager()
+    agents = config_manager.list_agents()
+
+    # 为每个Agent创建字典项
+    for agent_name in agents:
+        try:
+            config = config_manager.get_agent_config(agent_name)
+            # 将Agent配置添加到字典中
+            agent_dict[f"agent_{agent_name}"] = config
+        except Exception as e:
+            logger.warning(f"获取Agent配置失败，跳过该Agent: agent_name={agent_name}, error={e}")
+            continue
+
+    return agent_dict
+
+
+async def call_agent(func: str, arguments: Dict[str, str]) -> str:
+    """
+    调用Agent并处理响应
+
+    Args:
+        func: Agent函数名
+        arguments: Agent函数参数
+
+    Returns:
+        str: Agent调用结果
+    """
+    logger.info(f"Agent call 请求 {func}, 参数: {arguments}")
+    agent_comm = AgentCommunication()
+    agent_manager = AgentManager.get_instance()
+    response = await agent_comm.request_agent_assistance(func, arguments)
+    result = await agent_manager.handle_agent_response(response)
+    logger.success(f"Agent call 成功，返回: {result}")
+    return result

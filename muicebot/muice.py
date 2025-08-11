@@ -1,12 +1,12 @@
 import os
 import time
-from typing import Any, AsyncGenerator, Optional, Union
+from typing import AsyncGenerator, Optional, Union
 
 from nonebot import logger
 from nonebot_plugin_orm import async_scoped_session
 
 from .agent import get_agent_list
-from .agent.communication import AgentCommunication
+from .agent.core import Agent
 from .config import (
     ModelConfig,
     get_model_config,
@@ -64,7 +64,7 @@ class Muice:
         self._model_config_manager.register_listener(self._on_config_changed)
 
         # 初始化Agent通信接口
-        self.agent_communication = AgentCommunication()
+        self.agent = Agent(self.model_config)
 
         self._initialized = True
 
@@ -133,27 +133,9 @@ class Muice:
         self.load_model()
 
         # 重新加载Agent配置
-        await self.agent_communication.reload_configs()
+        await self.agent.agent_comm.reload_configs()
 
         logger.success(f"模型自动重载完成: {old_config_name} -> {self.model_config_name}")
-
-    async def _handle_agent_tool_call(self, agent_name: str, task: str) -> Any:
-        """
-        处理Agent工具调用
-
-        Args:
-            agent_name: Agent名称
-            task: 任务描述
-
-        Returns:
-            Agent执行结果
-        """
-        try:
-            result = await self.agent_communication.request_agent_assistance(agent_name, task)
-            return result
-        except Exception as e:
-            logger.error(f"Agent工具调用失败: {e}")
-            return f"Agent工具调用失败: {str(e)}"
 
     def change_model_config(self, config_name: Optional[str] = None, reload: bool = False) -> str:
         """

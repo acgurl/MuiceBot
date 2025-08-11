@@ -2,6 +2,7 @@ from typing import List, Optional
 
 from nonebot import logger
 
+from muicebot.agent.communication import AgentCommunication
 from muicebot.agent.config import AgentConfig, AgentResponse, format_agent_output
 from muicebot.agent.tools import load_agent_tools
 from muicebot.llm import ModelRequest, load_model
@@ -17,18 +18,20 @@ class Agent:
         # 使用现有的load_model函数加载模型
         self.model = load_model(config)
         self.tools: List[dict] = []  # 初始化为空列表，工具将在需要时异步加载
+        # 初始化Agent通信接口
+        self.agent_comm = AgentCommunication()
 
     async def _load_tools(self, tools_list: Optional[List[str]]) -> List[dict]:
         """加载Agent可调用的工具 - 使用通用工具加载函数"""
         return await load_agent_tools(self.agent_name, tools_list)
 
-    async def execute(self, task: str, userid: str = "", is_private: bool = False) -> AgentResponse:
+    async def execute(self, task: str) -> AgentResponse:
         """执行任务"""
-        logger.info(f"Agent开始执行任务: task={task[:50]}..., userid={userid}, is_private={is_private}")
+        logger.info(f"Agent开始执行任务: task={task[:50]}...")
         logger.info(f"Agent配置: function_call={self.config.function_call}, tools_list={self.config.tools_list}")
 
         # 准备提示词和工具列表
-        prompt = self._prepare_prompt(task, userid, is_private)
+        prompt = self._prepare_prompt(task)
         tools = await self._prepare_tools()
 
         logger.debug(f"Agent提示词准备完成: prompt长度={len(prompt)}")
@@ -57,10 +60,11 @@ class Agent:
             logger.error(f"Agent响应解析失败: {e}")
             return AgentResponse(result=f"响应解析失败: {str(e)}")
 
-    def _prepare_prompt(self, task: str, userid: str, is_private: bool) -> str:
+    def _prepare_prompt(self, task: str) -> str:
         """准备提示词"""
         if self.config.template:
-            system_prompt = generate_prompt_from_template(self.config.template, userid, is_private).strip()
+            # 使用默认值处理模板
+            system_prompt = generate_prompt_from_template(self.config.template, "", False).strip()
             return f"{system_prompt}\n\n{task}"
         return task
 
