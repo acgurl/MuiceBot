@@ -5,7 +5,6 @@ Agent工具函数模块
 from typing import Any, Dict, List
 
 from muicebot.agent.config import AgentConfigManager
-from muicebot.agent.tools import load_agent_tools
 
 
 async def get_agent_list() -> List[Dict[str, Any]]:
@@ -24,29 +23,8 @@ async def get_agent_list() -> List[Dict[str, Any]]:
         try:
             config = config_manager.get_agent_config(agent_name)
             # Agent本身就是工具，无论是否启用工具调用都应该添加到工具列表中
-            # 获取Agent可用的工具列表 - 使用通用工具加载函数
-            available_tools = await load_agent_tools(agent_name, config.tools_list)
-
-            if available_tools:
-                tools_description = ", ".join(
-                    [tool.get("function", {}).get("name", "unknown") for tool in available_tools]
-                )
-                # 使用配置中的description字段，如果没有则使用默认描述
-                agent_description = (
-                    config.description
-                    or f"调用{agent_name} Agent处理复杂任务。该Agent具备多种工具能力，可以使用以下工具: {tools_description}。"
-                    f"当用户请求涉及复杂分析、数据处理、信息检索或多步骤操作时，应该调用此Agent。"
-                    f"Agent将专注于分析并提供专业结果，后续决策由主模型控制。"
-                )
-            else:
-                # 如果没有可用工具，提供一个通用的Agent工具
-                # 使用配置中的description字段，如果没有则使用默认描述
-                agent_description = (
-                    config.description
-                    or f"调用{agent_name} Agent处理通用任务。此Agent适用于处理各种类型的请求，"
-                    f"包括问答、分析、总结、创作等。Agent将专注于分析并提供专业结果，"
-                    f"后续决策由主模型控制。"
-                )
+            # 使用配置中的description字段，如果没有则不提供描述
+            agent_description = config.description
 
             agent_tool = {
                 "type": "function",
