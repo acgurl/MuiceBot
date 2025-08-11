@@ -4,8 +4,8 @@ Agent工具函数模块
 
 from typing import Any, Dict, List
 
-from .config import AgentConfigManager
-from .tools import load_agent_tools
+from muicebot.agent.config import AgentConfigManager
+from muicebot.agent.tools import load_agent_tools
 
 
 async def get_agent_list() -> List[Dict[str, Any]]:

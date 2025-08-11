@@ -5,7 +5,7 @@ from typing import Dict, List, Optional
 import yaml
 from pydantic import BaseModel
 
-from ..llm._config import ModelConfig
+from muicebot.llm._config import ModelConfig
 
 AGENTS_CONFIG_PATH = Path("configs/agents.yml")
 

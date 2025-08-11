@@ -1,9 +1,9 @@
 from typing import List, Optional
 
-from ..llm import ModelRequest, load_model
-from ..templates import generate_prompt_from_template
-from .config import AgentConfig, AgentResponse, format_agent_output
-from .tools import load_agent_tools
+from muicebot.agent.config import AgentConfig, AgentResponse, format_agent_output
+from muicebot.agent.tools import load_agent_tools
+from muicebot.llm import ModelRequest, load_model
+from muicebot.templates import generate_prompt_from_template
 
 
 class Agent:

@@ -2,9 +2,9 @@ import asyncio
 from threading import Lock
 from typing import Any, Dict, List, Optional
 
-from ..llm.utils.tools import function_call_handler
-from ..plugin.func_call import get_function_list
-from ..plugin.mcp import get_mcp_list
+from muicebot.llm.utils.tools import function_call_handler
+from muicebot.plugin.func_call import get_function_list
+from muicebot.plugin.mcp import get_mcp_list
 
 
 class AgentToolLoader:
@@ -28,7 +28,7 @@ class AgentToolLoader:
         """
         from nonebot import logger
 
-        from ..agent.config import AgentConfigManager
+        from muicebot.agent.config import AgentConfigManager
 
         # 如果没有提供工具列表，从配置中获取
         if tools_list is None:
@@ -182,7 +182,7 @@ async def agent_function_call_handler(func: str, arguments: Optional[dict] = Non
     """
     # 获取Muice实例并传入agent_handler
     try:
-        from ..muice import Muice
+        from muicebot.muice import Muice
 
         muice_instance = Muice.get_instance()
         return await function_call_handler(func, arguments, muice_instance._handle_agent_tool_call)

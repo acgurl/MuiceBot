@@ -1,7 +1,7 @@
 from nonebot import logger
 
-from .chain import TaskChain
-from .manager import AgentManager
+from muicebot.agent.chain import TaskChain
+from muicebot.agent.manager import AgentManager
 
 
 class AgentCommunication:

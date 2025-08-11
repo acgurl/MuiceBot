@@ -1,6 +1,6 @@
-from .config import AgentConfigManager, AgentResponse
-from .core import Agent
-from .tools import refresh_agent_tools
+from muicebot.agent.config import AgentConfigManager, AgentResponse
+from muicebot.agent.core import Agent
+from muicebot.agent.tools import refresh_agent_tools
 
 
 class AgentManager:

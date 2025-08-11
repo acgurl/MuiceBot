@@ -2,7 +2,7 @@ import asyncio
 import time
 from typing import List, Optional
 
-from .config import AgentConfig, AgentResponse
+from muicebot.agent.config import AgentConfig, AgentResponse
 
 
 class TaskChain:

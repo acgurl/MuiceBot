@@ -2,12 +2,12 @@
 MuiceBot Agent Module
 """
 
-from .chain import TaskChain
-from .communication import AgentCommunication
-from .config import AgentConfig, AgentConfigManager, AgentResponse
-from .core import Agent
-from .manager import AgentManager
-from .utils import get_agent_list
+from muicebot.agent.chain import TaskChain
+from muicebot.agent.communication import AgentCommunication
+from muicebot.agent.config import AgentConfig, AgentConfigManager, AgentResponse
+from muicebot.agent.core import Agent
+from muicebot.agent.manager import AgentManager
+from muicebot.agent.utils import get_agent_list
 
 __all__ = [
     "AgentConfig",
