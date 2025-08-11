@@ -1,3 +1,5 @@
+from nonebot import logger
+
 from muicebot.agent.config import AgentConfigManager, AgentResponse
 from muicebot.agent.core import Agent
 from muicebot.agent.tools import refresh_agent_tools
@@ -32,8 +34,6 @@ class AgentManager:
         self, agent_name: str, task: str, userid: str = "", is_private: bool = False
     ) -> AgentResponse:
         """分发任务给指定Agent"""
-        from nonebot import logger
-
         logger.info(f"开始分发Agent任务: agent_name={agent_name}, task={task[:50]}..., userid={userid}")
 
         try:
@@ -52,8 +52,6 @@ class AgentManager:
 
     def _get_or_create_agent(self, agent_name: str) -> Agent:
         """获取或创建Agent实例"""
-        from nonebot import logger
-
         if agent_name not in self._agents:
             logger.info(f"创建新的Agent实例: {agent_name}")
             try:
@@ -69,15 +67,11 @@ class AgentManager:
 
     async def handle_agent_response(self, response: AgentResponse) -> str:
         """处理Agent返回的结果"""
-        from nonebot import logger
-
         logger.info("Agent响应处理完成，结果已返回")
         return response.result
 
     async def reload_configs(self):
         """重新加载配置并刷新工具缓存"""
-        from nonebot import logger
-
         logger.info("开始重新加载Agent配置...")
 
         # 重新加载配置

@@ -1,5 +1,7 @@
 from typing import List, Optional
 
+from nonebot import logger
+
 from muicebot.agent.config import AgentConfig, AgentResponse, format_agent_output
 from muicebot.agent.tools import load_agent_tools
 from muicebot.llm import ModelRequest, load_model
@@ -22,8 +24,6 @@ class Agent:
 
     async def execute(self, task: str, userid: str = "", is_private: bool = False) -> AgentResponse:
         """执行任务"""
-        from nonebot import logger
-
         logger.info(f"Agent开始执行任务: task={task[:50]}..., userid={userid}, is_private={is_private}")
         logger.info(f"Agent配置: function_call={self.config.function_call}, tools_list={self.config.tools_list}")
 
@@ -73,8 +73,6 @@ class Agent:
 
     def _parse_response(self, model_response) -> AgentResponse:
         """解析模型响应"""
-        from nonebot import logger
-
         result = model_response.text
         logger.debug(f"Agent响应解析完成: 结果长度={len(result)}")
 

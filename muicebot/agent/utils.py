@@ -4,6 +4,8 @@ Agent工具函数模块
 
 from typing import Any, Dict, List
 
+from nonebot import logger
+
 from muicebot.agent.config import AgentConfigManager
 
 
@@ -46,8 +48,6 @@ async def get_agent_list() -> List[Dict[str, Any]]:
             }
             agent_tools.append(agent_tool)
         except Exception as e:
-            from nonebot import logger
-
             logger.warning(f"获取Agent配置失败，跳过该Agent: agent_name={agent_name}, error={e}")
             continue
 
