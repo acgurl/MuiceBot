@@ -28,7 +28,7 @@ class Agent:
         logger.info(f"Agent配置: function_call={self.config.function_call}, tools_list={self.config.tools_list}")
 
         # 准备提示词和工具列表
-        prompt = self._prepare_prompt(task)
+        prompt = self._prepare_prompt(task, "Muice", True)
         tools = await self._prepare_tools()
 
         logger.debug(f"Agent提示词准备完成: prompt长度={len(prompt)}")
@@ -63,11 +63,11 @@ class Agent:
             logger.error(f"Agent响应解析失败: {e}")
             return AgentResponse(result=f"响应解析失败: {str(e)}")
 
-    def _prepare_prompt(self, task: str) -> str:
+    def _prepare_prompt(self, task: str, userid: str = "Muice", is_private: bool = True) -> str:
         """准备提示词"""
         if self.config.template:
-            # 使用默认值处理模板
-            system_prompt = generate_prompt_from_template(self.config.template, "", False).strip()
+            # 使用传入的参数处理模板
+            system_prompt = generate_prompt_from_template(self.config.template, userid, is_private).strip()
             return f"{system_prompt}\n\n{task}"
         return task
 

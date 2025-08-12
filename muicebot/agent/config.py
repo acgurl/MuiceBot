@@ -50,13 +50,11 @@ def format_agent_output(
         格式化后的输出字符串
     """
     # 使用特殊标记包装Agent输出，帮助主模型识别这是工具返回的结果
-    formatted_output = f"""
-[AGENT_ANALYSIS_RESULT]
+    formatted_output = f"""[AGENT_ANALYSIS_RESULT]
 来源: {agent_name}
 内容:
 {result}
-[AGENT_ANALYSIS_END]
-"""
+[AGENT_ANALYSIS_END]"""
     return formatted_output.strip()
 
 

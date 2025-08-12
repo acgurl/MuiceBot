@@ -48,7 +48,7 @@ class TaskChain:
         api_call_interval = agent_plugin_config.api_call_interval
 
         # 如果不是第一次调用，检查是否需要等待
-        if not self.last_call_time == 0.0:
+        if self.last_call_time > 0:
             # 计算距离上次调用的时间
             time_since_last_call = current_time - self.last_call_time
             # 如果距离上次调用的时间小于配置的间隔，则等待

@@ -4,6 +4,8 @@ from typing import Dict, List, Optional
 
 from nonebot import logger
 
+from muicebot.agent.config import AgentConfigManager
+from muicebot.agent.utils import get_agent_list
 from muicebot.plugin.func_call import get_function_list
 from muicebot.plugin.mcp import get_mcp_list
 
@@ -27,8 +29,6 @@ class AgentToolLoader:
         Returns:
             工具列表
         """
-        from muicebot.agent.config import AgentConfigManager
-
         # 如果没有提供工具列表，从配置中获取
         if tools_list is None:
             config_manager = AgentConfigManager()
@@ -105,8 +105,6 @@ class AgentToolLoader:
 
         # 获取所有可用的Agent工具
         try:
-            from muicebot.agent.utils import get_agent_list
-
             agent_tools = await get_agent_list()
             for tool in agent_tools:
                 tool_name = tool.get("function", {}).get("name")
