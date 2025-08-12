@@ -298,27 +298,6 @@ class Muice:
 
         return response
 
-    async def ask_stream_with_agent_assistance(
-        self,
-        session: async_scoped_session,
-        message: Message,
-        enable_history: bool = True,
-        enable_plugins: bool = True,
-    ) -> AsyncGenerator[ModelStreamCompletions, None]:
-        """
-        支持Agent协助的流式询问方法（已弃用，请使用ask_stream方法）
-
-        :param session: 数据库会话
-        :param message: 消息文本
-        :param enable_history: 是否启用历史记录
-        :param enable_plugins: 是否启用工具插件
-        :return: 模型回复
-        """
-        logger.warning("ask_stream_with_agent_assistance方法已弃用，请使用ask_stream方法")
-        # 直接调用ask_stream方法，让模型根据工具提示词自行决定是否需要调用Agent
-        async for chunk in self.ask_stream(session, message, enable_history, enable_plugins):
-            yield chunk
-
     async def ask_stream(
         self,
         session: async_scoped_session,
