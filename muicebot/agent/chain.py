@@ -47,16 +47,17 @@ class TaskChain:
         current_time = time.time()
         api_call_interval = agent_plugin_config.api_call_interval
 
-        # 如果是第一次调用（last_call_time为0.0），则等待完整的间隔
-        if self.last_call_time == 0.0:
-            await asyncio.sleep(api_call_interval)
-        else:
+        # 如果不是第一次调用，检查是否需要等待
+        if not self.last_call_time == 0.0:
             # 计算距离上次调用的时间
             time_since_last_call = current_time - self.last_call_time
             # 如果距离上次调用的时间小于配置的间隔，则等待
             if time_since_last_call < api_call_interval:
                 wait_time = api_call_interval - time_since_last_call
                 await asyncio.sleep(wait_time)
+        else:
+            # 如果是第一次调用，则等待完整的间隔
+            await asyncio.sleep(api_call_interval)
 
         # 更新上次调用时间
         self.last_call_time = time.time()
