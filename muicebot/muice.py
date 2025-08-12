@@ -119,7 +119,7 @@ class Muice:
 
         return True
 
-    async def _on_config_changed(self, new_config: ModelConfig, old_config: Optional[ModelConfig] = None):
+    def _on_config_changed(self, new_config: ModelConfig, old_config: Optional[ModelConfig] = None):
         """配置文件变更时的回调函数"""
         logger.info("检测到配置文件变更，自动重载模型...")
         # 更新配置
@@ -133,7 +133,7 @@ class Muice:
         self.load_model()
 
         # 重新加载Agent配置
-        await self.agent.agent_comm.reload_configs()
+        self.agent.agent_comm.reload_configs()
 
         logger.success(f"模型自动重载完成: {old_config_name} -> {self.model_config_name}")
 

@@ -2,7 +2,7 @@ from nonebot import logger
 
 from muicebot.agent.config import AgentConfigManager, AgentResponse
 from muicebot.agent.core import Agent
-from muicebot.agent.tools import refresh_agent_tools
+from muicebot.agent.tools import clear_agent_tool_cache
 
 
 class AgentManager:
@@ -68,7 +68,7 @@ class AgentManager:
         logger.info("Agent响应处理完成，结果已返回")
         return response.result
 
-    async def reload_configs(self):
+    def reload_configs(self):
         """重新加载配置并刷新工具缓存"""
         logger.info("开始重新加载Agent配置...")
 
@@ -82,10 +82,8 @@ class AgentManager:
         logger.info("刷新所有Agent的工具缓存...")
         agent_names = self.config_manager.list_agents()
         for agent_name in agent_names:
-            try:
-                await refresh_agent_tools(agent_name)
-                logger.debug(f"Agent工具缓存刷新成功: {agent_name}")
-            except Exception as e:
-                logger.warning(f"Agent工具缓存刷新失败: {agent_name}, error={e}")
+            # 直接清空工具缓存
+            clear_agent_tool_cache(agent_name)
+            logger.debug(f"Agent工具缓存清空成功: {agent_name}")
 
         logger.info("Agent配置和工具缓存重载完成")

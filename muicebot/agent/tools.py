@@ -183,7 +183,10 @@ def clear_agent_tool_cache(agent_name: Optional[str] = None):
     Args:
         agent_name: Agent名称，如果为None则清除所有缓存
     """
-    _tool_loader.clear_agent_cache(agent_name)
+    try:
+        _tool_loader.clear_agent_cache(agent_name)
+    except Exception as e:
+        logger.warning(f"清除Agent工具缓存失败: agent_name={agent_name}, error={e}")
 
 
 def get_cached_agent_tools(agent_name: str) -> List[dict]:
