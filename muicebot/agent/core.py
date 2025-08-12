@@ -47,6 +47,12 @@ class Agent:
             response = await self.model.ask(model_request)
             logger.info(f"Agent模型调用完成: succeed={response.succeed}, 响应长度={len(response.text)}")
             logger.debug(f"Agent模型响应内容: {response.text[:200]}...")
+
+            # 检查模型调用是否成功
+            if not response.succeed:
+                logger.error(f"LLM内部错误: {response.text}")
+                return AgentResponse(result=f"LLM内部错误: {response.text}")
+
         except Exception as e:
             logger.error(f"Agent模型调用失败: {e}")
             return AgentResponse(result=f"模型调用失败: {str(e)}")
@@ -77,6 +83,12 @@ class Agent:
 
     def _parse_response(self, model_response) -> AgentResponse:
         """解析模型响应"""
+        # 检查是否为错误响应
+        if not model_response.succeed:
+            logger.error(f"LLM响应错误: {model_response.text}")
+            # 对于错误响应，直接返回错误信息，不进行格式化
+            return AgentResponse(result=f"LLM错误: {model_response.text}")
+
         result = model_response.text
         logger.debug(f"Agent响应解析完成: 结果长度={len(result)}")
 
