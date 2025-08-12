@@ -2,7 +2,6 @@ from typing import List, Optional
 
 from nonebot import logger
 
-from muicebot.agent.communication import AgentCommunication
 from muicebot.agent.config import AgentConfig, AgentResponse, format_agent_output
 from muicebot.agent.tools import load_agent_tools
 from muicebot.llm import ModelRequest, load_model
@@ -18,8 +17,6 @@ class Agent:
         # 使用现有的load_model函数加载模型
         self.model = load_model(config)
         self.tools: List[dict] = []  # 初始化为空列表，工具将在需要时异步加载
-        # 初始化Agent通信接口
-        self.agent_comm = AgentCommunication()
 
     async def _load_tools(self, tools_list: Optional[List[str]]) -> List[dict]:
         """加载Agent可调用的工具 - 使用通用工具加载函数"""

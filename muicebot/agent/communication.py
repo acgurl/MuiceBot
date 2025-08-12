@@ -1,3 +1,5 @@
+from typing import ClassVar, Optional
+
 from nonebot import logger
 
 from muicebot.agent.chain import TaskChain
@@ -8,9 +10,30 @@ from muicebot.agent.manager import AgentManager
 class AgentCommunication:
     """Agent与主模型通信接口"""
 
+    _instance: ClassVar[Optional["AgentCommunication"]] = None
+    _initialized: bool = False
+
+    def __new__(cls):
+        if cls._instance is None:
+            cls._instance = super().__new__(cls)
+            cls._instance._initialized = False
+        return cls._instance
+
     def __init__(self) -> None:
+        if self._initialized:
+            return
+
         self.agent_manager = AgentManager.get_instance()
         self.task_chain = TaskChain()
+
+        self._initialized = True
+
+    @classmethod
+    def get_instance(cls) -> "AgentCommunication":
+        """获取AgentCommunication单例实例"""
+        if cls._instance is None:
+            cls._instance = cls()
+        return cls._instance
 
     async def request_agent_assistance(self, agent_name: str, arguments: dict) -> AgentResponse:
         """请求Agent协助"""

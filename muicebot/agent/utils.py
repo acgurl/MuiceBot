@@ -106,7 +106,7 @@ async def call_agent(func: str, arguments: Dict[str, str]) -> str:
         str: Agent调用结果
     """
     logger.info(f"Agent call 请求 {func}, 参数: {arguments}")
-    agent_comm = AgentCommunication()
+    agent_comm = AgentCommunication.get_instance()
     agent_manager = AgentManager.get_instance()
     response = await agent_comm.request_agent_assistance(func, arguments)
     result = await agent_manager.handle_agent_response(response)

@@ -6,7 +6,7 @@ from nonebot import logger
 from nonebot_plugin_orm import async_scoped_session
 
 from .agent import get_agent_list
-from .agent.core import Agent
+from .agent.communication import AgentCommunication
 from .config import (
     ModelConfig,
     get_model_config,
@@ -64,7 +64,7 @@ class Muice:
         self._model_config_manager.register_listener(self._on_config_changed)
 
         # 初始化Agent通信接口
-        self.agent = Agent(self.model_config)
+        self.agent_comm = AgentCommunication.get_instance()
 
         self._initialized = True
 
@@ -133,7 +133,7 @@ class Muice:
         self.load_model()
 
         # 重新加载Agent配置
-        self.agent.agent_comm.reload_configs()
+        self.agent_comm.reload_configs()
 
         logger.success(f"模型自动重载完成: {old_config_name} -> {self.model_config_name}")
 
