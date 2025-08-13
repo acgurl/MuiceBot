@@ -24,7 +24,6 @@ class AgentConfig(ModelConfig):
     """Agent配置模型，继承自ModelConfig"""
 
     tools_list: List[str] = Field(default_factory=list, description="Agent可用的工具列表")
-    max_loop_count: int = Field(default=5, description="最大循环次数")
     description: Optional[str] = Field(default=None, description="Agent描述")
 
 

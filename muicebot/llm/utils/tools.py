@@ -11,7 +11,7 @@ from muicebot.plugin.mcp import handle_mcp_tool
 
 def get_current_message_id() -> str | None:
     """
-    通过依赖注入获取当前消息ID
+    获取当前消息ID
     """
     try:
         bot = get_bot()
