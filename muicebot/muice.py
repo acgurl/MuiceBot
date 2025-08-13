@@ -261,7 +261,7 @@ class Muice:
             else []
         )
         tools = (
-            (await get_function_list() + await get_mcp_list() + await get_agent_list())
+            (await get_function_list() + await get_agent_list() + await get_mcp_list())
             if self.model_config.function_call and enable_plugins
             else []
         )
@@ -330,7 +330,7 @@ class Muice:
             else []
         )
         tools = (
-            (await get_function_list() + await get_mcp_list() + await get_agent_list())
+            (await get_function_list() + await get_agent_list() + await get_mcp_list())
             if self.model_config.function_call and enable_plugins
             else []
         )

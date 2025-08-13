@@ -2,13 +2,13 @@
 Agent工具函数模块
 """
 
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Union
 
 from nonebot import logger
 from pydantic import BaseModel, Field
 
 from muicebot.agent.communication import AgentCommunication
-from muicebot.agent.config import AgentConfigManager
+from muicebot.agent.config import AgentConfig, AgentConfigManager
 from muicebot.agent.manager import AgentManager
 
 
@@ -35,7 +35,7 @@ def create_agent_tool_description(agent_name: str, agent_description: str) -> Di
     return {
         "type": "function",
         "function": {
-            "name": f"agent_{agent_name}",
+            "name": agent_name,
             "description": agent_description,
             "parameters": AgentTaskParameters.model_json_schema(),
         },
@@ -70,7 +70,7 @@ async def get_agent_list() -> List[Dict[str, Any]]:
     return agent_tools
 
 
-def get_agent_lists() -> Dict[str, Any]:
+def get_agent_lists() -> Dict[str, Union[AgentConfig, Any]]:
     """
     获取所有可用Agent的字典，格式类似于get_function_calls()
 
@@ -86,7 +86,7 @@ def get_agent_lists() -> Dict[str, Any]:
         try:
             config = config_manager.get_agent_config(agent_name)
             # 将Agent配置添加到字典中
-            agent_dict[f"agent_{agent_name}"] = config
+            agent_dict[agent_name] = config
         except Exception as e:
             logger.warning(f"获取Agent配置失败，跳过该Agent: agent_name={agent_name}, error={e}")
             continue
@@ -94,13 +94,14 @@ def get_agent_lists() -> Dict[str, Any]:
     return agent_dict
 
 
-async def call_agent(func: str, arguments: Dict[str, str]) -> str:
+async def call_agent(func: str, arguments: Dict[str, str], message_id: str | None = None) -> str:
     """
     调用Agent并处理响应
 
     Args:
         func: Agent函数名
         arguments: Agent函数参数
+        message_id: 消息ID，用于标识同一用户请求中的多次调用
 
     Returns:
         str: Agent调用结果
@@ -108,7 +109,9 @@ async def call_agent(func: str, arguments: Dict[str, str]) -> str:
     logger.info(f"Agent call 请求 {func}, 参数: {arguments}")
     agent_comm = AgentCommunication.get_instance()
     agent_manager = AgentManager.get_instance()
-    response = await agent_comm.request_agent_assistance(func, arguments)
+    # 使用message_id作为request_id，确保同一用户请求中的多次调用使用同一个任务链
+    request_id = message_id
+    response = await agent_comm.request_agent_assistance(func, arguments, request_id)
     result = await agent_manager.handle_agent_response(response)
     logger.success(f"Agent call 成功，返回: {result}")
     return result

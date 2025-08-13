@@ -1,10 +1,25 @@
 from typing import Any
 
 from nonebot import logger
+from nonebot_plugin_alconna import get_message_id
 
 from muicebot.agent.utils import call_agent, get_agent_lists
+from muicebot.plugin.context import get_bot, get_event
 from muicebot.plugin.func_call import get_function_calls
 from muicebot.plugin.mcp import handle_mcp_tool
+
+
+def get_current_message_id() -> str | None:
+    """
+    通过依赖注入获取当前消息ID
+    """
+    try:
+        bot = get_bot()
+        event = get_event()
+        return get_message_id(event, bot)
+    except Exception:
+        # 如果无法获取消息ID，返回None
+        return None
 
 
 async def function_call_handler(func: str, arguments: dict[str, str] | None = None) -> Any:
@@ -20,8 +35,9 @@ async def function_call_handler(func: str, arguments: dict[str, str] | None = No
         return result
 
     # 处理Agent工具调用
-    if get_agent_lists().get(f"agent_{func}"):
-        result = await call_agent(func, arguments)
+    if get_agent_lists().get(func):
+        message_id = get_current_message_id()
+        result = await call_agent(func, arguments, message_id)
         return result
 
     if mcp_result := await handle_mcp_tool(func, arguments):

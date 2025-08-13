@@ -15,12 +15,14 @@ class TaskChain:
             self.max_loops = max_loops
             super().__init__(f"调用次数已达到最大限制 {max_loops}")
 
-    def __init__(self, max_loops: Optional[int] = None) -> None:
+    def __init__(self, request_id: Optional[str] = None, max_loops: Optional[int] = None) -> None:
+        self.request_id = request_id
         self.max_loops = max_loops if max_loops is not None else agent_plugin_config.max_loop_count
 
         self.current_loop = 0
         self.call_count = 0  # 调用计数器
         self.last_call_time = 0.0  # 上次调用时间
+        self.creation_time = time.time()  # 创建时间
 
     def increment_loop(self) -> None:
         """增加循环计数"""

@@ -5,7 +5,6 @@ from typing import Dict, List, Optional
 from nonebot import logger
 
 from muicebot.agent.config import AgentConfigManager
-from muicebot.agent.utils import get_agent_list
 from muicebot.plugin.func_call import get_function_list
 from muicebot.plugin.mcp import get_mcp_list
 
@@ -102,17 +101,6 @@ class AgentToolLoader:
                     available_tools.append(tool)
         except Exception as e:
             logger.warning(f"MCP工具加载失败，仅使用Function Call工具: error={e}")
-
-        # 获取所有可用的Agent工具
-        try:
-            agent_tools = await get_agent_list()
-            for tool in agent_tools:
-                tool_name = tool.get("function", {}).get("name")
-                if tool_name in tools_list:
-                    available_tools.append(tool)
-        except Exception as e:
-            logger.warning(f"Agent工具加载失败，仅使用Function Call和MCP工具: error={e}")
-
         return available_tools
 
     def clear_agent_cache(self, agent_name: Optional[str] = None):
