@@ -5,6 +5,7 @@ import yaml
 from nonebot import get_plugin_config
 from pydantic import BaseModel, Field
 
+from muicebot.config import get_model_config
 from muicebot.llm._config import ModelConfig
 
 AGENTS_CONFIG_PATH = Path("configs/agents.yml")
@@ -21,14 +22,24 @@ agent_plugin_config = get_plugin_config(AgentPluginConfig)
 
 
 class AgentConfig(BaseModel):
-    """Agent配置模型，使用组合模式"""
+    """Agent配置模型"""
 
     # Agent 特有配置
     tools_list: List[str] = Field(default_factory=list, description="Agent可用的工具列表")
     description: Optional[str] = Field(default=None, description="Agent描述")
 
-    # 组合模型配置
-    agent_model_config: ModelConfig = Field(description="Agent使用的模型配置")
+    # 模型配置名称
+    model_config_name: str = Field(description="Agent使用的模型配置名称")
+
+    # 通过模型配置名称获取的模型配置对象（不直接序列化）
+    _model_config: Optional[ModelConfig] = None
+
+    @property
+    def model_config_obj(self) -> ModelConfig:
+        """获取模型配置对象"""
+        if self._model_config is None:
+            self._model_config = get_model_config(self.model_config_name)
+        return self._model_config
 
 
 class AgentResponse(BaseModel):
@@ -92,18 +103,14 @@ class AgentConfigManager:
         # 加载配置项
         self._configs = {}
         for name, config in configs_dict.items():
-            # 获取ModelConfig模型的所有字段名
-            model_config_fields = set(ModelConfig.model_fields.keys())
+            # 创建Agent配置对象
+            agent_config_data = config.copy()
 
-            # 分离模型配置字段和Agent特有字段
-            model_config_data = {k: v for k, v in config.items() if k in model_config_fields}
-            agent_config_data = {k: v for k, v in config.items() if k not in model_config_fields}
-
-            # 创建模型配置对象
-            model_config = ModelConfig(**model_config_data)
-
-            # 创建Agent配置对象，包含模型配置
-            agent_config_data["agent_model_config"] = model_config
+            # 确保有model_config_name字段
+            if "model_config_name" not in agent_config_data:
+                # 如果没有指定model_config_name，使用默认模型
+                # get_model_config(None) 会返回默认模型配置
+                agent_config_data["model_config_name"] = ""
 
             self._configs[name] = AgentConfig(**agent_config_data)
 
@@ -134,7 +141,7 @@ class AgentConfigManager:
 
         config = self._configs[agent_name]
         # 检查是否启用工具调用且工具列表不为空
-        return config.agent_model_config.function_call and len(config.tools_list) > 0
+        return config.model_config_obj.function_call and len(config.tools_list) > 0
 
     def get_available_tools(self, agent_name: str) -> List[str]:
         """
@@ -145,7 +152,7 @@ class AgentConfigManager:
 
         config = self._configs[agent_name]
         # 只有在启用工具调用时才返回工具列表
-        if config.agent_model_config.function_call:
+        if config.model_config_obj.function_call:
             return config.tools_list
         else:
             return []
