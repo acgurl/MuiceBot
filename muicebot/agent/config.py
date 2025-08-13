@@ -48,13 +48,9 @@ def format_agent_output(
     Returns:
         格式化后的输出字符串
     """
-    # 使用特殊标记包装Agent输出，帮助主模型识别这是工具返回的结果
-    formatted_output = f"""[AGENT_ANALYSIS_RESULT]
-来源: {agent_name}
-内容:
-{result}
-[AGENT_ANALYSIS_END]"""
-    return formatted_output.strip()
+    # 不再规范agent返回内容，仅仅在其返回内容之后加上一段提示主模型处理的文字
+    formatted_output = f"{result}\n\n请主模型根据以上内容进行处理。"
+    return formatted_output
 
 
 class AgentToolCall(BaseModel):
