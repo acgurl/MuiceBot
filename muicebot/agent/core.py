@@ -14,8 +14,8 @@ class Agent:
     def __init__(self, config: AgentConfig, agent_name: str = ""):
         self.config = config
         self.agent_name = agent_name or "Agent"
-        # 使用现有的load_model函数加载模型
-        self.model = load_model(config)
+        # 使用现有的load_model函数加载模型，传入模型配置
+        self.model = load_model(config.agent_model_config)
         self.tools: List[dict] = []  # 初始化为空列表，工具将在需要时异步加载
 
     async def _load_tools(self, tools_list: Optional[List[str]]) -> List[dict]:
@@ -25,7 +25,10 @@ class Agent:
     async def execute(self, task: str) -> AgentResponse:
         """执行任务"""
         logger.info(f"Agent开始执行任务: task={task[:50]}...")
-        logger.info(f"Agent配置: function_call={self.config.function_call}, tools_list={self.config.tools_list}")
+        logger.info(
+            f"Agent配置: function_call={self.config.agent_model_config.function_call}, "
+            f"tools_list={self.config.tools_list}"
+        )
 
         # 准备提示词和工具列表
         prompt = self._prepare_prompt(task, "Muice", True)
@@ -35,7 +38,7 @@ class Agent:
         logger.debug(f"Agent工具准备完成: 工具数量={len(tools)}")
 
         # 构造模型请求
-        model_request = ModelRequest(prompt=prompt, tools=tools if self.config.function_call else [])
+        model_request = ModelRequest(prompt=prompt, tools=tools if self.config.agent_model_config.function_call else [])
 
         logger.info("Agent模型请求构造完成，开始调用模型")
 
@@ -65,9 +68,11 @@ class Agent:
 
     def _prepare_prompt(self, task: str, userid: str = "Muice", is_private: bool = True) -> str:
         """准备提示词"""
-        if self.config.template:
+        if self.config.agent_model_config.template:
             # 使用传入的参数处理模板
-            system_prompt = generate_prompt_from_template(self.config.template, userid, is_private).strip()
+            system_prompt = generate_prompt_from_template(
+                self.config.agent_model_config.template, userid, is_private
+            ).strip()
             return f"{system_prompt}\n\n{task}"
         return task
 

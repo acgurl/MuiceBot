@@ -20,11 +20,15 @@ class AgentPluginConfig(BaseModel):
 agent_plugin_config = get_plugin_config(AgentPluginConfig)
 
 
-class AgentConfig(ModelConfig):
-    """Agent配置模型，继承自ModelConfig"""
+class AgentConfig(BaseModel):
+    """Agent配置模型，使用组合模式"""
 
+    # Agent 特有配置
     tools_list: List[str] = Field(default_factory=list, description="Agent可用的工具列表")
     description: Optional[str] = Field(default=None, description="Agent描述")
+
+    # 组合模型配置
+    agent_model_config: ModelConfig = Field(description="Agent使用的模型配置")
 
 
 class AgentResponse(BaseModel):
@@ -88,8 +92,20 @@ class AgentConfigManager:
         # 加载配置项
         self._configs = {}
         for name, config in configs_dict.items():
-            # 使用Pydantic模型验证配置项
-            self._configs[name] = AgentConfig(**config)
+            # 获取ModelConfig模型的所有字段名
+            model_config_fields = set(ModelConfig.model_fields.keys())
+
+            # 分离模型配置字段和Agent特有字段
+            model_config_data = {k: v for k, v in config.items() if k in model_config_fields}
+            agent_config_data = {k: v for k, v in config.items() if k not in model_config_fields}
+
+            # 创建模型配置对象
+            model_config = ModelConfig(**model_config_data)
+
+            # 创建Agent配置对象，包含模型配置
+            agent_config_data["agent_model_config"] = model_config
+
+            self._configs[name] = AgentConfig(**agent_config_data)
 
     def get_agent_config(self, agent_name: str) -> AgentConfig:
         """获取指定Agent的配置"""
@@ -118,7 +134,7 @@ class AgentConfigManager:
 
         config = self._configs[agent_name]
         # 检查是否启用工具调用且工具列表不为空
-        return config.function_call and len(config.tools_list) > 0
+        return config.agent_model_config.function_call and len(config.tools_list) > 0
 
     def get_available_tools(self, agent_name: str) -> List[str]:
         """
@@ -129,7 +145,7 @@ class AgentConfigManager:
 
         config = self._configs[agent_name]
         # 只有在启用工具调用时才返回工具列表
-        if config.function_call:
+        if config.agent_model_config.function_call:
             return config.tools_list
         else:
             return []
