@@ -46,7 +46,9 @@ class AgentCommunication:
             current_time = time.time()
             expired_task_chains = []
             for task_id, task_chain in self.task_chains.items():
-                if current_time - task_chain.creation_time > 600:
+                # 使用最近活动时间判断过期，避免误清理活跃任务链
+                last_active_time = max(task_chain.creation_time, task_chain.last_call_time)
+                if current_time - last_active_time > 600:
                     expired_task_chains.append(task_id)
             for task_id in expired_task_chains:
                 self.task_chains.pop(task_id, None)
