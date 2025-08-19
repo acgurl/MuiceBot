@@ -1,9 +1,9 @@
 [project]
 name = "MuiceBot"
 dynamic = ["version"]
-description = "一个可以用来调用多种模型，且被用来练手的Nonebot项目"
+description = "Muice-Chatbot 的 NoneBot2 实现"
 readme = "README.md"
-requires-python = ">=3.10.0, <=3.13"
+requires-python = ">=3.10.0, <3.14"
 dependencies = [
     "aiosqlite>=0.17.0",
     "APScheduler>=3.11.0",
@@ -38,7 +38,7 @@ authors = [
 standard = [
     "azure-ai-inference>=1.0.0b7",
     "dashscope>=1.22.1",
-    "google-genai==1.8.0",
+    "google-genai>=1.8.0",
     "ollama>=0.4.7",
     "soundfile>=0.13.1",
     "pytz>=2025.2"
