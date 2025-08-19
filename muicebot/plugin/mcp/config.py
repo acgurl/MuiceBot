@@ -8,12 +8,18 @@ CONFIG_PATH = Path("./configs/mcp.json")
 
 
 class mcpServer(BaseModel):
-    command: str
+    command: str | None = None
     """执行指令"""
     args: list = Field(default_factory=list)
     """命令参数"""
     env: dict[str, Any] = Field(default_factory=dict)
     """环境配置"""
+    headers: dict[str, Any] = Field(default_factory=dict)
+    """HTTP请求头 (用于sse和streamable_http传输方式)"""
+    type: str = "stdio"
+    """传输方式: stdio, sse, streamable_http"""
+    url: str | None = Field(default=None)
+    """服务器URL (用于sse和streamable_http传输方式)"""
 
 
 mcpConfig = Dict[str, mcpServer]
