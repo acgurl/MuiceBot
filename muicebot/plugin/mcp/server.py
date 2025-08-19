@@ -6,8 +6,8 @@ from contextlib import AsyncExitStack
 from typing import Any, Optional
 
 from mcp import ClientSession, StdioServerParameters
-from mcp.client.stdio import stdio_client
 from mcp.client.sse import sse_client
+from mcp.client.stdio import stdio_client
 from mcp.client.streamable_http import streamablehttp_client
 
 from .config import mcpServer
@@ -59,14 +59,16 @@ class Server:
         """
         # 兼容旧配置，优先使用 type 字段作为传输方式
         transport = self.config.type.lower()
-        
+
         try:
             if transport == "stdio":
                 if self.config.command is None:
                     raise ValueError("command 字段对于 stdio 传输方式是必需的")
                 command = shutil.which("npx") if self.config.command == "npx" else self.config.command
                 if command is None:
-                    raise ValueError(f"command 字段必须为一个有效值, 且目标指令必须存在于环境变量中: {self.config.command}")
+                    raise ValueError(
+                        f"command 字段必须为一个有效值, 且目标指令必须存在于环境变量中: {self.config.command}"
+                    )
 
                 server_params = StdioServerParameters(
                     command=command,
@@ -88,14 +90,17 @@ class Server:
                 )
             else:
                 raise ValueError(f"Unsupported transport type: {transport}")
-            
+
             # 安全地处理不同传输客户端的返回值
             # 大多数客户端返回 (read, write) 或 (read, write, additional)
             if not transport_context or len(transport_context) < 2:
-                raise ValueError(f"Unexpected transport context format for {transport} transport: expected at least 2 values, got {len(transport_context) if transport_context else 0}")
-            
+                raise ValueError(
+                    f"Unexpected transport context format for {transport} transport: "
+                    f"expected at least 2 values, got {len(transport_context) if transport_context else 0}"
+                )
+
             read, write = transport_context[0], transport_context[1]
-            
+
             session = await self.exit_stack.enter_async_context(ClientSession(read, write))
             await session.initialize()
             self.session = session
