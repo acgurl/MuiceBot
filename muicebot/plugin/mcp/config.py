@@ -7,8 +7,8 @@ from pydantic import BaseModel, Field
 CONFIG_PATH = Path("./configs/mcp.json")
 
 
-class mcpServer(BaseModel):
-    command: str | None = None
+class McpServer(BaseModel):
+    command: str | None = Field(default=None)
     """执行指令"""
     args: list = Field(default_factory=list)
     """命令参数"""
@@ -16,16 +16,16 @@ class mcpServer(BaseModel):
     """环境配置"""
     headers: dict[str, Any] = Field(default_factory=dict)
     """HTTP请求头 (用于sse和streamable_http传输方式)"""
-    type: str = "stdio"
+    type: str = Field(default="stdio")
     """传输方式: stdio, sse, streamable_http"""
     url: str | None = Field(default=None)
     """服务器URL (用于sse和streamable_http传输方式)"""
 
 
-mcpConfig = Dict[str, mcpServer]
+McpConfig = Dict[str, McpServer]
 
 
-def get_mcp_server_config() -> mcpConfig:
+def get_mcp_server_config() -> McpConfig:
     """
     从 MCP 配置文件 `config/mcp.json` 中获取 MCP Server 配置
     """
@@ -35,10 +35,10 @@ def get_mcp_server_config() -> mcpConfig:
     with open(CONFIG_PATH, "r", encoding="utf-8") as f:
         configs = json.load(f) or {}
 
-    mcp_config: mcpConfig = dict()
+    mcp_config: McpConfig = dict()
 
     for name, srv_config in configs["mcpServers"].items():
-        mcp_config[name] = mcpServer(**srv_config)
+        mcp_config[name] = McpServer(**srv_config)
 
     return mcp_config
 

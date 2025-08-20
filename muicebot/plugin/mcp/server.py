@@ -10,7 +10,7 @@ from mcp.client.sse import sse_client
 from mcp.client.stdio import stdio_client
 from mcp.client.streamable_http import streamablehttp_client
 
-from .config import mcpServer
+from .config import McpServer
 
 
 class Tool:
@@ -45,9 +45,9 @@ class Server:
     管理 MCP 服务器连接和工具执行的 Server 实例
     """
 
-    def __init__(self, name: str, config: mcpServer) -> None:
+    def __init__(self, name: str, config: McpServer) -> None:
         self.name: str = name
-        self.config: mcpServer = config
+        self.config: McpServer = config
         self.stdio_context: Any | None = None
         self.session: ClientSession | None = None
         self._cleanup_lock: asyncio.Lock = asyncio.Lock()
