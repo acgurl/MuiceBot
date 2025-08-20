@@ -53,53 +53,69 @@ class Server:
         self._cleanup_lock: asyncio.Lock = asyncio.Lock()
         self.exit_stack: AsyncExitStack = AsyncExitStack()
 
+    async def _initialize_stdio(self):
+        """
+        初始化 stdio 传输方式
+
+        :return: (read, write) 元组
+        """
+        if self.config.command is None:
+            raise ValueError("command 字段对于 stdio 传输方式是必需的")
+        command = shutil.which("npx") if self.config.command == "npx" else self.config.command
+        if command is None:
+            raise ValueError(f"command 字段必须为一个有效值, 且目标指令必须存在于环境变量中: {self.config.command}")
+
+        server_params = StdioServerParameters(
+            command=command,
+            args=self.config.args,
+            env={**os.environ, **self.config.env} if self.config.env else None,
+        )
+        transport_context = await self.exit_stack.enter_async_context(stdio_client(server_params))
+        return transport_context[0], transport_context[1]
+
+    async def _initialize_sse(self):
+        """
+        初始化 sse 传输方式
+
+        :return: (read, write) 元组
+        """
+        if not self.config.url:
+            raise ValueError("SSE transport requires a URL")
+
+        transport_context = await self.exit_stack.enter_async_context(
+            sse_client(self.config.url, headers=self.config.headers)
+        )
+        return transport_context[0], transport_context[1]
+
+    async def _initialize_streamable_http(self):
+        """
+        初始化 streamable_http 传输方式
+
+        :return: (read, write) 元组
+        """
+        if not self.config.url:
+            raise ValueError("Streamable HTTP transport requires a URL")
+
+        transport_context = await self.exit_stack.enter_async_context(
+            streamablehttp_client(self.config.url, headers=self.config.headers)
+        )
+        return transport_context[0], transport_context[1]
+
     async def initialize(self) -> None:
         """
         初始化实例
         """
-        # 兼容旧配置，优先使用 type 字段作为传输方式
         transport = self.config.type.lower()
 
         try:
             if transport == "stdio":
-                if self.config.command is None:
-                    raise ValueError("command 字段对于 stdio 传输方式是必需的")
-                command = shutil.which("npx") if self.config.command == "npx" else self.config.command
-                if command is None:
-                    raise ValueError(
-                        f"command 字段必须为一个有效值, 且目标指令必须存在于环境变量中: {self.config.command}"
-                    )
-
-                server_params = StdioServerParameters(
-                    command=command,
-                    args=self.config.args,
-                    env={**os.environ, **self.config.env} if self.config.env else None,
-                )
-                transport_context = await self.exit_stack.enter_async_context(stdio_client(server_params))
+                read, write = await self._initialize_stdio()
             elif transport == "sse":
-                if not self.config.url:
-                    raise ValueError("SSE transport requires a URL")
-                transport_context = await self.exit_stack.enter_async_context(
-                    sse_client(self.config.url, headers=self.config.headers)
-                )
+                read, write = await self._initialize_sse()
             elif transport == "streamable_http":
-                if not self.config.url:
-                    raise ValueError("Streamable HTTP transport requires a URL")
-                transport_context = await self.exit_stack.enter_async_context(
-                    streamablehttp_client(self.config.url, headers=self.config.headers)
-                )
+                read, write = await self._initialize_streamable_http()
             else:
                 raise ValueError(f"Unsupported transport type: {transport}")
-
-            # 安全地处理不同传输客户端的返回值
-            # 大多数客户端返回 (read, write) 或 (read, write, additional)
-            if not transport_context or len(transport_context) < 2:
-                raise ValueError(
-                    f"Unexpected transport context format for {transport} transport: "
-                    f"expected at least 2 values, got {len(transport_context) if transport_context else 0}"
-                )
-
-            read, write = transport_context[0], transport_context[1]
 
             session = await self.exit_stack.enter_async_context(ClientSession(read, write))
             await session.initialize()

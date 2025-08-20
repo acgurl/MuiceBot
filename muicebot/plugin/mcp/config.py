@@ -1,6 +1,6 @@
 import json
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any, Dict, Literal
 
 from pydantic import BaseModel, Field
 
@@ -16,7 +16,7 @@ class McpServer(BaseModel):
     """环境配置"""
     headers: dict[str, Any] = Field(default_factory=dict)
     """HTTP请求头 (用于sse和streamable_http传输方式)"""
-    type: str = Field(default="stdio")
+    type: Literal["stdio", "sse", "streamable_http"] = Field(default="stdio")
     """传输方式: stdio, sse, streamable_http"""
     url: str | None = Field(default=None)
     """服务器URL (用于sse和streamable_http传输方式)"""
