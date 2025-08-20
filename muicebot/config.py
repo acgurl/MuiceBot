@@ -35,7 +35,10 @@ class PluginConfig(BaseModel):
     """启用内嵌插件"""
     max_history_epoch: int = 0
     """最大历史轮数"""
-    enable_adapters: list = ["nonebot.adapters.onebot.v11", "nonebot.adapters.onebot.v12"]
+    enable_adapters: list = [
+        "nonebot.adapters.onebot.v11",
+        "nonebot.adapters.onebot.v12",
+    ]
     """启用的 Nonebot 适配器"""
     input_timeout: int = 0
     """输入等待时间"""
@@ -163,7 +166,8 @@ class ModelConfigManager:
         for name, config in configs_dict.items():
             self.configs[name] = ModelConfig(**config)
             # 未指定模板时，使用默认模板
-            self.configs[name].template = self.configs[name].template or plugin_config.default_template
+            self.configs[name].template = (self.configs[name].template
+                                           or plugin_config.default_template)
             if config.get("default"):
                 self.default_config = self.configs[name]
 
@@ -177,15 +181,19 @@ class ModelConfigManager:
             self.observer.stop()
 
         self.observer = Observer()
-        event_handler = ConfigFileHandler(MODELS_CONFIG_PATH, self._on_config_changed)
-        self.observer.schedule(event_handler, str(MODELS_CONFIG_PATH.parent), recursive=False)
+        event_handler = ConfigFileHandler(MODELS_CONFIG_PATH,
+                                          self._on_config_changed)
+        self.observer.schedule(event_handler,
+                               str(MODELS_CONFIG_PATH.parent),
+                               recursive=False)
         self.observer.start()
 
     def _on_config_changed(self):
         """配置文件变化时的回调函数"""
         try:
             # old_configs = self.configs.copy()
-            old_default = self.default_config.model_copy() if self.default_config else None
+            old_default = (self.default_config.model_copy()
+                           if self.default_config else None)
 
             self._load_configs()
 
@@ -210,7 +218,9 @@ class ModelConfigManager:
         if listener in self._listeners:
             self._listeners.remove(listener)
 
-    def get_model_config(self, model_config_name: Optional[str] = None) -> ModelConfig:
+    def get_model_config(self,
+                         model_config_name: Optional[str] = None
+                         ) -> ModelConfig:
         """获取指定模型的配置"""
         if model_config_name in [None, ""]:
             if not self.default_config:
@@ -268,7 +278,8 @@ def get_model_config(model_config_name: Optional[str] = None) -> ModelConfig:
     return model_config_manager.get_model_config(model_config_name)
 
 
-def get_embedding_model_config(embedding_config_name: Optional[str] = None) -> EmbeddingConfig:
+def get_embedding_model_config(
+        embedding_config_name: Optional[str] = None, ) -> EmbeddingConfig:
     """
     从配置文件 `configs/models.yml` 中获取指定模型的配置对象
 

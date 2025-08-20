@@ -37,10 +37,12 @@ def _match_union(param_type: type, arg: object) -> bool:
 
 
 class HookManager:
+
     def __init__(self):
         self._hooks: Dict[HookType, List["Hooked"]] = defaultdict(list)
 
-    async def _inject_dependencies(self, function: HOOK_FUNC, *hook_args: HOOK_ARGS) -> dict:
+    async def _inject_dependencies(self, function: HOOK_FUNC, *hook_args:
+                                   HOOK_ARGS) -> dict:
         """
         自动解析参数并进行依赖注入
         """
@@ -67,7 +69,8 @@ class HookManager:
 
                 # 3. 依赖提供者匹配（Bot、Event、Matcher...）
                 for dep_type, provider in DEPENDENCY_PROVIDERS.items():
-                    if isinstance(param_type, type) and issubclass(param_type, dep_type):
+                    if isinstance(param_type, type) and issubclass(
+                            param_type, dep_type):
                         inject_args[name] = provider()
                         break
 
@@ -80,7 +83,10 @@ class HookManager:
         self._hooks[hook_type].append(hooked)
         return hooked
 
-    async def run(self, hook_type: HookType, *hook_args: HOOK_ARGS, stream: bool = False):
+    async def run(self,
+                  hook_type: HookType,
+                  *hook_args: HOOK_ARGS,
+                  stream: bool = False):
         """
         运行所有的钩子函数
 
@@ -99,8 +105,7 @@ class HookManager:
             args = await self._inject_dependencies(hooked.function, *hook_args)
 
             if (hooked.stream is not None and hooked.stream == stream) or (
-                hooked.rule and not await hooked.rule(bot, event, state)
-            ):
+                    hooked.rule and not await hooked.rule(bot, event, state)):
                 continue
 
             result = hooked.function(**args)
@@ -115,7 +120,11 @@ class Hooked:
     """挂钩函数对象"""
 
     def __init__(
-        self, hook_type: HookType, priority: int = 10, stream: Optional[bool] = None, rule: Optional[Rule] = None
+        self,
+        hook_type: HookType,
+        priority: int = 10,
+        stream: Optional[bool] = None,
+        rule: Optional[Rule] = None,
     ):
         self.hook_type = hook_type
         """钩子函数类型"""
@@ -146,7 +155,8 @@ class Hooked:
         return func
 
 
-def on_before_pretreatment(priority: int = 10, rule: Optional[Rule] = None) -> Hooked:
+def on_before_pretreatment(priority: int = 10,
+                           rule: Optional[Rule] = None) -> Hooked:
     """
     注册一个钩子函数
     这个函数将在传入消息 (`Muice` 的 `_prepare_prompt()`) 前调用
@@ -158,7 +168,8 @@ def on_before_pretreatment(priority: int = 10, rule: Optional[Rule] = None) -> H
     return Hooked(HookType.BEFORE_PRETREATMENT, priority=priority, rule=rule)
 
 
-def on_before_completion(priority: int = 10, rule: Optional[Rule] = None) -> Hooked:
+def on_before_completion(priority: int = 10,
+                         rule: Optional[Rule] = None) -> Hooked:
     """
     注册一个钩子函数。
     这个函数将在传入模型(`Muice` 的 `model.ask()`)前调用
@@ -167,7 +178,9 @@ def on_before_completion(priority: int = 10, rule: Optional[Rule] = None) -> Hoo
     :param priority: 调用优先级
     :param rule: Nonebot 的响应规则
     """
-    return Hooked(HookType.BEFORE_MODEL_COMPLETION, priority=priority, rule=rule)
+    return Hooked(HookType.BEFORE_MODEL_COMPLETION,
+                  priority=priority,
+                  rule=rule)
 
 
 def on_stream_chunk(priority: int = 10, rule: Optional[Rule] = None) -> Hooked:
@@ -182,7 +195,9 @@ def on_stream_chunk(priority: int = 10, rule: Optional[Rule] = None) -> Hooked:
     return Hooked(HookType.ON_STREAM_CHUNK, priority=priority, rule=rule)
 
 
-def on_after_completion(priority: int = 10, stream: Optional[bool] = None, rule: Optional[Rule] = None) -> Hooked:
+def on_after_completion(priority: int = 10,
+                        stream: Optional[bool] = None,
+                        rule: Optional[Rule] = None) -> Hooked:
     """
     注册一个钩子函数。
     这个函数将在传入模型(`Muice` 的 `model.ask()`)后调用（流式则传入整合后的数据）
@@ -194,7 +209,10 @@ def on_after_completion(priority: int = 10, stream: Optional[bool] = None, rule:
     :param stream: 是否仅在(非)流式中处理，None 则无限制
     :param rule: Nonebot 的响应规则
     """
-    return Hooked(HookType.AFTER_MODEL_COMPLETION, priority=priority, stream=stream, rule=rule)
+    return Hooked(HookType.AFTER_MODEL_COMPLETION,
+                  priority=priority,
+                  stream=stream,
+                  rule=rule)
 
 
 def on_finish_chat(priority: int = 10, rule: Optional[Rule] = None) -> Hooked:

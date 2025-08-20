@@ -18,7 +18,11 @@ from ._schema import (
 if TYPE_CHECKING:
     from ._base import BaseLLM, EmbeddingModel
 
-ASK_FUNC: TypeAlias = Callable[..., Awaitable[Union[ModelCompletions, AsyncGenerator[ModelStreamCompletions, None]]]]
+ASK_FUNC: TypeAlias = Callable[
+    ...,
+    Awaitable[Union[ModelCompletions, AsyncGenerator[ModelStreamCompletions,
+                                                     None]]],
+]
 EMBED_FUNC: TypeAlias = Callable[..., Awaitable[EmbeddingsBatchResult]]
 
 _usage_write_lock = asyncio.Lock()
@@ -30,7 +34,10 @@ def record_plugin_usage(func: ASK_FUNC):
     """
 
     @wraps(func)
-    async def wrapper(self: "BaseLLM", request: ModelRequest, *, stream: bool = False):
+    async def wrapper(self: "BaseLLM",
+                      request: ModelRequest,
+                      *,
+                      stream: bool = False):
         plugin_name = _get_caller_plugin_name() or "muicebot"
 
         # Call the original 'ask' method
@@ -48,7 +55,8 @@ def record_plugin_usage(func: ASK_FUNC):
 
         # Handle streaming response
         # elif isinstance(response, AsyncGenerator):
-        async def generator_wrapper() -> AsyncGenerator[ModelStreamCompletions, None]:
+        async def generator_wrapper(
+        ) -> AsyncGenerator[ModelStreamCompletions, None]:
             total_usage = 0
             try:
                 async for chunk in response:
@@ -60,7 +68,8 @@ def record_plugin_usage(func: ASK_FUNC):
             finally:
                 async with _usage_write_lock:
                     session = get_scoped_session()
-                    await UsageORM.save_usage(session, plugin_name, total_usage)
+                    await UsageORM.save_usage(session, plugin_name,
+                                              total_usage)
 
         return generator_wrapper()
 
@@ -80,7 +89,8 @@ def record_plugin_embedding_usage(func: EMBED_FUNC):
         if result.succeed and result.usage > 0:
             async with _usage_write_lock:
                 session = get_scoped_session()
-                await UsageORM.save_usage(session, plugin_name, result.usage, "embedding")
+                await UsageORM.save_usage(session, plugin_name, result.usage,
+                                          "embedding")
 
         return result
 

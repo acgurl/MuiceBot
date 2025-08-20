@@ -60,9 +60,14 @@ class BaseLLM(ABC):
 
         :param require_fields: 需要检查的字段名称（字符串）
         """
-        missing_fields = [field for field in require_fields if not getattr(self.config, field, None)]
+        missing_fields = [
+            field for field in require_fields
+            if not getattr(self.config, field, None)
+        ]
         if missing_fields:
-            raise ValueError(f"对于 {self.config.provider} 以下配置是必需的: {', '.join(missing_fields)}")
+            raise ValueError(
+                f"对于 {self.config.provider} 以下配置是必需的: {', '.join(missing_fields)}"
+            )
 
     def _build_messages(self, request: "ModelRequest") -> list:
         """
@@ -79,16 +84,22 @@ class BaseLLM(ABC):
         self.is_running = True
         return True
 
-    async def _ask_sync(
-        self, messages: list, tools: Any, response_format: Any, total_tokens: int = 0
-    ) -> "ModelCompletions":
+    async def _ask_sync(self,
+                        messages: list,
+                        tools: Any,
+                        response_format: Any,
+                        total_tokens: int = 0) -> "ModelCompletions":
         """
         同步模型调用
         """
         raise NotImplementedError
 
     def _ask_stream(
-        self, messages: list, tools: Any, response_format: Any, total_tokens: int = 0
+        self,
+        messages: list,
+        tools: Any,
+        response_format: Any,
+        total_tokens: int = 0
     ) -> AsyncGenerator["ModelStreamCompletions", None]:
         """
         流式输出
@@ -96,17 +107,29 @@ class BaseLLM(ABC):
         raise NotImplementedError
 
     @overload
-    async def ask(self, request: "ModelRequest", *, stream: Literal[False] = False) -> "ModelCompletions": ...
+    async def ask(self,
+                  request: "ModelRequest",
+                  *,
+                  stream: Literal[False] = False) -> "ModelCompletions":
+        ...
 
     @overload
     async def ask(
-        self, request: "ModelRequest", *, stream: Literal[True] = True
-    ) -> AsyncGenerator["ModelStreamCompletions", None]: ...
+        self,
+        request: "ModelRequest",
+        *,
+        stream: Literal[True] = True
+    ) -> AsyncGenerator["ModelStreamCompletions", None]:
+        ...
 
     @abstractmethod
     async def ask(
-        self, request: "ModelRequest", *, stream: bool = False
-    ) -> Union["ModelCompletions", AsyncGenerator["ModelStreamCompletions", None]]:
+        self,
+        request: "ModelRequest",
+        *,
+        stream: bool = False
+    ) -> Union["ModelCompletions", AsyncGenerator["ModelStreamCompletions",
+                                                  None]]:
         """
         模型交互询问
 
@@ -155,9 +178,14 @@ class EmbeddingModel(ABC):
 
         :param require_fields: 需要检查的字段名称（字符串）
         """
-        missing_fields = [field for field in require_fields if not getattr(self.config, field, None)]
+        missing_fields = [
+            field for field in require_fields
+            if not getattr(self.config, field, None)
+        ]
         if missing_fields:
-            raise ValueError(f"对于 {self.config.provider} 嵌入模型，以下配置是必需的: {', '.join(missing_fields)}")
+            raise ValueError(
+                f"对于 {self.config.provider} 嵌入模型，以下配置是必需的: {', '.join(missing_fields)}"
+            )
 
     def _get_embedding_cache_path(self, text: str) -> Optional[Path]:
         """
@@ -170,7 +198,8 @@ class EmbeddingModel(ABC):
 
         # 根据文本和模型名称生成缓存键
         content = f"{self.config.model}:{text}"
-        cache_key = hashlib.md5(content.encode("utf-8"), usedforsecurity=False).hexdigest()
+        cache_key = hashlib.md5(content.encode("utf-8"),
+                                usedforsecurity=False).hexdigest()
 
         return self.cache_dir / cache_key
 
@@ -198,13 +227,12 @@ class EmbeddingModel(ABC):
             with open(meta_path, "r", encoding="utf-8") as f:
                 meta = json.load(f)
 
-            if (
-                isinstance(meta, dict)
-                and meta.get("provider", None) == self.__class__.__name__
-                and meta.get("api_host", None) == self.config.api_host
-                and meta.get("model", None) == self.config.model
-                and meta.get("text_hash", "") == hashlib.sha256(text.encode("utf-8")).hexdigest()
-            ):
+            if (isinstance(meta, dict)
+                    and meta.get("provider", None) == self.__class__.__name__
+                    and meta.get("api_host", None) == self.config.api_host
+                    and meta.get("model", None) == self.config.model
+                    and meta.get("text_hash", "") == hashlib.sha256(
+                        text.encode("utf-8")).hexdigest()):
                 embedding = np.load(npy_path)
                 logger.debug(f"从缓存加载嵌入向量: {text[:50]}...")
                 return embedding

@@ -19,7 +19,9 @@ def register(name: str):
         elif issubclass(cls, EmbeddingModel):
             return EMBEDDING_REGISTRY.setdefault(name.lower(), cls)
         else:
-            raise TypeError(f"Class {cls.__name__} must be a subclass of BaseLLM or EmbeddingModel")
+            raise TypeError(
+                f"Class {cls.__name__} must be a subclass of BaseLLM or EmbeddingModel"
+            )
 
     return decorator
 

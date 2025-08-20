@@ -28,15 +28,16 @@ FILES_CACHED_DIR = store.get_plugin_cache_dir() / "files"
 FILES_DIR.mkdir(parents=True, exist_ok=True)
 FILES_CACHED_DIR.mkdir(parents=True, exist_ok=True)
 
-User_Agent = (
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
-    "AppleWebKit/537.36 (KHTML, like Gecko)"
-    "Chrome/134.0.0.0 Safari/537.36 Edg/134.0.0.0"
-)
+User_Agent = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
+              "AppleWebKit/537.36 (KHTML, like Gecko)"
+              "Chrome/134.0.0.0 Safari/537.36 Edg/134.0.0.0")
 
 
 async def download_file(
-    file_url: str, file_name: Optional[str] = None, proxy: Optional[str] = None, cache: bool = False
+    file_url: str,
+    file_name: Optional[str] = None,
+    proxy: Optional[str] = None,
+    cache: bool = False,
 ) -> str:
     """
     保存文件至本地目录(在未提供后缀的情况下, 默认为.jpg后缀)
@@ -62,7 +63,8 @@ async def download_file(
         return str(local_path)
 
 
-async def save_image_as_base64(image_url: str, proxy: Optional[str] = None) -> str:
+async def save_image_as_base64(image_url: str,
+                               proxy: Optional[str] = None) -> str:
     """
     从在线 url 获取图像 Base64
 
@@ -78,7 +80,8 @@ async def save_image_as_base64(image_url: str, proxy: Optional[str] = None) -> s
     return image_base64.decode("utf-8")
 
 
-async def get_file_via_adapter(message: MessageSegment, event: Event) -> Optional[str]:
+async def get_file_via_adapter(message: MessageSegment,
+                               event: Event) -> Optional[str]:
     """
     通过适配器自有方式获取文件地址并保存到本地
 
@@ -97,7 +100,8 @@ async def get_file_via_adapter(message: MessageSegment, event: Event) -> Optiona
         #     return None
 
         try:
-            file_path = await bot.get_file(type="url", file_id=message.data["file_id"])
+            file_path = await bot.get_file(type="url",
+                                           file_id=message.data["file_id"])
         except UnsupportedParam as e:
             logger.error(f"Onebot 实现不支持获取文件 URL，文件获取操作失败：{e}")
             return None
@@ -106,7 +110,8 @@ async def get_file_via_adapter(message: MessageSegment, event: Event) -> Optiona
 
     elif Onebotv11Bot and isinstance(bot, Onebotv11Bot):
         if "url" in message.data and "file" in message.data:
-            return await download_file(message.data["url"], message.data["file"])
+            return await download_file(message.data["url"],
+                                       message.data["file"])
 
     elif TelegramEvent and TelegramFile and isinstance(event, TelegramEvent):
         if not isinstance(message, TelegramFile):
@@ -117,7 +122,10 @@ async def get_file_via_adapter(message: MessageSegment, event: Event) -> Optiona
         if not file.file_path:
             return None
 
-        url = f"https://api.telegram.org/file/bot{bot.bot_config.token}/{file.file_path}"  # type: ignore
+        url = (
+            # type: ignore
+            f"https://api.telegram.org/file/bot{bot.bot_config.token}/{file.file_path}"
+        )
         # filename = file.file_path.split("/")[1]
         return await download_file(url, proxy=plugin_config.telegram_proxy)
 
@@ -193,7 +201,8 @@ def get_version() -> str:
         return "Unknown"
 
 
-async def get_username(user_id: Optional[str] = None, event: Optional[Event] = None) -> str:
+async def get_username(user_id: Optional[str] = None,
+                       event: Optional[Event] = None) -> str:
     """
     获取当前对话的用户名，如果失败就返回用户id
 
@@ -225,7 +234,8 @@ def guess_mimetype(resource: Resource) -> Optional[str]:
 
     elif resource.raw:
         try:
-            header = resource.raw.read(128) if isinstance(resource.raw, BytesIO) else resource.raw[:128]
+            header = (resource.raw.read(128) if isinstance(
+                resource.raw, BytesIO) else resource.raw[:128])
         except Exception as e:
             logger.warning(f"读取原始数据头时发生错误: {e} | {resource}")
             return None
@@ -238,7 +248,8 @@ def guess_mimetype(resource: Resource) -> Optional[str]:
         info = fleep.get(header)
 
         # fleep 对于文档类文件失准，如果有后缀就不判断了
-        if info.type and info.type[0] == "document" and Path(resource.path).suffix:
+        if info.type and info.type[0] == "document" and Path(
+                resource.path).suffix:
             return None
 
         if info.mime:

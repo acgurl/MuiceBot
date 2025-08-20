@@ -9,6 +9,7 @@ from ..config import plugin_config
 
 
 class SessionManager:
+
     def __init__(self) -> None:
         self.sessions: Dict[str, List[UniMsg]] = {}
         self._lock: asyncio.Lock = asyncio.Lock()
@@ -32,12 +33,14 @@ class SessionManager:
 
         return merged_message
 
-    async def put_and_wait(self, event: Event, message: UniMsg) -> Optional[UniMessage]:
+    async def put_and_wait(self, event: Event,
+                           message: UniMsg) -> Optional[UniMessage]:
         sid = event.get_session_id()
         await self._put(sid, message)
 
         old_length = await self._get_messages_length(sid)
-        logger.debug(f"开始等待后续消息 ({self._timeout}s): 会话 {sid}, 当前消息数 {old_length}")
+        logger.debug(
+            f"开始等待后续消息 ({self._timeout}s): 会话 {sid}, 当前消息数 {old_length}")
         await asyncio.sleep(self._timeout)
         new_length = await self._get_messages_length(sid)
 

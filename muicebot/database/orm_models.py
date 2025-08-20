@@ -13,14 +13,20 @@ class Msg(Model):
     history: Mapped[int] = mapped_column(Integer, nullable=True, default=1)
     resources: Mapped[str] = mapped_column(Text, nullable=True, default="[]")
     usage: Mapped[int] = mapped_column(Integer, nullable=True, default=-1)
-    profile: Mapped[str] = mapped_column(String, nullable=True, default="_default")
+    profile: Mapped[str] = mapped_column(String,
+                                         nullable=True,
+                                         default="_default")
 
 
 class User(Model):
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     userid: Mapped[str] = mapped_column(String, nullable=False)
-    nickname: Mapped[str] = mapped_column(String, nullable=True, default="_default")
-    profile: Mapped[str] = mapped_column(String, nullable=True, default="_default")
+    nickname: Mapped[str] = mapped_column(String,
+                                          nullable=True,
+                                          default="_default")
+    profile: Mapped[str] = mapped_column(String,
+                                         nullable=True,
+                                         default="_default")
 
 
 class Usage(Model):

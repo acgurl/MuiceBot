@@ -8,7 +8,8 @@ SYNC_HOOK_FUNC = Callable[..., None]
 ASYNC_HOOK_FUNC = Callable[..., Awaitable[None]]
 HOOK_FUNC = Union[SYNC_HOOK_FUNC, ASYNC_HOOK_FUNC]
 
-HOOK_ARGS = Union[Message, ModelCompletions, ModelStreamCompletions, ModelRequest]
+HOOK_ARGS = Union[Message, ModelCompletions, ModelStreamCompletions,
+                  ModelRequest]
 
 
 class HookType(Enum):

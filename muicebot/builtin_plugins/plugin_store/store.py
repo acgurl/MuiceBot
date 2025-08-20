@@ -145,7 +145,8 @@ async def install_plugin(plugin: str) -> None:
         stdout, stderr = await process.communicate()
 
         if process.returncode != 0:
-            await UniMessage(f"❌ 插件 {plugin} 克隆失败: {stderr.decode().strip()}").finish()
+            await UniMessage(f"❌ 插件 {plugin} 克隆失败: {stderr.decode().strip()}"
+                             ).finish()
             return
 
     except FileNotFoundError:

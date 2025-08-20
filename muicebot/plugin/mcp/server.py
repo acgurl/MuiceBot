@@ -18,7 +18,8 @@ class Tool:
     MCP Tool
     """
 
-    def __init__(self, name: str, description: str, input_schema: dict[str, Any]) -> None:
+    def __init__(self, name: str, description: str,
+                 input_schema: dict[str, Any]) -> None:
         self.name: str = name
         self.description: str = description
         self.input_schema: dict[str, Any] = input_schema
@@ -31,13 +32,19 @@ class Tool:
         """
         args_desc = []
         if "properties" in self.input_schema:
-            for param_name, param_info in self.input_schema["properties"].items():
-                arg_desc = f"- {param_name}: {param_info.get('description', 'No description')}"
+            for param_name, param_info in self.input_schema[
+                    "properties"].items():
+                arg_desc = (
+                    f"- {param_name}: {param_info.get('description', 'No description')}"
+                )
                 if param_name in self.input_schema.get("required", []):
                     arg_desc += " (required)"
                 args_desc.append(arg_desc)
 
-        return f"Tool: {self.name}\n" f"Description: {self.description}\n" f"Arguments:{chr(10).join(args_desc)}" ""
+        return (f"Tool: {self.name}\n"
+                f"Description: {self.description}\n"
+                f"Arguments:{chr(10).join(args_desc)}"
+                "")
 
 
 class Server:
@@ -64,7 +71,8 @@ class Server:
             if transport == "stdio":
                 if self.config.command is None:
                     raise ValueError("command 字段对于 stdio 传输方式是必需的")
-                command = shutil.which("npx") if self.config.command == "npx" else self.config.command
+                command = (shutil.which("npx") if self.config.command == "npx"
+                           else self.config.command)
                 if command is None:
                     raise ValueError(
                         f"command 字段必须为一个有效值, 且目标指令必须存在于环境变量中: {self.config.command}"
@@ -73,21 +81,25 @@ class Server:
                 server_params = StdioServerParameters(
                     command=command,
                     args=self.config.args,
-                    env={**os.environ, **self.config.env} if self.config.env else None,
+                    env={
+                        **os.environ,
+                        **self.config.env
+                    } if self.config.env else None,
                 )
-                transport_context = await self.exit_stack.enter_async_context(stdio_client(server_params))
+                transport_context = await self.exit_stack.enter_async_context(
+                    stdio_client(server_params))
             elif transport == "sse":
                 if not self.config.url:
                     raise ValueError("SSE transport requires a URL")
                 transport_context = await self.exit_stack.enter_async_context(
-                    sse_client(self.config.url, headers=self.config.headers)
-                )
+                    sse_client(self.config.url, headers=self.config.headers))
             elif transport == "streamable_http":
                 if not self.config.url:
-                    raise ValueError("Streamable HTTP transport requires a URL")
+                    raise ValueError(
+                        "Streamable HTTP transport requires a URL")
                 transport_context = await self.exit_stack.enter_async_context(
-                    streamablehttp_client(self.config.url, headers=self.config.headers)
-                )
+                    streamablehttp_client(self.config.url,
+                                          headers=self.config.headers))
             else:
                 raise ValueError(f"Unsupported transport type: {transport}")
 
@@ -101,7 +113,8 @@ class Server:
 
             read, write = transport_context[0], transport_context[1]
 
-            session = await self.exit_stack.enter_async_context(ClientSession(read, write))
+            session = await self.exit_stack.enter_async_context(
+                ClientSession(read, write))
             await session.initialize()
             self.session = session
         except Exception as e:
@@ -125,7 +138,9 @@ class Server:
 
         for item in tools_response:
             if isinstance(item, tuple) and item[0] == "tools":
-                tools.extend(Tool(tool.name, tool.description, tool.inputSchema) for tool in item[1])
+                tools.extend(
+                    Tool(tool.name, tool.description, tool.inputSchema)
+                    for tool in item[1])
 
         return tools
 
@@ -162,7 +177,9 @@ class Server:
 
             except Exception as e:
                 attempt += 1
-                logging.warning(f"Error executing tool: {e}. Attempt {attempt} of {retries}.")
+                logging.warning(
+                    f"Error executing tool: {e}. Attempt {attempt} of {retries}."
+                )
                 if attempt < retries:
                     logging.info(f"Retrying in {delay} seconds...")
                     await asyncio.sleep(delay)
@@ -178,4 +195,5 @@ class Server:
                 self.session = None
                 self.stdio_context = None
             except Exception as e:
-                logging.error(f"Error during cleanup of server {self.name}: {e}")
+                logging.error(
+                    f"Error during cleanup of server {self.name}: {e}")

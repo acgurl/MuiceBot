@@ -8,11 +8,13 @@ from ..registry import register
 
 @register("ollama")
 class Ollama(EmbeddingModel):
+
     def __init__(self, config: EmbeddingConfig):
         super().__init__(config)
         self._require("model")
         self.model = self.config.model
-        self.host = self.config.api_host if self.config.api_host else "http://localhost:11434"
+        self.host = (self.config.api_host
+                     if self.config.api_host else "http://localhost:11434")
         self.client = AsyncClient(host=self.host)
 
     async def embed(self, texts: list[str]) -> EmbeddingsBatchResult:
@@ -21,4 +23,5 @@ class Ollama(EmbeddingModel):
         """
         responses = await self.client.embed(model=self.model, input=texts)
 
-        return EmbeddingsBatchResult([list(result) for result in responses.embeddings], usage=-1)
+        return EmbeddingsBatchResult(
+            [list(result) for result in responses.embeddings], usage=-1)

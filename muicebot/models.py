@@ -55,7 +55,11 @@ class Resource:
         落库时存储的数据
         (注意：与模型进行交互的多模态文件必须在本地拥有备份)
         """
-        return {"type": self.type, "path": self.path, "mimetype": self.mimetype}
+        return {
+            "type": self.type,
+            "path": self.path,
+            "mimetype": self.mimetype
+        }
 
 
 @total_ordering
@@ -65,7 +69,8 @@ class Message:
 
     id: int | None = None
     """每条消息的唯一ID"""
-    time: str = field(default_factory=lambda: datetime.strftime(datetime.now(), "%Y.%m.%d %H:%M:%S"))
+    time: str = field(default_factory=lambda: datetime.strftime(
+        datetime.now(), "%Y.%m.%d %H:%M:%S"))
     """
     字符串形式的时间数据：%Y.%m.%d %H:%M:%S
     若要获取格式化的 datetime 对象，请使用 format_time

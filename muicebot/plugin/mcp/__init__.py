@@ -26,4 +26,6 @@ SOFTWARE.
 
 from .client import cleanup_servers, get_mcp_list, handle_mcp_tool, initialize_servers
 
-__all__ = ["handle_mcp_tool", "cleanup_servers", "initialize_servers", "get_mcp_list"]
+__all__ = [
+    "handle_mcp_tool", "cleanup_servers", "initialize_servers", "get_mcp_list"
+]

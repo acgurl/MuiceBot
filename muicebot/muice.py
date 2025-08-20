@@ -48,7 +48,8 @@ class Muice:
         self._model_config_manager = get_model_config_manager()
 
         self.model_config = self._model_config_manager.get_model_config()
-        self.model_config_name = self._model_config_manager.get_name_from_config(self.model_config)
+        self.model_config_name = self._model_config_manager.get_name_from_config(
+            self.model_config)
 
         self.database = MessageORM()
         self.max_history_epoch = plugin_config.max_history_epoch
@@ -99,7 +100,9 @@ class Muice:
             missing = get_missing_dependencies(dependencies)
             if missing:
                 install_command = "pip install " + " ".join(missing)
-                logger.critical(f"缺少依赖库：{', '.join(missing)}\n请运行以下命令安装缺失项：\n\n{install_command}")
+                logger.critical(
+                    f"缺少依赖库：{', '.join(missing)}\n请运行以下命令安装缺失项：\n\n{install_command}"
+                )
             sys.exit(1)
 
     def load_model(self) -> bool:
@@ -114,21 +117,27 @@ class Muice:
 
         return True
 
-    def _on_config_changed(self, new_config: ModelConfig, old_config: Optional[ModelConfig] = None):
+    def _on_config_changed(self,
+                           new_config: ModelConfig,
+                           old_config: Optional[ModelConfig] = None):
         """配置文件变更时的回调函数"""
         logger.info("检测到配置文件变更，自动重载模型...")
         # 更新配置
         old_config_name = self.model_config_name
         self.model_config = new_config
-        self.model_config_name = self._model_config_manager.get_name_from_config(new_config)
+        self.model_config_name = self._model_config_manager.get_name_from_config(
+            new_config)
 
         # 重新加载模型
         self._load_config()
         self._init_model()
         self.load_model()
-        logger.success(f"模型自动重载完成: {old_config_name} -> {self.model_config_name}")
+        logger.success(
+            f"模型自动重载完成: {old_config_name} -> {self.model_config_name}")
 
-    def change_model_config(self, config_name: Optional[str] = None, reload: bool = False) -> str:
+    def change_model_config(self,
+                            config_name: Optional[str] = None,
+                            reload: bool = False) -> str:
         """
         更换模型配置文件并重新加载模型
 
@@ -142,7 +151,8 @@ class Muice:
 
         try:
             self.model_config = get_model_config(config_name)
-            self.model_config_name = self._model_config_manager.get_name_from_config(self.model_config)
+            self.model_config_name = self._model_config_manager.get_name_from_config(
+                self.model_config)
         except (ValueError, FileNotFoundError) as e:
             return str(e)
 
@@ -153,9 +163,11 @@ class Muice:
         if reload:
             return f"已成功重载模型配置文件: {config_name}"
 
-        return f"已成功加载 {config_name}" if config_name else "未指定模型配置名，已加载默认模型配置"
+        return (f"已成功加载 {config_name}"
+                if config_name else "未指定模型配置名，已加载默认模型配置")
 
-    async def _prepare_prompt(self, message: str, userid: str, is_private: bool) -> str:
+    async def _prepare_prompt(self, message: str, userid: str,
+                              is_private: bool) -> str:
         """
         准备提示词(包含系统提示)
 
@@ -167,7 +179,8 @@ class Muice:
         if self.template is None:
             return message
 
-        system_prompt = generate_prompt_from_template(self.template, userid, is_private).strip()
+        system_prompt = generate_prompt_from_template(self.template, userid,
+                                                      is_private).strip()
 
         if self.template_mode == "system":
             self.system_prompt = system_prompt
@@ -175,14 +188,20 @@ class Muice:
             self.user_instructions = system_prompt
 
         if is_private:
-            return f"{self.user_instructions}\n\n{message}" if self.user_instructions else message
+            return (f"{self.user_instructions}\n\n{message}"
+                    if self.user_instructions else message)
 
         group_prompt = f"<{await get_username()}> {message}"
 
-        return f"{self.user_instructions}\n\n{group_prompt}" if self.user_instructions else group_prompt
+        return (f"{self.user_instructions}\n\n{group_prompt}"
+                if self.user_instructions else group_prompt)
 
     async def _prepare_history(
-        self, session: async_scoped_session, userid: str, groupid: str = "-1", enable_history: bool = True
+        self,
+        session: async_scoped_session,
+        userid: str,
+        groupid: str = "-1",
+        enable_history: bool = True,
     ) -> list[Message]:
         """
         准备对话历史
@@ -192,24 +211,26 @@ class Muice:
         :param enable_history: 是否启用历史记录
         :return: 最终模型提示词
         """
-        user_history = (
-            await self.database.get_user_history(session, userid, self.max_history_epoch) if enable_history else []
-        )
+        user_history = (await self.database.get_user_history(
+            session, userid, self.max_history_epoch) if enable_history else [])
 
         # 验证多模态资源路径是否可用
         for item in user_history:
             item.resources = [
-                resource for resource in item.resources if resource.path and os.path.isfile(resource.path)
+                resource for resource in item.resources
+                if resource.path and os.path.isfile(resource.path)
             ]
 
         if groupid == "-1":
-            return user_history[-self.max_history_epoch :]
+            return user_history[-self.max_history_epoch:]
 
-        group_history = await self.database.get_group_history(session, groupid, self.max_history_epoch)
+        group_history = await self.database.get_group_history(
+            session, groupid, self.max_history_epoch)
 
         for item in group_history:
             item.resources = [
-                resource for resource in item.resources if resource.path and os.path.isfile(resource.path)
+                resource for resource in item.resources
+                if resource.path and os.path.isfile(resource.path)
             ]
 
         # 群聊历史构建成 <Username> Message 的格式，避免上下文混乱
@@ -219,7 +240,7 @@ class Muice:
 
         final_history = list(set(user_history + group_history))
 
-        return final_history[-self.max_history_epoch :]
+        return final_history[-self.max_history_epoch:]
 
     async def ask(
         self,
@@ -245,17 +266,13 @@ class Muice:
 
         await hook_manager.run(HookType.BEFORE_PRETREATMENT, message)
 
-        prompt = await self._prepare_prompt(message.message, message.userid, is_private)
-        history = (
-            await self._prepare_history(session, message.userid, message.groupid, enable_history)
-            if enable_history
-            else []
-        )
-        tools = (
-            (await get_function_list() + await get_mcp_list())
-            if self.model_config.function_call and enable_plugins
-            else []
-        )
+        prompt = await self._prepare_prompt(message.message, message.userid,
+                                            is_private)
+        history = (await self._prepare_history(session, message.userid,
+                                               message.groupid, enable_history)
+                   if enable_history else [])
+        tools = ((await get_function_list() + await get_mcp_list())
+                 if self.model_config.function_call and enable_plugins else [])
         system = self.system_prompt if self.system_prompt else None
         resources = message.resources if self.model_config.multimodal else []
 
@@ -270,7 +287,8 @@ class Muice:
         end_time = time.perf_counter()
 
         logger.success(f"模型调用{'成功' if response.succeed else '失败'}: {response}")
-        logger.debug(f"模型调用时长: {end_time - start_time} s (token用量: {response.usage})")
+        logger.debug(
+            f"模型调用时长: {end_time - start_time} s (token用量: {response.usage})")
 
         message.respond = response.text
         message.usage = response.usage
@@ -280,7 +298,8 @@ class Muice:
             logger.warning(msg)
             return ModelCompletions(msg, succeed=False)
 
-        await hook_manager.run(HookType.AFTER_MODEL_COMPLETION, response, message)
+        await hook_manager.run(HookType.AFTER_MODEL_COMPLETION, response,
+                               message)
 
         await hook_manager.run(HookType.ON_FINISHING_CHAT, message)
 
@@ -314,17 +333,13 @@ class Muice:
 
         await hook_manager.run(HookType.BEFORE_PRETREATMENT, message)
 
-        prompt = await self._prepare_prompt(message.message, message.userid, is_private)
-        history = (
-            await self._prepare_history(session, message.userid, message.groupid, enable_history)
-            if enable_history
-            else []
-        )
-        tools = (
-            (await get_function_list() + await get_mcp_list())
-            if self.model_config.function_call and enable_plugins
-            else []
-        )
+        prompt = await self._prepare_prompt(message.message, message.userid,
+                                            is_private)
+        history = (await self._prepare_history(session, message.userid,
+                                               message.groupid, enable_history)
+                   if enable_history else [])
+        tools = ((await get_function_list() + await get_mcp_list())
+                 if self.model_config.function_call and enable_plugins else [])
         system = self.system_prompt if self.system_prompt else None
         resources = message.resources if self.model_config.multimodal else []
 
@@ -355,10 +370,14 @@ class Muice:
 
         end_time = time.perf_counter()
         logger.success(f"已完成流式回复: {total_reply}")
-        logger.debug(f"模型调用时长: {end_time - start_time} s (token用量: {item.usage})")
+        logger.debug(
+            f"模型调用时长: {end_time - start_time} s (token用量: {item.usage})")
 
         final_model_completions = ModelCompletions(
-            text=total_reply, usage=item.usage, resources=total_resources.copy(), succeed=item.succeed
+            text=total_reply,
+            usage=item.usage,
+            resources=total_resources.copy(),
+            succeed=item.succeed,
         )
 
         message.respond = total_reply
@@ -370,10 +389,18 @@ class Muice:
             yield ModelStreamCompletions(msg, succeed=False)
             return
 
-        await hook_manager.run(HookType.AFTER_MODEL_COMPLETION, final_model_completions, message, stream=True)
+        await hook_manager.run(
+            HookType.AFTER_MODEL_COMPLETION,
+            final_model_completions,
+            message,
+            stream=True,
+        )
 
         # 提取挂钩函数的可能的 resources 资源
-        new_resources = [r for r in final_model_completions.resources if r not in total_resources]
+        new_resources = [
+            r for r in final_model_completions.resources
+            if r not in total_resources
+        ]
 
         # yield 新资源
         for r in new_resources:
@@ -394,7 +421,9 @@ class Muice:
         """
         logger.info(f"用户 {userid} 请求刷新")
 
-        user_history = await self.database.get_user_history(session, userid, limit=1)
+        user_history = await self.database.get_user_history(session,
+                                                            userid,
+                                                            limit=1)
 
         if not user_history:
             logger.warning("用户对话数据不存在，拒绝刷新")

@@ -40,6 +40,7 @@ from ..utils.tools import function_call_handler
 
 @register("azure")
 class Azure(BaseLLM):
+
     def __init__(self, model_config: ModelConfig) -> None:
         super().__init__(model_config)
         self._require("model_name")
@@ -50,7 +51,8 @@ class Azure(BaseLLM):
         self.frequency_penalty = self.config.frequency_penalty
         self.presence_penalty = self.config.presence_penalty
         self.token = os.getenv("AZURE_API_KEY", self.config.api_key)
-        self.endpoint = self.config.api_host if self.config.api_host else "https://models.inference.ai.azure.com"
+        self.endpoint = (self.config.api_host if self.config.api_host else
+                         "https://models.inference.ai.azure.com")
 
     def __build_multi_messages(self, request: ModelRequest) -> UserMessage:
         """
@@ -65,26 +67,24 @@ class Azure(BaseLLM):
                 continue
             elif resource.type == "audio":
                 multi_content_items.append(
-                    AudioContentItem(
-                        input_audio=InputAudio.load(audio_file=resource.path, audio_format=resource.path.split(".")[-1])
-                    )
-                )
+                    AudioContentItem(input_audio=InputAudio.load(
+                        audio_file=resource.path,
+                        audio_format=resource.path.split(".")[-1],
+                    )))
             elif resource.type == "image":
                 multi_content_items.append(
-                    ImageContentItem(
-                        image_url=ImageUrl.load(
-                            image_file=resource.path,
-                            image_format=resource.path.split(".")[-1],
-                            detail=ImageDetailLevel.AUTO,
-                        )
-                    )
-                )
+                    ImageContentItem(image_url=ImageUrl.load(
+                        image_file=resource.path,
+                        image_format=resource.path.split(".")[-1],
+                        detail=ImageDetailLevel.AUTO,
+                    )))
 
         content = [TextContentItem(text=request.prompt)] + multi_content_items
 
         return UserMessage(content=content)
 
-    def __build_tools_definition(self, tools: List[dict]) -> List[ChatCompletionsToolDefinition]:
+    def __build_tools_definition(
+            self, tools: List[dict]) -> List[ChatCompletionsToolDefinition]:
         tool_definitions = []
 
         for tool in tools:
@@ -93,34 +93,37 @@ class Azure(BaseLLM):
                     name=tool["function"]["name"],
                     description=tool["function"]["description"],
                     parameters=tool["function"]["parameters"],
-                )
-            )
+                ))
             tool_definitions.append(tool_definition)
 
         return tool_definitions
 
-    def _build_messages(self, request: ModelRequest) -> List[ChatRequestMessage]:
+    def _build_messages(self,
+                        request: ModelRequest) -> List[ChatRequestMessage]:
         messages: List[ChatRequestMessage] = []
 
         if request.system:
             messages.append(SystemMessage(request.system))
 
         for msg in request.history:
-            user_msg = (
-                UserMessage(msg.message)
-                if not msg.resources
-                else self.__build_multi_messages(ModelRequest(msg.message, resources=msg.resources))
-            )
+            user_msg = (UserMessage(msg.message)
+                        if not msg.resources else self.__build_multi_messages(
+                            ModelRequest(msg.message,
+                                         resources=msg.resources)))
             messages.append(user_msg)
             messages.append(AssistantMessage(msg.respond))
 
-        user_message = UserMessage(request.prompt) if not request.resources else self.__build_multi_messages(request)
+        user_message = (UserMessage(request.prompt) if not request.resources
+                        else self.__build_multi_messages(request))
 
         messages.append(user_message)
 
         return messages
 
-    def _tool_messages_precheck(self, tool_calls: Optional[List[ChatCompletionsToolCall]] = None) -> bool:
+    def _tool_messages_precheck(
+            self,
+            tool_calls: Optional[List[ChatCompletionsToolCall]] = None
+    ) -> bool:
         if not (tool_calls and len(tool_calls) == 1):
             return False
 
@@ -138,7 +141,9 @@ class Azure(BaseLLM):
         response_format: Optional[JsonSchemaFormat],
         total_tokens: int = 0,
     ) -> ModelCompletions:
-        client = ChatCompletionsClient(endpoint=self.endpoint, credential=AzureKeyCredential(self.token))
+        client = ChatCompletionsClient(endpoint=self.endpoint,
+                                       credential=AzureKeyCredential(
+                                           self.token))
 
         completions = ModelCompletions()
         current_total_tokens = total_tokens
@@ -174,21 +179,27 @@ class Azure(BaseLLM):
             elif finish_reason == CompletionsFinishReason.TOOL_CALLS:
                 tool_calls = response.choices[0].message.tool_calls
                 messages.append(AssistantMessage(tool_calls=tool_calls))
-                if (tool_calls is None) or (not self._tool_messages_precheck(tool_calls=tool_calls)):
+                if (tool_calls is None) or (not self._tool_messages_precheck(
+                        tool_calls=tool_calls)):
                     completions.succeed = False
                     completions.text = "(模型内部错误: tool_calls 内容为空)"
                     completions.usage = current_total_tokens
                     return completions
 
                 tool_call = tool_calls[0]
-                function_args = json.loads(tool_call.function.arguments.replace("'", '"'))
+                function_args = json.loads(
+                    tool_call.function.arguments.replace("'", '"'))
 
-                function_return = await function_call_handler(tool_call.function.name, function_args)
+                function_return = await function_call_handler(
+                    tool_call.function.name, function_args)
 
                 # Append the function call result fo the chat history
-                messages.append(ToolMessage(tool_call_id=tool_call.id, content=function_return))
+                messages.append(
+                    ToolMessage(tool_call_id=tool_call.id,
+                                content=function_return))
 
-                return await self._ask_sync(messages, tools, response_format, current_total_tokens)
+                return await self._ask_sync(messages, tools, response_format,
+                                            current_total_tokens)
 
             else:
                 completions.succeed = False
@@ -212,7 +223,9 @@ class Azure(BaseLLM):
         response_format: Optional[JsonSchemaFormat],
         total_tokens: int = 0,
     ) -> AsyncGenerator[ModelStreamCompletions, None]:
-        client = ChatCompletionsClient(endpoint=self.endpoint, credential=AzureKeyCredential(self.token))
+        client = ChatCompletionsClient(endpoint=self.endpoint,
+                                       credential=AzureKeyCredential(
+                                           self.token))
         current_total_tokens = total_tokens
 
         try:
@@ -226,7 +239,9 @@ class Azure(BaseLLM):
                 presence_penalty=self.presence_penalty,
                 stream=True,
                 tools=tools,
-                model_extras={"stream_options": {"include_usage": True}},  # 需要显式声明获取用量
+                model_extras={"stream_options": {
+                    "include_usage": True
+                }},  # 需要显式声明获取用量
                 response_format=response_format,
             )
 
@@ -238,7 +253,8 @@ class Azure(BaseLLM):
                 stream_completions = ModelStreamCompletions()
 
                 if chunk.usage:  # chunk.usage 只会在最后一个包中被提供，此时choices为空
-                    current_total_tokens += chunk.usage.total_tokens if chunk.usage else 0
+                    current_total_tokens += (chunk.usage.total_tokens
+                                             if chunk.usage else 0)
                     stream_completions.usage = current_total_tokens
 
                 if not chunk.choices:
@@ -247,8 +263,10 @@ class Azure(BaseLLM):
 
                 finish_reason = chunk.choices[0].finish_reason
 
-                if chunk.choices and chunk.choices[0].get("delta", {}).get("content", ""):
-                    stream_completions.chunk = chunk["choices"][0]["delta"]["content"]
+                if chunk.choices and chunk.choices[0].get("delta", {}).get(
+                        "content", ""):
+                    stream_completions.chunk = chunk["choices"][0]["delta"][
+                        "content"]
 
                 elif chunk.choices[0].delta.tool_calls is not None:
                     tool_call = chunk.choices[0].delta.tool_calls[0]
@@ -270,23 +288,27 @@ class Azure(BaseLLM):
 
                 elif finish_reason == CompletionsFinishReason.TOOL_CALLS:
                     messages.append(
-                        AssistantMessage(
-                            tool_calls=[
-                                ChatCompletionsToolCall(
-                                    id=tool_call_id, function=FunctionCall(name=function_name, arguments=function_args)
-                                )
-                            ]
-                        )
-                    )
+                        AssistantMessage(tool_calls=[
+                            ChatCompletionsToolCall(
+                                id=tool_call_id,
+                                function=FunctionCall(name=function_name,
+                                                      arguments=function_args),
+                            )
+                        ]))
 
                     function_arg = json.loads(function_args.replace("'", '"'))
 
-                    function_return = await function_call_handler(function_name, function_arg)
+                    function_return = await function_call_handler(
+                        function_name, function_arg)
 
                     # Append the function call result fo the chat history
-                    messages.append(ToolMessage(tool_call_id=tool_call_id, content=function_return))
+                    messages.append(
+                        ToolMessage(tool_call_id=tool_call_id,
+                                    content=function_return))
 
-                    async for content in self._ask_stream(messages, tools, response_format, current_total_tokens):
+                    async for content in self._ask_stream(
+                            messages, tools, response_format,
+                            current_total_tokens):
                         yield content
 
                     return
@@ -305,19 +327,31 @@ class Azure(BaseLLM):
             await client.close()
 
     @overload
-    async def ask(self, request: ModelRequest, *, stream: Literal[False] = False) -> ModelCompletions: ...
+    async def ask(self,
+                  request: ModelRequest,
+                  *,
+                  stream: Literal[False] = False) -> ModelCompletions:
+        ...
 
     @overload
     async def ask(
-        self, request: ModelRequest, *, stream: Literal[True] = True
-    ) -> AsyncGenerator[ModelStreamCompletions, None]: ...
+        self,
+        request: ModelRequest,
+        *,
+        stream: Literal[True] = True
+    ) -> AsyncGenerator[ModelStreamCompletions, None]:
+        ...
 
     async def ask(
-        self, request: ModelRequest, *, stream: bool = False
+        self,
+        request: ModelRequest,
+        *,
+        stream: bool = False
     ) -> Union[ModelCompletions, AsyncGenerator[ModelStreamCompletions, None]]:
         messages = self._build_messages(request)
 
-        tools = self.__build_tools_definition(request.tools) if request.tools else []
+        tools = self.__build_tools_definition(
+            request.tools) if request.tools else []
 
         if request.format == "json" and request.json_schema:
             response_format = JsonSchemaFormat(

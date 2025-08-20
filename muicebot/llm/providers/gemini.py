@@ -42,6 +42,7 @@ from ..utils.tools import function_call_handler
 
 @register("gemini")
 class Gemini(BaseLLM):
+
     def __init__(self, model_config: ModelConfig) -> None:
         super().__init__(model_config)
         self._require("model_name", "api_key")
@@ -59,33 +60,33 @@ class Gemini(BaseLLM):
             max_output_tokens=self.config.max_tokens,
             presence_penalty=self.config.presence_penalty,
             frequency_penalty=self.config.frequency_penalty,
-            response_modalities=[m.upper() for m in self.config.modalities if m in {"image", "text"}],
-            safety_settings=(
-                [
-                    SafetySetting(
-                        category=HarmCategory.HARM_CATEGORY_HARASSMENT,
-                        threshold=HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
-                    ),
-                    SafetySetting(
-                        category=HarmCategory.HARM_CATEGORY_HATE_SPEECH,
-                        threshold=HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
-                    ),
-                    SafetySetting(
-                        category=HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
-                        threshold=HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
-                    ),
-                    SafetySetting(
-                        category=HarmCategory.HARM_CATEGORY_CIVIC_INTEGRITY,
-                        threshold=HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
-                    ),
-                ]
-                if self.config.content_security
-                else []
-            ),
+            response_modalities=[
+                m.upper() for m in self.config.modalities
+                if m in {"image", "text"}
+            ],
+            safety_settings=([
+                SafetySetting(
+                    category=HarmCategory.HARM_CATEGORY_HARASSMENT,
+                    threshold=HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
+                ),
+                SafetySetting(
+                    category=HarmCategory.HARM_CATEGORY_HATE_SPEECH,
+                    threshold=HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
+                ),
+                SafetySetting(
+                    category=HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
+                    threshold=HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
+                ),
+                SafetySetting(
+                    category=HarmCategory.HARM_CATEGORY_CIVIC_INTEGRITY,
+                    threshold=HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
+                ),
+            ] if self.config.content_security else []),
         )
 
     def _build_gemini_config(
-        self, tools: Optional[List[dict]], response_format: Optional[Type[BaseModel]]
+            self, tools: Optional[List[dict]],
+            response_format: Optional[Type[BaseModel]]
     ) -> GenerateContentConfig:
         gemini_config = self.gemini_config.model_copy()
         format_tools = []
@@ -98,7 +99,8 @@ class Gemini(BaseLLM):
             tool["parameters"]["required"] = required_parameters
             format_tools.append(tool)
 
-        function_tools = Tool(function_declarations=format_tools)  # type:ignore
+        function_tools = Tool(
+            function_declarations=format_tools)  # type:ignore
 
         if self.enable_search:
             function_tools.google_search = GoogleSearch()
@@ -123,9 +125,10 @@ class Gemini(BaseLLM):
             if resource.type == "image" and resource.path is not None:
                 user_parts.append(
                     Part.from_bytes(
-                        data=get_file_base64(resource.path), mime_type=resource.mimetype or "image/jpeg"  # type:ignore
-                    )
-                )
+                        data=get_file_base64(resource.path),
+                        mime_type=resource.mimetype
+                        or "image/jpeg",  # type:ignore
+                    ))
 
         return user_parts
 
@@ -136,12 +139,17 @@ class Gemini(BaseLLM):
             for index, item in enumerate(request.history):
                 messages.append(
                     Content(
-                        role="user", parts=self._build_user_parts(ModelRequest(item.message, resources=item.resources))
-                    )
-                )
-                messages.append(Content(role="model", parts=[Part.from_text(text=item.respond)]))
+                        role="user",
+                        parts=self._build_user_parts(
+                            ModelRequest(item.message,
+                                         resources=item.resources)),
+                    ))
+                messages.append(
+                    Content(role="model",
+                            parts=[Part.from_text(text=item.respond)]))
 
-        messages.append(Content(role="user", parts=self._build_user_parts(request)))
+        messages.append(
+            Content(role="user", parts=self._build_user_parts(request)))
 
         return messages
 
@@ -156,7 +164,9 @@ class Gemini(BaseLLM):
         completions = ModelCompletions()
 
         try:
-            chat = self.client.aio.chats.create(model=self.model_name, config=gemini_config, history=messages[:-1])
+            chat = self.client.aio.chats.create(model=self.model_name,
+                                                config=gemini_config,
+                                                history=messages[:-1])
             message = messages[-1].parts  # type:ignore
             response = await chat.send_message(message=message)  # type:ignore
             if response.usage_metadata:
@@ -166,15 +176,16 @@ class Gemini(BaseLLM):
             if response.text:
                 completions.text = response.text
 
-            if (
-                response.candidates
-                and response.candidates[0].content
-                and response.candidates[0].content.parts
-                and response.candidates[0].content.parts[0].inline_data
-                and response.candidates[0].content.parts[0].inline_data.data
-            ):
+            if (response.candidates and response.candidates[0].content
+                    and response.candidates[0].content.parts
+                    and response.candidates[0].content.parts[0].inline_data and
+                    response.candidates[0].content.parts[0].inline_data.data):
                 completions.resources = [
-                    Resource(type="image", raw=response.candidates[0].content.parts[0].inline_data.data)
+                    Resource(
+                        type="image",
+                        raw=response.candidates[0].content.parts[0].
+                        inline_data.data,
+                    )
                 ]
 
             if response.function_calls:
@@ -182,17 +193,22 @@ class Gemini(BaseLLM):
                 function_name = function_call.name
                 function_args = function_call.args
 
-                function_return = await function_call_handler(function_name, function_args)  # type:ignore
+                function_return = await function_call_handler(
+                    function_name, function_args)  # type:ignore
 
                 function_response_part = Part.from_function_response(
                     name=function_name,  # type:ignore
                     response={"result": function_return},
                 )
 
-                messages.append(Content(role="model", parts=[Part(function_call=function_call)]))
-                messages.append(Content(role="user", parts=[function_response_part]))
+                messages.append(
+                    Content(role="model",
+                            parts=[Part(function_call=function_call)]))
+                messages.append(
+                    Content(role="user", parts=[function_response_part]))
 
-                return await self._ask_sync(messages, tools, response_format, total_tokens)
+                return await self._ask_sync(messages, tools, response_format,
+                                            total_tokens)
 
             completions.text = completions.text or "（警告：模型无输出！）"
             completions.usage = total_tokens
@@ -224,8 +240,7 @@ class Gemini(BaseLLM):
         try:
             current_total_tokens = 0
             stream = await self.client.aio.models.generate_content_stream(
-                model=self.model_name, contents=messages, config=gemini_config
-            )
+                model=self.model_name, contents=messages, config=gemini_config)
             stream = await stream if isinstance(stream, Awaitable) else stream
             async for chunk in stream:
                 stream_completions = ModelStreamCompletions()
@@ -237,15 +252,17 @@ class Gemini(BaseLLM):
                 if chunk.usage_metadata and chunk.usage_metadata.total_token_count:
                     current_total_tokens = chunk.usage_metadata.total_token_count
 
-                if (
-                    chunk.candidates
-                    and chunk.candidates[0].content
-                    and chunk.candidates[0].content.parts
-                    and chunk.candidates[0].content.parts[0].inline_data
-                    and chunk.candidates[0].content.parts[0].inline_data.data
-                ):
+                if (chunk.candidates and chunk.candidates[0].content
+                        and chunk.candidates[0].content.parts
+                        and chunk.candidates[0].content.parts[0].inline_data
+                        and
+                        chunk.candidates[0].content.parts[0].inline_data.data):
                     stream_completions.resources = [
-                        Resource(type="image", raw=chunk.candidates[0].content.parts[0].inline_data.data)
+                        Resource(
+                            type="image",
+                            raw=chunk.candidates[0].content.parts[0].
+                            inline_data.data,
+                        )
                     ]
                     yield stream_completions
 
@@ -254,18 +271,25 @@ class Gemini(BaseLLM):
                     function_name = function_call.name
                     function_args = function_call.args
 
-                    function_return = await function_call_handler(function_name, function_args)  # type:ignore
+                    function_return = await function_call_handler(
+                        function_name, function_args)  # type:ignore
 
                     function_response_part = Part.from_function_response(
                         name=function_name,  # type:ignore
                         response={"result": function_return},
                     )
 
-                    messages.append(Content(role="model", parts=[Part(function_call=function_call)]))
-                    messages.append(Content(role="user", parts=[function_response_part]))
+                    messages.append(
+                        Content(role="model",
+                                parts=[Part(function_call=function_call)]))
+                    messages.append(
+                        Content(role="user", parts=[function_response_part]))
 
                     async for final_chunk in self._ask_stream(
-                        messages, tools, response_format, total_tokens + current_total_tokens
+                            messages,
+                            tools,
+                            response_format,
+                            total_tokens + current_total_tokens,
                     ):
                         yield final_chunk
                     return
@@ -296,15 +320,26 @@ class Gemini(BaseLLM):
             return
 
     @overload
-    async def ask(self, request: ModelRequest, *, stream: Literal[False] = False) -> ModelCompletions: ...
+    async def ask(self,
+                  request: ModelRequest,
+                  *,
+                  stream: Literal[False] = False) -> ModelCompletions:
+        ...
 
     @overload
     async def ask(
-        self, request: ModelRequest, *, stream: Literal[True] = True
-    ) -> AsyncGenerator[ModelStreamCompletions, None]: ...
+        self,
+        request: ModelRequest,
+        *,
+        stream: Literal[True] = True
+    ) -> AsyncGenerator[ModelStreamCompletions, None]:
+        ...
 
     async def ask(
-        self, request: ModelRequest, *, stream: bool = False
+        self,
+        request: ModelRequest,
+        *,
+        stream: bool = False
     ) -> Union[ModelCompletions, AsyncGenerator[ModelStreamCompletions, None]]:
         messages = self._build_messages(request)
         response_format = request.json_schema if request.format == "json" else None

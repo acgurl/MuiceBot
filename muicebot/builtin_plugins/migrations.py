@@ -13,7 +13,9 @@ from muicebot.models import Message, Resource
 from muicebot.plugin import PluginMetadata
 
 __plugin_meta__ = PluginMetadata(
-    name="muicebot_plugin_migrations", description="从旧数据库实现中迁移", usage=".migrate"
+    name="muicebot_plugin_migrations",
+    description="从旧数据库实现中迁移",
+    usage=".migrate",
 )
 
 COMMAND_PREFIXES = [".", "/"]
@@ -27,8 +29,10 @@ command_migrate = on_alconna(
 
 
 class Database:
+
     def __init__(self) -> None:
-        self.DB_PATH = get_plugin_data_dir().joinpath("ChatHistory.db").resolve()
+        self.DB_PATH = get_plugin_data_dir().joinpath(
+            "ChatHistory.db").resolve()
 
     def __connect(self) -> aiosqlite.Connection:
         return aiosqlite.connect(self.DB_PATH)
@@ -37,10 +41,15 @@ class Database:
         """
         获取数据库版本号，默认值为0
         """
-        result = await self.execute("SELECT version FROM schema_version", fetchone=True)
+        result = await self.execute("SELECT version FROM schema_version",
+                                    fetchone=True)
         return result[0] if result else 0
 
-    async def execute(self, query: str, params=(), fetchone=False, fetchall=False) -> list | None:
+    async def execute(self,
+                      query: str,
+                      params=(),
+                      fetchone=False,
+                      fetchall=False) -> list | None:
         """
         异步执行SQL查询，支持可选参数。
 
@@ -57,7 +66,10 @@ class Database:
                 return await cursor.fetchone()  # type: ignore
             if fetchall:
                 rows = await cursor.fetchall()
-                return [{k.lower(): v for k, v in zip(row.keys(), row)} for row in rows]
+                return [{
+                    k.lower(): v
+                    for k, v in zip(row.keys(), row)
+                } for row in rows]
             await conn.commit()
 
         return None
@@ -76,7 +88,8 @@ class Database:
 
             # 反序列化 resources
             resources = json.loads(data.get("resources", "[]"))
-            data["resources"] = [Resource(**r) for r in resources] if resources else []
+            data["resources"] = [Resource(**r)
+                                 for r in resources] if resources else []
 
             result.append(Message(**data))
 

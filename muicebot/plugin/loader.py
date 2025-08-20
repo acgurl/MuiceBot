@@ -28,7 +28,8 @@ _declared_plugins: Set[str] = set()
 """已声明插件注册表（不一定加载成功）"""
 
 
-def load_plugin(plugin_path: Path | str, base_path=Path.cwd()) -> Optional[Plugin]:
+def load_plugin(
+        plugin_path: Path | str, base_path=Path.cwd()) -> Optional[Plugin]:
     """
     加载单个插件
 
@@ -54,7 +55,12 @@ def load_plugin(plugin_path: Path | str, base_path=Path.cwd()) -> Optional[Plugi
         # get plugin metadata
         metadata: Optional[PluginMetadata] = nb_plugin.metadata
 
-        plugin = Plugin(name=nb_plugin.module_name, module=nb_plugin.module, package_name=module_name, meta=metadata)
+        plugin = Plugin(
+            name=nb_plugin.module_name,
+            module=nb_plugin.module,
+            package_name=module_name,
+            meta=metadata,
+        )
 
         _plugins[plugin.package_name] = plugin
 
@@ -65,7 +71,8 @@ def load_plugin(plugin_path: Path | str, base_path=Path.cwd()) -> Optional[Plugi
         return None
 
 
-def load_plugins(*plugins_dirs: Path | str, base_path=Path.cwd()) -> set[Plugin]:
+def load_plugins(
+        *plugins_dirs: Path | str, base_path=Path.cwd()) -> set[Plugin]:
     """
     加载传入插件目录中的所有插件
 
@@ -77,15 +84,19 @@ def load_plugins(*plugins_dirs: Path | str, base_path=Path.cwd()) -> set[Plugin]
     plugins = set()
 
     for plugin_dir in plugins_dirs:
-        plugin_dir_path = Path(plugin_dir) if isinstance(plugin_dir, str) else plugin_dir
+        plugin_dir_path = (Path(plugin_dir)
+                           if isinstance(plugin_dir, str) else plugin_dir)
 
         for plugin in os.listdir(plugin_dir_path):
             plugin_path = Path(os.path.join(plugin_dir_path, plugin))
             module_name = None
 
-            if plugin_path.is_file() and plugin_path.suffix == ".py" and plugin_path.name != "__init__.py":
-                module_name = path_to_module_name(plugin_path.with_suffix(""), base_path)
-            elif plugin_path.is_dir() and (plugin_path / Path("__init__.py")).exists():
+            if (plugin_path.is_file() and plugin_path.suffix == ".py"
+                    and plugin_path.name != "__init__.py"):
+                module_name = path_to_module_name(plugin_path.with_suffix(""),
+                                                  base_path)
+            elif plugin_path.is_dir() and (plugin_path /
+                                           Path("__init__.py")).exists():
                 module_name = path_to_module_name(plugin_path, base_path)
             if module_name and (loaded_plugin := load_plugin(module_name)):
                 plugins.add(loaded_plugin)
@@ -112,12 +123,16 @@ def _get_caller_plugin_name() -> Optional[str]:
 
         # skip muicebot it self
         package_name = module_name.split(".", maxsplit=1)[0]
-        if package_name == "muicebot" and not module_name.startswith("muicebot.builtin_plugins"):
+        if package_name == "muicebot" and not module_name.startswith(
+                "muicebot.builtin_plugins"):
             continue
 
         # 将模块路径拆解为层级列表（例如 a.b.c → ["a", "a.b", "a.b.c"]）
         module_segments = module_name.split(".")
-        candidate_paths = [".".join(module_segments[: i + 1]) for i in range(len(module_segments))]
+        candidate_paths = [
+            ".".join(module_segments[:i + 1])
+            for i in range(len(module_segments))
+        ]
 
         # 从长到短查找最长匹配
         for candidate in reversed(candidate_paths):

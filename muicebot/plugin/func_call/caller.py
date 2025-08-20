@@ -30,7 +30,13 @@ _caller_data: dict[str, "Caller"] = {}
 
 
 class Caller:
-    def __init__(self, description: str, params: Optional[Type[BaseModel]] = None, rule: Optional[Rule] = None):
+
+    def __init__(
+        self,
+        description: str,
+        params: Optional[Type[BaseModel]] = None,
+        rule: Optional[Rule] = None,
+    ):
         self._name: str = ""
         """函数名称"""
         self._description: str = description
@@ -112,7 +118,8 @@ class Caller:
 
         return inject_args
 
-    @deprecated("由于此方法缺乏灵活性，请改用 `on_function_call` 中的 params 参数并传入 pydantic 模型")
+    @deprecated(
+        "由于此方法缺乏灵活性，请改用 `on_function_call` 中的 params 参数并传入 pydantic 模型")
     def params(self, **kwargs: Parameter) -> "Caller":
         self._parameters.update(kwargs)
         return self
@@ -143,20 +150,33 @@ class Caller:
             return {
                 "type": "function",
                 "function": {
-                    "name": self._name,
-                    "description": self._description,
-                    "parameters": self._parameters_model.model_json_schema(schema_generator=FunctionCallJsonSchema),
+                    "name":
+                    self._name,
+                    "description":
+                    self._description,
+                    "parameters":
+                    self._parameters_model.model_json_schema(
+                        schema_generator=FunctionCallJsonSchema),
                 },
             }
 
         if not self._parameters:
             properties = {
-                "dummy_param": {"type": "string", "description": "为了兼容性设置的一个虚拟参数，因此不需要填写任何值"}
+                "dummy_param": {
+                    "type": "string",
+                    "description": "为了兼容性设置的一个虚拟参数，因此不需要填写任何值",
+                }
             }
             required = []
         else:
-            properties = {key: value.data() for key, value in self._parameters.items()}
-            required = [key for key, value in self._parameters.items() if value.default is None]
+            properties = {
+                key: value.data()
+                for key, value in self._parameters.items()
+            }
+            required = [
+                key for key, value in self._parameters.items()
+                if value.default is None
+            ]
 
         return {
             "type": "function",
@@ -172,7 +192,11 @@ class Caller:
         }
 
 
-def on_function_call(description: str, params: Optional[Type[BaseModel]] = None, rule: Optional[Rule] = None) -> Caller:
+def on_function_call(
+    description: str,
+    params: Optional[Type[BaseModel]] = None,
+    rule: Optional[Rule] = None,
+) -> Caller:
     """
     返回一个Caller类，可用于装饰一个函数，使其注册为一个可被AI调用的function call函数
 

@@ -35,22 +35,43 @@ class Echo(BaseLLM):
             elif resource.type == "audio":
                 file_format = resource.path.split(".")[-1]
                 file_data = f"data:audio/{file_format};base64,{get_file_base64(local_path=resource.path)}"
-                user_content.append({"type": "input_audio", "input_audio": {"data": file_data, "format": file_format}})
+                user_content.append({
+                    "type": "input_audio",
+                    "input_audio": {
+                        "data": file_data,
+                        "format": file_format
+                    },
+                })
 
             elif resource.type == "image":
                 file_format = resource.path.split(".")[-1]
                 file_data = f"data:image/{file_format};base64,{get_file_base64(local_path=resource.path)}"
-                user_content.append({"type": "image_url", "image_url": {"url": file_data}})
+                user_content.append({
+                    "type": "image_url",
+                    "image_url": {
+                        "url": file_data
+                    }
+                })
 
             elif resource.type == "video":
                 file_format = resource.path.split(".")[-1]
                 file_data = f"data:video/{file_format};base64,{get_file_base64(local_path=resource.path)}"
-                user_content.append({"type": "video_url", "video_url": {"url": file_data}})
+                user_content.append({
+                    "type": "video_url",
+                    "video_url": {
+                        "url": file_data
+                    }
+                })
 
             elif resource.type == "file":
                 file_format = resource.path.split(".")[-1]
                 file_data = f"data:;base64,{get_file_base64(local_path=resource.path)}"
-                user_content.append({"type": "file", "file": {"file_data": file_data}})
+                user_content.append({
+                    "type": "file",
+                    "file": {
+                        "file_data": file_data
+                    }
+                })
 
         return {"role": "user", "content": user_content}
 
@@ -61,27 +82,32 @@ class Echo(BaseLLM):
             messages.append({"role": "system", "content": request.system})
 
         for item in request.history:
-            user_content = (
-                {"role": "user", "content": item.message}
-                if not all([item.resources, self.config.multimodal])
-                else self._build_multi_messages(ModelRequest(item.message, resources=item.resources))
-            )
+            user_content = ({
+                "role": "user",
+                "content": item.message
+            } if not all([item.resources, self.config.multimodal]) else
+                self._build_multi_messages(
+                ModelRequest(item.message,
+                             resources=item.resources)))
 
             messages.append(user_content)
             messages.append({"role": "assistant", "content": item.respond})
 
-        user_content = (
-            {"role": "user", "content": request.prompt}
-            if not request.resources
-            else self._build_multi_messages(request)
-        )
+        user_content = ({
+            "role": "user",
+            "content": request.prompt
+        } if not request.resources else self._build_multi_messages(request))
 
         messages.append(user_content)
 
         return messages
 
     async def _ask_sync(
-        self, messages: list[dict[str, str]], tools: Any, response_format: Any, total_tokens: int = 0
+        self,
+        messages: list[dict[str, str]],
+        tools: Any,
+        response_format: Any,
+        total_tokens: int = 0,
     ) -> ModelCompletions:
         """
         同步模型调用
@@ -97,7 +123,11 @@ class Echo(BaseLLM):
         return ModelCompletions(text=request_info, usage=total_tokens)
 
     async def _ask_stream(
-        self, messages: list[dict[str, str]], tools: Any, response_format: Any, total_tokens: int = 0
+        self,
+        messages: list[dict[str, str]],
+        tools: Any,
+        response_format: Any,
+        total_tokens: int = 0,
     ) -> AsyncGenerator[ModelStreamCompletions, None]:
         """
         流式输出
@@ -113,15 +143,26 @@ class Echo(BaseLLM):
             yield ModelStreamCompletions(chunk=line, usage=total_tokens)
 
     @overload
-    async def ask(self, request: ModelRequest, *, stream: Literal[False] = False) -> ModelCompletions: ...
+    async def ask(self,
+                  request: ModelRequest,
+                  *,
+                  stream: Literal[False] = False) -> ModelCompletions:
+        ...
 
     @overload
     async def ask(
-        self, request: ModelRequest, *, stream: Literal[True] = True
-    ) -> AsyncGenerator["ModelStreamCompletions", None]: ...
+        self,
+        request: ModelRequest,
+        *,
+        stream: Literal[True] = True
+    ) -> AsyncGenerator["ModelStreamCompletions", None]:
+        ...
 
     async def ask(
-        self, request: ModelRequest, *, stream: bool = False
+        self,
+        request: ModelRequest,
+        *,
+        stream: bool = False
     ) -> Union[ModelCompletions, AsyncGenerator[ModelStreamCompletions, None]]:
         """
         模型交互询问
@@ -134,6 +175,10 @@ class Echo(BaseLLM):
         messages = self._build_messages(request)
 
         if stream:
-            return self._ask_stream(messages, request.tools, response_format=request.format)
+            return self._ask_stream(messages,
+                                    request.tools,
+                                    response_format=request.format)
 
-        return await self._ask_sync(messages, request.tools, response_format=request.format)
+        return await self._ask_sync(messages,
+                                    request.tools,
+                                    response_format=request.format)

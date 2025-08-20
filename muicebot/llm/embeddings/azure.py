@@ -12,17 +12,20 @@ from ..registry import register
 
 @register("azure")
 class Azure(EmbeddingModel):
+
     def __init__(self, config: EmbeddingConfig):
         super().__init__(config)
         self.token = self.config.api_key
-        self.endpoint = self.config.api_host if self.config.api_host else "https://models.inference.ai.azure.com"
+        self.endpoint = (self.config.api_host if self.config.api_host else
+                         "https://models.inference.ai.azure.com")
         self.model = self.config.model
 
     async def embed(self, texts: list[str]) -> EmbeddingsBatchResult:
         """
         查询文本嵌入
         """
-        client = EmbeddingsClient(endpoint=self.endpoint, credential=AzureKeyCredential(self.token))
+        client = EmbeddingsClient(endpoint=self.endpoint,
+                                  credential=AzureKeyCredential(self.token))
 
         response = await client.embed(input=texts, model=self.model)
         results: list[list[float]] = []
@@ -36,4 +39,5 @@ class Azure(EmbeddingModel):
 
             results.append(embedding)
 
-        return EmbeddingsBatchResult(results, usage=response.usage.total_tokens)
+        return EmbeddingsBatchResult(results,
+                                     usage=response.usage.total_tokens)

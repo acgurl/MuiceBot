@@ -29,7 +29,8 @@ class FunctionCallStream:
     function_name: str = ""
     function_args: str = ""
 
-    def from_chunk(self, chunk: GenerationResponse | MultiModalConversationResponse):
+    def from_chunk(self,
+                   chunk: GenerationResponse | MultiModalConversationResponse):
         tool_calls = chunk.output.choices[0].message.tool_calls
         tool_call = tool_calls[0]
 
@@ -48,14 +49,18 @@ class FunctionCallStream:
 
 
 class ThoughtStream:
+
     def __init__(self):
         self.is_insert_think_label: bool = False
 
-    def process_chunk(self, chunk: GenerationResponse | MultiModalConversationResponse) -> str:
+    def process_chunk(
+            self,
+            chunk: GenerationResponse | MultiModalConversationResponse) -> str:
         choice = chunk.output.choices[0].message
         answer_content = choice.content
         reasoning_content = choice.get("reasoning_content", "")
-        reasoning_content = reasoning_content.replace("\n</think>", "") if reasoning_content else ""
+        reasoning_content = (reasoning_content.replace("\n</think>", "")
+                             if reasoning_content else "")
 
         # 处理模型可能输出的 reasoning（思考内容）
         if reasoning_content:
@@ -80,6 +85,7 @@ class ThoughtStream:
 
 @register("dashscope")
 class Dashscope(BaseLLM):
+
     def __init__(self, model_config: ModelConfig) -> None:
         super().__init__(model_config)
         self._require("api_key", "model_name")
@@ -93,9 +99,10 @@ class Dashscope(BaseLLM):
         self.enable_thinking = self.config.enable_thinking
         self.thinking_budget = self.config.thinking_budget
 
-        self.extra_headers = (
-            {"X-DashScope-DataInspection": '{"input":"cip","output":"cip"}'} if self.config.content_security else {}
-        )
+        self.extra_headers = ({
+            "X-DashScope-DataInspection":
+            '{"input":"cip","output":"cip"}'
+        } if self.config.content_security else {})
 
         self.stream = False
 
@@ -129,19 +136,20 @@ class Dashscope(BaseLLM):
             messages.append({"role": "system", "content": request.system})
 
         for msg in request.history:
-            user_msg = (
-                self.__build_multi_messages(ModelRequest(msg.message, resources=msg.resources))
-                if all((self.config.multimodal, msg.resources))
-                else {"role": "user", "content": msg.message}
-            )
+            user_msg = (self.__build_multi_messages(
+                ModelRequest(msg.message, resources=msg.resources)) if all(
+                    (self.config.multimodal, msg.resources)) else {
+                        "role": "user",
+                        "content": msg.message
+            })
             messages.append(user_msg)
             messages.append({"role": "assistant", "content": msg.respond})
 
-        user_msg = (
-            {"role": "user", "content": request.prompt}
-            if not request.resources
-            else self.__build_multi_messages(ModelRequest(request.prompt, resources=request.resources))
-        )
+        user_msg = ({
+            "role": "user",
+            "content": request.prompt
+        } if not request.resources else self.__build_multi_messages(
+            ModelRequest(request.prompt, resources=request.resources)))
 
         messages.append(user_msg)
 
@@ -182,17 +190,21 @@ class Dashscope(BaseLLM):
 
         message_content = response.output.choices[0].message.content
         if message_content:
-            completions.text = message_content if isinstance(message_content, str) else message_content[0].get("text")
+            completions.text = (message_content if isinstance(
+                message_content, str) else message_content[0].get("text"))
             return completions
 
-        return await self._tool_calls_handle_sync(messages, tools, response_format, response, total_tokens)
+        return await self._tool_calls_handle_sync(messages, tools,
+                                                  response_format, response,
+                                                  total_tokens)
 
     async def _Generator_handle(
         self,
         messages: list,
         tools: List[dict],
         response_format: Optional[dict],
-        response: Generator[GenerationResponse, None, None] | Generator[MultiModalConversationResponse, None, None],
+        response: Generator[GenerationResponse, None, None]
+        | Generator[MultiModalConversationResponse, None, None],
         total_tokens: int = 0,
     ) -> AsyncGenerator[ModelStreamCompletions, None]:
         """
@@ -214,7 +226,8 @@ class Dashscope(BaseLLM):
             if chunk.status_code != 200:
                 logger.error(f"模型调用失败: {chunk.status_code}({chunk.code})")
                 logger.error(f"{chunk.message}")
-                stream_completions.chunk = f"模型调用失败: {chunk.status_code}({chunk.code})"
+                stream_completions.chunk = (
+                    f"模型调用失败: {chunk.status_code}({chunk.code})")
                 stream_completions.succeed = False
 
                 yield stream_completions
@@ -225,7 +238,8 @@ class Dashscope(BaseLLM):
             stream_completions.usage = total_tokens
 
             # 优先判断是否是工具调用（OpenAI-style function calling）
-            if chunk.output.choices and chunk.output.choices[0].message.get("tool_calls", []):
+            if chunk.output.choices and chunk.output.choices[0].message.get(
+                    "tool_calls", []):
                 func_stream.from_chunk(chunk)
                 # 工具调用也可能在输出文本之后发生
 
@@ -244,8 +258,8 @@ class Dashscope(BaseLLM):
         # 流式处理工具调用响应
         if func_stream.enable:
             async for final_chunk in await self._tool_calls_handle_stream(
-                messages, tools, response_format, func_stream, total_tokens
-            ):
+                    messages, tools, response_format, func_stream,
+                    total_tokens):
                 yield final_chunk
 
     async def _tool_calls_handle_sync(
@@ -270,12 +284,18 @@ class Dashscope(BaseLLM):
         function_name = tool_call["function"]["name"]
         function_args = json.loads(tool_call["function"]["arguments"])
 
-        function_return = await function_call_handler(function_name, function_args)
+        function_return = await function_call_handler(function_name,
+                                                      function_args)
 
         messages.append(response.output.choices[0].message)
-        messages.append({"role": "tool", "content": function_return, "tool_call_id": tool_call_id})
+        messages.append({
+            "role": "tool",
+            "content": function_return,
+            "tool_call_id": tool_call_id
+        })
 
-        return await self._ask(messages, tools, response_format, total_tokens)  # type:ignore
+        return await self._ask(messages, tools, response_format,
+                               total_tokens)  # type:ignore
 
     async def _tool_calls_handle_stream(
         self,
@@ -296,28 +316,32 @@ class Dashscope(BaseLLM):
         """
         function_args = json.loads(func_stream.function_args)
 
-        function_return = await function_call_handler(func_stream.function_name, function_args)  # type:ignore
+        function_return = await function_call_handler(
+            func_stream.function_name, function_args)  # type:ignore
 
-        messages.append(
-            {
-                "role": "assistant",
-                "content": "",
-                "tool_calls": [
-                    {
-                        "id": func_stream.id,
-                        "function": {
-                            "arguments": func_stream.function_args,
-                            "name": func_stream.function_name,
-                        },
-                        "type": "function",
-                        "index": 0,
-                    }
-                ],
-            }
-        )
-        messages.append({"role": "tool", "content": function_return, "tool_call_id": func_stream.id})
+        messages.append({
+            "role":
+            "assistant",
+            "content":
+            "",
+            "tool_calls": [{
+                "id": func_stream.id,
+                "function": {
+                    "arguments": func_stream.function_args,
+                    "name": func_stream.function_name,
+                },
+                "type": "function",
+                "index": 0,
+            }],
+        })
+        messages.append({
+            "role": "tool",
+            "content": function_return,
+            "tool_call_id": func_stream.id
+        })
 
-        return await self._ask(messages, tools, response_format, total_tokens)  # type:ignore
+        return await self._ask(messages, tools, response_format,
+                               total_tokens)  # type:ignore
 
     async def _ask(
         self,
@@ -345,7 +369,8 @@ class Dashscope(BaseLLM):
                     tools=tools,
                     parallel_tool_calls=True,
                     enable_search=self.enable_search,
-                    incremental_output=self.stream,  # 给他调成一样的：这个参数只支持流式调用时设置为True
+                    incremental_output=self.
+                    stream,  # 给他调成一样的：这个参数只支持流式调用时设置为True
                     headers=self.extra_headers,
                     enable_thinking=self.enable_thinking,
                     thinking_budget=self.thinking_budget,
@@ -373,27 +398,42 @@ class Dashscope(BaseLLM):
                 ),
             )
 
-        if isinstance(response, GenerationResponse) or isinstance(response, MultiModalConversationResponse):
-            return await self._GenerationResponse_handle(messages, tools, response_format, response, total_tokens)
-        return self._Generator_handle(messages, tools, response_format, response, total_tokens)
+        if isinstance(response, GenerationResponse) or isinstance(
+                response, MultiModalConversationResponse):
+            return await self._GenerationResponse_handle(
+                messages, tools, response_format, response, total_tokens)
+        return self._Generator_handle(messages, tools, response_format,
+                                      response, total_tokens)
 
     @overload
-    async def ask(self, request: ModelRequest, *, stream: Literal[False] = False) -> ModelCompletions: ...
+    async def ask(self,
+                  request: ModelRequest,
+                  *,
+                  stream: Literal[False] = False) -> ModelCompletions:
+        ...
 
     @overload
     async def ask(
-        self, request: ModelRequest, *, stream: Literal[True] = True
-    ) -> AsyncGenerator[ModelStreamCompletions, None]: ...
+        self,
+        request: ModelRequest,
+        *,
+        stream: Literal[True] = True
+    ) -> AsyncGenerator[ModelStreamCompletions, None]:
+        ...
 
     async def ask(
-        self, request: ModelRequest, *, stream: bool = False
+        self,
+        request: ModelRequest,
+        *,
+        stream: bool = False
     ) -> Union[ModelCompletions, AsyncGenerator[ModelStreamCompletions, None]]:
         self.stream = stream if stream is not None else False
 
         tools = request.tools if request.tools else []
         messages = self._build_messages(request)
         if request.format == "json" and request.json_schema:
-            logger.warning("该模型加载器不支持传入 Json Schema 模型，请确保您已经在模型提示词中传入了相关 json 字段")
+            logger.warning(
+                "该模型加载器不支持传入 Json Schema 模型，请确保您已经在模型提示词中传入了相关 json 字段")
             response_format = {"type": "json_object"}
         else:
             response_format = None

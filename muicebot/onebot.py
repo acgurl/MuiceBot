@@ -162,7 +162,9 @@ command_load = on_alconna(
         COMMAND_PREFIXES,
         "load",
         Args["config_name", str, ""],
-        meta=CommandMeta("加载模型", usage="load <config_name>", example="load model.deepseek"),
+        meta=CommandMeta("加载模型",
+                         usage="load <config_name>",
+                         example="load model.deepseek"),
     ),
     priority=10,
     block=True,
@@ -206,9 +208,9 @@ command_reload = on_alconna(
     permission=SUPERUSER,
 )
 
-
 nickname_event = on_alconna(
-    Alconna(re.compile(combined_regex), Args["text?", AllParam], separators=""),
+    Alconna(re.compile(combined_regex), Args["text?", AllParam],
+            separators=""),
     priority=99,
     block=True,
     extensions=[ReplyRecordExtension()],
@@ -241,20 +243,18 @@ async def on_bot_disconnect():
 
 @command_help.handle()
 async def handle_command_help():
-    await command_help.finish(
-        "基本命令：\n"
-        "about 获取关于信息\n"
-        "help 输出此帮助信息\n"
-        "status 显示当前状态\n"
-        "refresh 刷新模型输出\n"
-        "reset 清空对话记录\n"
-        "undo 撤回上一个对话\n"
-        "whoami 输出当前用户信息\n"
-        "load <config_name> 加载模型\n"
-        "profile <profile_name> 切换消息存档\n"
-        "reload 重新加载模型配置\n"
-        "（支持的命令前缀：“.”、“/”）"
-    )
+    await command_help.finish("基本命令：\n"
+                              "about 获取关于信息\n"
+                              "help 输出此帮助信息\n"
+                              "status 显示当前状态\n"
+                              "refresh 刷新模型输出\n"
+                              "reset 清空对话记录\n"
+                              "undo 撤回上一个对话\n"
+                              "whoami 输出当前用户信息\n"
+                              "load <config_name> 加载模型\n"
+                              "profile <profile_name> 切换消息存档\n"
+                              "reload 重新加载模型配置\n"
+                              "（支持的命令前缀：“.”、“/”）")
 
 
 @command_about.handle()
@@ -265,7 +265,8 @@ async def handle_command_about():
     # plugins_list = ", ".join(get_available_plugin_names())
     mplugins_list = ", ".join(get_plugins())
 
-    model_name = muice.model_config.model_name if muice.model_config.model_name else "Unknown"
+    model_name = (muice.model_config.model_name
+                  if muice.model_config.model_name else "Unknown")
     is_multimodal = "是" if muice.multimodal else "否"
 
     if scheduler and scheduler.running:
@@ -277,15 +278,13 @@ async def handle_command_about():
     else:
         current_scheduler = "无(调度器未启动)"
 
-    await command_about.finish(
-        f"框架版本: {get_version()}\n"
-        f"已加载的 Muicebot 插件: {mplugins_list}\n"
-        f"\n"
-        f"模型: {model_name}({model_loader})\n"
-        f"多模态: {is_multimodal}\n"
-        f"\n"
-        f"定时任务: {current_scheduler}"
-    )
+    await command_about.finish(f"框架版本: {get_version()}\n"
+                               f"已加载的 Muicebot 插件: {mplugins_list}\n"
+                               f"\n"
+                               f"模型: {model_name}({model_loader})\n"
+                               f"多模态: {is_multimodal}\n"
+                               f"\n"
+                               f"定时任务: {current_scheduler}")
 
 
 @command_status.handle()
@@ -307,8 +306,7 @@ async def handle_command_status(session: async_scoped_session):
         f"模型加载器状态: {model_status}\n"
         f"今日模型用量: {today_usage} tokens (总 {total_usage} tokens)\n "
         f"\n"
-        f"定时任务调度器状态: {scheduler_status}\n"
-    )
+        f"定时任务调度器状态: {scheduler_status}\n")
 
 
 @command_reset.handle()
@@ -323,7 +321,11 @@ async def handle_command_reset(event: Event, session: async_scoped_session):
 
 @command_refresh.handle()
 async def handle_command_refresh(
-    bot: Bot, event: Event, state: T_State, matcher: Matcher, session: async_scoped_session
+    bot: Bot,
+    event: Event,
+    state: T_State,
+    matcher: Matcher,
+    session: async_scoped_session,
 ):
     muice = Muice.get_instance()
     userid = event.get_user_id()
@@ -346,7 +348,8 @@ async def handle_command_undo(event: Event, session: async_scoped_session):
 
 
 @command_load.handle()
-async def handle_command_load(config: Match[str] = AlconnaMatch("config_name")):
+async def handle_command_load(
+        config: Match[str] = AlconnaMatch("config_name")):
     muice = Muice.get_instance()
     config_name = config.result
     result = muice.change_model_config(config_name)
@@ -359,12 +362,15 @@ async def handle_command_whoami(bot: Bot, event: Event):
     session = extract_session(bot, event)
     group_id = session.get_id(SessionIdType.GROUP)
     session_id = event.get_session_id()
-    await UniMessage(f"用户 ID: {user_id}\n群组 ID: {group_id}\n当前会话信息: {session_id}").finish()
+    await UniMessage(
+        f"用户 ID: {user_id}\n群组 ID: {group_id}\n当前会话信息: {session_id}").finish()
 
 
 @command_profile.handle()
 async def handle_command_profile(
-    event: Event, session: async_scoped_session, profile: Match[str] = AlconnaMatch("profile")
+        event: Event,
+        session: async_scoped_session,
+        profile: Match[str] = AlconnaMatch("profile"),
 ):
     from .database import UserORM
 
@@ -385,16 +391,24 @@ async def handle_command_start():
     pass
 
 
-def _get_media_filename(media: uniseg.segment.Media, type: Literal["audio", "image", "video", "file"]) -> str:
+def _get_media_filename(
+        media: uniseg.segment.Media, type: Literal["audio", "image", "video",
+                                                   "file"]) -> str:
     """
     给多模态文件分配一个独一无二的文件名
     """
-    _default_suffix = {"audio": "mp3", "image": "png", "video": "mp4", "file": ""}
+    _default_suffix = {
+        "audio": "mp3",
+        "image": "png",
+        "video": "mp4",
+        "file": ""
+    }
 
     assert media.url  # 只能在 url 不为空时使用
 
     if media.name:
-        file_suffix = media.name.split(".")[-1] if media.name.count(".") else _default_suffix[type]
+        file_suffix = (media.name.split(".")[-1]
+                       if media.name.count(".") else _default_suffix[type])
     else:
         path = urlparse(media.url).path
         _, ext = os.path.splitext(path)
@@ -405,25 +419,30 @@ def _get_media_filename(media: uniseg.segment.Media, type: Literal["audio", "ima
     return file_name
 
 
-async def _extract_multi_resource(
-    message: UniMessage, type: Literal["audio", "image", "video", "file"], event: Event
-) -> list[Resource]:
+async def _extract_multi_resource(message: UniMessage,
+                                  type: Literal["audio", "image", "video",
+                                                "file"],
+                                  event: Event) -> list[Resource]:
     """
     提取单个多模态文件
     """
     resources = []
 
     for resource in message:
-        assert isinstance(resource, uniseg.segment.Media)  # 正常情况下应该都是 Media 的子类
+        assert isinstance(resource,
+                          uniseg.segment.Media)  # 正常情况下应该都是 Media 的子类
 
         try:
             if resource.path is not None:
                 path = str(resource.path)
             elif resource.url is not None:
-                path = await download_file(resource.url, file_name=_get_media_filename(resource, type))
+                path = await download_file(resource.url,
+                                           file_name=_get_media_filename(
+                                               resource, type))
             elif resource.origin is not None:
                 logger.warning("无法通过通用方式获取文件URL，回退至适配器自有方式...")
-                path = await get_file_via_adapter(resource.origin, event)  # type:ignore
+                path = await get_file_via_adapter(resource.origin,
+                                                  event)  # type:ignore
             else:
                 continue
 
@@ -435,7 +454,8 @@ async def _extract_multi_resource(
     return resources
 
 
-async def _extract_multi_resources(message: UniMsg, event: Event) -> list[Resource]:
+async def _extract_multi_resources(message: UniMsg,
+                                   event: Event) -> list[Resource]:
     """
     提取多个多模态文件
     """
@@ -446,10 +466,14 @@ async def _extract_multi_resources(message: UniMsg, event: Event) -> list[Resour
     message_file = message.get(uniseg.File)
     message_video = message.get(uniseg.Video)
 
-    resources.extend(await _extract_multi_resource(message_audio, "audio", event))
-    resources.extend(await _extract_multi_resource(message_file, "file", event))
-    resources.extend(await _extract_multi_resource(message_images, "image", event))
-    resources.extend(await _extract_multi_resource(message_video, "video", event))
+    resources.extend(await _extract_multi_resource(message_audio, "audio",
+                                                   event))
+    resources.extend(await _extract_multi_resource(message_file, "file",
+                                                   event))
+    resources.extend(await _extract_multi_resource(message_images, "image",
+                                                   event))
+    resources.extend(await _extract_multi_resource(message_video, "video",
+                                                   event))
 
     return resources
 
@@ -461,16 +485,21 @@ async def _send_multi_messages(resource: Resource):
     TODO: 我们有可能对发送对象添加文件名吗？
     """
     if resource.type == "audio":
-        await UniMessage(uniseg.Voice(raw=resource.raw, path=resource.path)).send()
+        await UniMessage(uniseg.Voice(raw=resource.raw,
+                                      path=resource.path)).send()
     elif resource.type == "image":
-        await UniMessage(uniseg.Image(raw=resource.raw, path=resource.path)).send()
+        await UniMessage(uniseg.Image(raw=resource.raw,
+                                      path=resource.path)).send()
     elif resource.type == "video":
-        await UniMessage(uniseg.Video(raw=resource.raw, path=resource.path)).send()
+        await UniMessage(uniseg.Video(raw=resource.raw,
+                                      path=resource.path)).send()
     else:
-        await UniMessage(uniseg.File(raw=resource.raw, path=resource.path)).send()
+        await UniMessage(uniseg.File(raw=resource.raw,
+                                     path=resource.path)).send()
 
 
-async def _send_message(completions: ModelCompletions | AsyncGenerator[ModelStreamCompletions, None]):
+async def _send_message(completions: ModelCompletions
+                        | AsyncGenerator[ModelStreamCompletions, None], ):
     # non-stream
     if isinstance(completions, ModelCompletions):
         paragraphs = completions.text.split("\n\n")
@@ -532,12 +561,15 @@ async def handle_supported_adapters(
     if message_reply := ext.get_reply(get_message_id(event, bot)):
         reply_message = message_reply.msg
         if isinstance(reply_message, BotMessage):
-            bot_message += UniMessage("\n被引用的消息: ") + await UniMessage.generate(message=reply_message)
+            bot_message += UniMessage(
+                "\n被引用的消息: ") + await UniMessage.generate(message=reply_message
+                                                          )
         else:
             bot_message += UniMessage(f"\n被引用的消息: {reply_message}")
 
     # 然后等待新消息插入
-    if not (merged_message := await session_manager.put_and_wait(event, bot_message)):
+    if not (merged_message := await session_manager.put_and_wait(
+            event, bot_message)):
         matcher.skip()
         return  # 防止类型检查器错误推断 merged_message 类型)
 
@@ -558,7 +590,12 @@ async def handle_supported_adapters(
     if not any((message_text, message_resource)):
         return
 
-    message = Message(message=message_text, userid=userid, groupid=group_id, resources=message_resource)
+    message = Message(
+        message=message_text,
+        userid=userid,
+        groupid=group_id,
+        resources=message_resource,
+    )
 
     # Stream
     muice = Muice.get_instance()

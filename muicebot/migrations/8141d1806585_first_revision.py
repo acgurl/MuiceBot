@@ -15,7 +15,7 @@ from alembic import op
 
 revision: str = "8141d1806585"
 down_revision: str | Sequence[str] | None = None
-branch_labels: str | Sequence[str] | None = ("muicebot",)
+branch_labels: str | Sequence[str] | None = ("muicebot", )
 depends_on: str | Sequence[str] | None = None
 
 
@@ -33,7 +33,10 @@ def upgrade(name: str = "") -> None:
         sa.Column("respond", sa.Text(), nullable=False),
         sa.Column("history", sa.Integer(), nullable=True, default=1),
         sa.Column("resources", sa.Text(), nullable=True, default="[]"),
-        sa.Column("usage", sa.Integer(), nullable=True, server_default=sa.text("-1")),
+        sa.Column("usage",
+                  sa.Integer(),
+                  nullable=True,
+                  server_default=sa.text("-1")),
         sa.PrimaryKeyConstraint("id", name=op.f("pk_muicebot_msg")),
         info={"bind_key": "muicebot"},
     )

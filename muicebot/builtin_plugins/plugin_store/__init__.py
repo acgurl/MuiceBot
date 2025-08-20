@@ -13,7 +13,11 @@ from .store import (
     update_plugin,
 )
 
-__plugin_meta__ = PluginMetadata(name="muicebot-plugin-store", description="Muicebot 插件商店操作", usage=".store help")
+__plugin_meta__ = PluginMetadata(
+    name="muicebot-plugin-store",
+    description="Muicebot 插件商店操作",
+    usage=".store help",
+)
 
 load_store_plugin()
 
@@ -24,11 +28,21 @@ store_cmd = on_alconna(
         COMMAND_PREFIXES,
         "store",
         Subcommand("help"),
-        Subcommand("install", Args["name", str], help_text=".store install <插件名> 安装指定插件"),
+        Subcommand(
+            "install",
+            Args["name", str],
+            help_text=".store install <插件名> 安装指定插件",
+        ),
         Subcommand("show"),
         Subcommand("list", help_text="列出所有可用插件"),
-        Subcommand("update", Args["name", str], help_text=".store update <插件名> 更新指定插件"),
-        Subcommand("uninstall", Args["name", str], help_text=".store uninstall <插件名> 卸载指定插件"),
+        Subcommand("update",
+                   Args["name", str],
+                   help_text=".store update <插件名> 更新指定插件"),
+        Subcommand(
+            "uninstall",
+            Args["name", str],
+            help_text=".store uninstall <插件名> 卸载指定插件",
+        ),
         meta=CommandMeta("Muicebot 插件商店指令"),
     ),
     priority=10,
@@ -76,10 +90,8 @@ async def uninstall(name: Match[str]):
 
 @store_cmd.assign("help")
 async def store_help():
-    await store_cmd.finish(
-        "install <插件名> 安装插件\n"
-        "list 列出所有可用插件\n"
-        "show 查看已安装的商店插件信息\n"
-        "update <插件名> 更新插件\n"
-        "uninstall <插件名> 卸载插件\n"
-    )
+    await store_cmd.finish("install <插件名> 安装插件\n"
+                           "list 列出所有可用插件\n"
+                           "show 查看已安装的商店插件信息\n"
+                           "update <插件名> 更新插件\n"
+                           "uninstall <插件名> 卸载插件\n")

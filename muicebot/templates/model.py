@@ -48,11 +48,17 @@ class PromptTemplatesData(BaseModel):
     """允许其他模板参数传入"""
 
     @classmethod
-    def from_config(cls, templates_config: PromptTemplatesConfig, userid: str, is_private: bool = False):
+    def from_config(
+        cls,
+        templates_config: PromptTemplatesConfig,
+        userid: str,
+        is_private: bool = False,
+    ):
         base = templates_config.model_dump()
         data = cls(**base)
 
-        user = next((u for u in templates_config.userinfos if u.id == userid), None)
+        user = next((u for u in templates_config.userinfos if u.id == userid),
+                    None)
         if user:
             data.user_name = user.name
             data.user_info = user.info

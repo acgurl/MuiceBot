@@ -6,11 +6,15 @@ from muicebot.plugin.func_call import get_function_calls
 from muicebot.plugin.mcp import handle_mcp_tool
 
 
-async def function_call_handler(func: str, arguments: dict[str, str] | None = None) -> Any:
+async def function_call_handler(func: str,
+                                arguments: dict[str, str] | None = None
+                                ) -> Any:
     """
     模型 Function Call 请求处理
     """
-    arguments = arguments if arguments and arguments != {"dummy_param": ""} else {}
+    arguments = arguments if arguments and arguments != {
+        "dummy_param": ""
+    } else {}
 
     if func_caller := get_function_calls().get(func):
         logger.info(f"Function call 请求 {func}, 参数: {arguments}")

@@ -44,7 +44,8 @@ class Plugin:
         return hash(self.package_name)
 
     def __eq__(self, other: Any) -> bool:
-        return self.package_name == other.package_name if hasattr(other, "package_name") else False
+        return (self.package_name == other.package_name if hasattr(
+            other, "package_name") else False)
 
     def __str__(self) -> str:
         return self.package_name

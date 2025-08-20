@@ -91,7 +91,10 @@ class ModelConfig(BaseModel):
     def migrate_old_field(cls, values: dict):
         if "provider" not in values and "loader" in values:
             values["provider"] = values["loader"]
-            warn("配置文件中的 'loader' 字段已弃用，请使用 'provider' 字段。", DeprecationWarning)
+            warn(
+                "配置文件中的 'loader' 字段已弃用，请使用 'provider' 字段。",
+                DeprecationWarning,
+            )
         return values
 
 
@@ -125,7 +128,8 @@ class EmbeddingConfig(BaseModel):
         if not isinstance(other, EmbeddingConfig):
             return NotImplemented
 
-        return self.provider == other.provider and self.model == other.model and self.api_host == other.api_host
+        return (self.provider == other.provider and self.model == other.model
+                and self.api_host == other.api_host)
 
     @field_validator("provider")
     @classmethod

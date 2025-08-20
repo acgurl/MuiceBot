@@ -16,7 +16,7 @@ from alembic import op
 revision: str = "9dd95c5e9b4d"
 down_revision: str | Sequence[str] | None = "8141d1806585"
 branch_labels: str | Sequence[str] | None = None
-depends_on: str | Sequence[str] | None = ("muicebot",)
+depends_on: str | Sequence[str] | None = ("muicebot", )
 
 
 def upgrade(name: str = "") -> None:
@@ -33,7 +33,11 @@ def upgrade(name: str = "") -> None:
         info={"bind_key": "muicebot"},
     )
     with op.batch_alter_table("muicebot_msg", schema=None) as batch_op:
-        batch_op.add_column(sa.Column("profile", sa.String(), nullable=True, default="_default"))
+        batch_op.add_column(
+            sa.Column("profile",
+                      sa.String(),
+                      nullable=True,
+                      default="_default"))
     op.execute("UPDATE muicebot_msg SET profile = '_default'")
 
     # ### end Alembic commands ###

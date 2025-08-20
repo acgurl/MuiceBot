@@ -11,6 +11,7 @@ from ..registry import register
 
 @register("dashscope")
 class Dashscope(EmbeddingModel):
+
     def __init__(self, config: EmbeddingConfig):
         super().__init__(config)
         self._require("api_key")

@@ -26,7 +26,8 @@ class Ollama(BaseLLM):
         super().__init__(model_config)
         self._require("model_name")
         self.model = self.config.model_name
-        self.host = self.config.api_host if self.config.api_host else "http://localhost:11434"
+        self.host = (self.config.api_host
+                     if self.config.api_host else "http://localhost:11434")
         self.top_k = self.config.top_k
         self.top_p = self.config.top_p
         self.temperature = self.config.temperature
@@ -71,7 +72,9 @@ class Ollama(BaseLLM):
             messages.append({"role": "system", "content": request.system})
 
         for index, item in enumerate(request.history):
-            messages.append(self.__build_multi_messages(ModelRequest(item.message, resources=item.resources)))
+            messages.append(
+                self.__build_multi_messages(
+                    ModelRequest(item.message, resources=item.resources)))
             messages.append({"role": "assistant", "content": item.respond})
 
         message = self.__build_multi_messages(request)
@@ -116,10 +119,15 @@ class Ollama(BaseLLM):
                 function_name = tool.function.name
                 function_args = tool.function.arguments
 
-                function_return = await function_call_handler(function_name, dict(function_args))
+                function_return = await function_call_handler(
+                    function_name, dict(function_args))
 
                 messages.append(response.message)
-                messages.append({"role": "tool", "content": str(function_return), "name": tool.function.name})
+                messages.append({
+                    "role": "tool",
+                    "content": str(function_return),
+                    "name": tool.function.name,
+                })
                 return await self._ask_sync(messages, tools, response_format)
 
             completions.text = "模型调用错误：未知错误"
@@ -174,12 +182,18 @@ class Ollama(BaseLLM):
                     function_name = tool.function.name
                     function_args = tool.function.arguments
 
-                    function_return = await function_call_handler(function_name, dict(function_args))
+                    function_return = await function_call_handler(
+                        function_name, dict(function_args))
 
                     messages.append(chunk.message)  # type:ignore
-                    messages.append({"role": "tool", "content": str(function_return), "name": tool.function.name})
+                    messages.append({
+                        "role": "tool",
+                        "content": str(function_return),
+                        "name": tool.function.name,
+                    })
 
-                    async for content in self._ask_stream(messages, tools, response_format):
+                    async for content in self._ask_stream(
+                            messages, tools, response_format):
                         yield content
 
         except ollama.ResponseError as e:
@@ -192,15 +206,26 @@ class Ollama(BaseLLM):
             return
 
     @overload
-    async def ask(self, request: ModelRequest, *, stream: Literal[False] = False) -> ModelCompletions: ...
+    async def ask(self,
+                  request: ModelRequest,
+                  *,
+                  stream: Literal[False] = False) -> ModelCompletions:
+        ...
 
     @overload
     async def ask(
-        self, request: ModelRequest, *, stream: Literal[True] = True
-    ) -> AsyncGenerator[ModelStreamCompletions, None]: ...
+        self,
+        request: ModelRequest,
+        *,
+        stream: Literal[True] = True
+    ) -> AsyncGenerator[ModelStreamCompletions, None]:
+        ...
 
     async def ask(
-        self, request: ModelRequest, *, stream: bool = False
+        self,
+        request: ModelRequest,
+        *,
+        stream: bool = False
     ) -> Union[ModelCompletions, AsyncGenerator[ModelStreamCompletions, None]]:
         tools = request.tools if request.tools else []
         messages = self._build_messages(request)
