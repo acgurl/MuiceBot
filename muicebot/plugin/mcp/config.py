@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import Any, Dict, Literal
 
 from nonebot import logger
-from pydantic import BaseModel, Field, ValidationError, root_validator
+from pydantic import BaseModel, Field, ValidationError, model_validator
 
 CONFIG_PATH = Path("./configs/mcp.json")
 
@@ -23,7 +23,7 @@ class McpServer(BaseModel):
     url: str | None = Field(default=None)
     """服务器URL (用于sse和streamable_http传输方式)"""
 
-    @model_validator(mode='before')
+    @model_validator(mode="before")
     def validate_config(cls, values: Dict[str, Any]) -> Dict[str, Any]:
         srv_type = values.get("type", "stdio")
         command = values.get("command")
@@ -64,6 +64,10 @@ def get_mcp_server_config() -> McpConfig:
         return {}
 
     mcp_config: McpConfig = dict()
+
+    if not isinstance(configs, dict):
+        logger.warning("MCP配置文件顶层必须是一个JSON对象，而不是列表或其他类型。")
+        return mcp_config
 
     mcp_servers = configs.get("mcpServers")
     if isinstance(mcp_servers, dict):
