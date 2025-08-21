@@ -10,7 +10,7 @@ CONFIG_PATH = Path("./configs/mcp.json")
 class McpServer(BaseModel):
     command: str | None = Field(default=None)
     """执行指令"""
-    args: list = Field(default_factory=list)
+    args: list[str] = Field(default_factory=list)
     """命令参数"""
     env: dict[str, Any] = Field(default_factory=dict)
     """环境配置"""
