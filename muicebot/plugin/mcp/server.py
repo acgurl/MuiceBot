@@ -71,7 +71,7 @@ class Server:
             env={**os.environ, **self.config.env} if self.config.env else None,
         )
         transport_context = await self.exit_stack.enter_async_context(stdio_client(server_params))
-        return transport_context[0], transport_context[1]
+        return transport_context
 
     async def _initialize_sse(self) -> tuple[Any, Any]:
         """
@@ -85,7 +85,7 @@ class Server:
         transport_context = await self.exit_stack.enter_async_context(
             sse_client(self.config.url, headers=self.config.headers)
         )
-        return transport_context[0], transport_context[1]
+        return transport_context
 
     async def _initialize_streamable_http(self) -> tuple[Any, Any]:
         """
@@ -99,7 +99,8 @@ class Server:
         transport_context = await self.exit_stack.enter_async_context(
             streamablehttp_client(self.config.url, headers=self.config.headers)
         )
-        return transport_context[0], transport_context[1]
+        # 只返回 read_stream 和 write_stream
+        return transport_context[:2]
 
     async def initialize(self) -> None:
         """
