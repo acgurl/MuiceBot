@@ -59,7 +59,7 @@ class Server:
 
         :return: (read, write) 元组
         """
-        command = shutil.which("npx") if self.config.command == "npx" else self.config.command
+        command = shutil.which(self.config.command)
         if command is None:
             raise ValueError(f"command 字段必须为一个有效值, 且目标指令必须存在于环境变量中: {self.config.command}")
 
