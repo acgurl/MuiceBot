@@ -65,11 +65,13 @@ def get_mcp_server_config() -> McpConfig:
 
     mcp_config: McpConfig = dict()
 
-    for name, srv_config in (configs.get("mcpServers") or {}).items():
-        try:
-            mcp_config[name] = McpServer(**srv_config)
-        except ValidationError as e:
-            logger.warning(f"无效的MCP服务器配置 '{name}': {e}")
-            continue
+    mcp_servers = configs.get("mcpServers")
+    if isinstance(mcp_servers, dict):
+        for name, srv_config in mcp_servers.items():
+            try:
+                mcp_config[name] = McpServer(**srv_config)
+            except (ValidationError, TypeError) as e:
+                logger.warning(f"无效的MCP服务器配置 '{name}': {e}")
+                continue
 
     return mcp_config
