@@ -45,6 +45,8 @@ class PluginConfig(BaseModel):
     """针对 Deepseek-R1 等思考模型的思考过程提取模式"""
     enable_embedding_cache: bool = True
     """启用嵌入缓存"""
+    enable_image_sending: bool = True
+    """启用图片发送功能"""
 
 
 plugin_config = get_plugin_config(PluginConfig)

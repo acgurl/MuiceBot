@@ -20,6 +20,7 @@ from .llm import (
     get_missing_dependencies,
     load_model,
 )
+from .llm.utils.image_processor import process_model_images
 from .models import Message, Resource
 from .plugin.func_call import get_function_list
 from .plugin.hook import HookType, hook_manager
@@ -272,6 +273,14 @@ class Muice:
         logger.success(f"模型调用{'成功' if response.succeed else '失败'}: {response}")
         logger.debug(f"模型调用时长: {end_time - start_time} s (token用量: {response.usage})")
 
+        # 处理模型响应中的图片
+        if plugin_config.enable_image_sending and response.succeed and response.text:
+            cleaned_text, image_urls = process_model_images(response.text)
+            response.text = cleaned_text
+
+            # 将图片URL添加到image_urls字段中
+            response.image_urls.extend(image_urls)
+
         message.respond = response.text
         message.usage = response.usage
 
@@ -360,6 +369,14 @@ class Muice:
         final_model_completions = ModelCompletions(
             text=total_reply, usage=item.usage, resources=total_resources.copy(), succeed=item.succeed
         )
+
+        # 处理流式响应中的图片
+        if plugin_config.enable_image_sending and final_model_completions.succeed and final_model_completions.text:
+            cleaned_text, image_urls = process_model_images(final_model_completions.text)
+            final_model_completions.text = cleaned_text
+
+            # 将图片URL添加到image_urls字段中
+            final_model_completions.image_urls.extend(image_urls)
 
         message.respond = total_reply
         message.usage = item.usage

@@ -473,28 +473,57 @@ async def _send_multi_messages(resource: Resource):
 async def _send_message(completions: ModelCompletions | AsyncGenerator[ModelStreamCompletions, None]):
     # non-stream
     if isinstance(completions, ModelCompletions):
-        paragraphs = completions.text.split("\n\n")
+        # 构建消息内容
+        message_content = []
 
-        for index, paragraph in enumerate(paragraphs):
-            if not paragraph.strip():
-                continue  # 跳过空白文段
-            if index == len(paragraphs) - 1:
-                await UniMessage(paragraph).send()
-                break
-            await UniMessage(paragraph).send()
+        # 添加文本内容
+        if completions.text and completions.text.strip():
+            message_content.append(completions.text)
 
+        # 添加图片资源
+        if plugin_config.enable_image_sending and completions.image_urls:
+            from nonebot_plugin_alconna.uniseg import Image as AlconnaImage
+
+            for url in completions.image_urls:
+                image_segment = AlconnaImage(url=url)
+                message_content.append(image_segment)
+
+        # 添加其他资源
         if completions.resources:
             for resource in completions.resources:
+                # 使用原有的发送方式处理其他资源
                 await _send_multi_messages(resource)
+
+        # 发送消息
+        if message_content:
+            await UniMessage(message_content).send()
 
         raise FinishedException
 
     # stream
     current_paragraph = ""
+    image_urls = []  # 存储流式处理中收集的图片URL
 
     async for chunk in completions:
         logger.debug(chunk)
         current_paragraph += chunk.chunk
+
+        # 收集图片URL
+        if plugin_config.enable_image_sending and chunk.image_urls:
+            from nonebot_plugin_alconna.uniseg import Image as AlconnaImage
+
+            for url in chunk.image_urls:
+                image_urls.append(url)
+                # 立即发送图片
+                image_segment = AlconnaImage(url=url)
+                await UniMessage(image_segment).send()
+
+        # 处理其他资源
+        if chunk.resources:
+            for resource in chunk.resources:
+                # 使用原有的发送方式处理其他资源
+                await _send_multi_messages(resource)
+
         paragraphs = current_paragraph.split("\n\n")
 
         while len(paragraphs) > 1:
@@ -505,12 +534,22 @@ async def _send_message(completions: ModelCompletions | AsyncGenerator[ModelStre
 
         current_paragraph = paragraphs[-1].strip()
 
-        if chunk.resources:
-            for resource in chunk.resources:
-                await _send_multi_messages(resource)
+    # 发送剩余文本和收集的图片
+    if current_paragraph or image_urls:
+        message_content = []
+        if current_paragraph and current_paragraph.strip():
+            message_content.append(current_paragraph)
 
-    if current_paragraph:
-        await UniMessage(current_paragraph).finish()
+        # 添加收集的图片URL
+        if plugin_config.enable_image_sending and image_urls:
+            from nonebot_plugin_alconna.uniseg import Image as AlconnaImage
+
+            for url in image_urls:
+                image_segment = AlconnaImage(url=url)
+                message_content.append(image_segment)
+
+        if message_content:
+            await UniMessage(message_content).finish()
 
 
 @at_event.handle()
