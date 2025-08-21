@@ -1,7 +1,6 @@
 import asyncio
 import logging
 import os
-import shutil
 from contextlib import AsyncExitStack
 from typing import Any, Optional
 
@@ -59,12 +58,8 @@ class Server:
 
         :return: (read, write) 元组
         """
-        command = shutil.which(self.config.command)
-        if command is None:
-            raise ValueError(f"command 字段必须为一个有效值, 且目标指令必须存在于环境变量中: {self.config.command}")
-
         server_params = StdioServerParameters(
-            command=command,
+            command=self.config.command,
             args=self.config.args,
             env={**os.environ, **self.config.env} if self.config.env else None,
         )

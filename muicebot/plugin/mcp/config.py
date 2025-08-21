@@ -1,4 +1,5 @@
 import json
+import shutil
 from pathlib import Path
 from typing import Any, Dict, Literal
 
@@ -28,8 +29,12 @@ class McpServer(BaseModel):
         command = values.get("command")
         url = values.get("url")
 
-        if srv_type == "stdio" and not command:
-            raise ValueError("当 type 为 'stdio' 时，command 字段必须存在")
+        if srv_type == "stdio":
+            if not command:
+                raise ValueError("当 type 为 'stdio' 时，command 字段必须存在")
+            # 检查command是否存在于环境变量中
+            if not shutil.which(command):
+                raise ValueError(f"command 字段必须为一个有效值, 且目标指令必须存在于环境变量中: {command}")
         elif srv_type in ["sse", "streamable_http"] and not url:
             raise ValueError(f"当 type 为 '{srv_type}' 时，url 字段必须存在")
 
