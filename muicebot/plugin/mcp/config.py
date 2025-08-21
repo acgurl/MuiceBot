@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import Any, Dict, Literal
 
 from nonebot import logger
-from pydantic import BaseModel, Field, root_validator
+from pydantic import BaseModel, Field, ValidationError, root_validator
 
 CONFIG_PATH = Path("./configs/mcp.json")
 
@@ -66,6 +66,10 @@ def get_mcp_server_config() -> McpConfig:
     mcp_config: McpConfig = dict()
 
     for name, srv_config in (configs.get("mcpServers") or {}).items():
-        mcp_config[name] = McpServer(**srv_config)
+        try:
+            mcp_config[name] = McpServer(**srv_config)
+        except ValidationError as e:
+            logger.warning(f"无效的MCP服务器配置 '{name}': {e}")
+            continue
 
     return mcp_config
