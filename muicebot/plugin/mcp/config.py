@@ -37,7 +37,7 @@ def get_mcp_server_config() -> McpConfig:
 
     mcp_config: McpConfig = dict()
 
-    for name, srv_config in configs.get("mcpServers", {}).items():
+    for name, srv_config in (configs.get("mcpServers") or {}).items():
         mcp_config[name] = McpServer(**srv_config)
 
     return mcp_config
