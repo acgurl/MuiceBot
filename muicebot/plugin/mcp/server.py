@@ -94,7 +94,7 @@ class Server:
         :return: (read, write) 元组
         """
         if not self.config.url:
-            raise ValueError("Streamable HTTP transport requires a URL")
+            raise ValueError("streamable_http 传输方式需要一个 URL")
 
         transport_context = await self.exit_stack.enter_async_context(
             streamablehttp_client(self.config.url, headers=self.config.headers)
