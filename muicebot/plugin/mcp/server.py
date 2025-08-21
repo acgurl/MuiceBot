@@ -80,7 +80,7 @@ class Server:
         :return: (read, write) 元组
         """
         if not self.config.url:
-            raise ValueError("SSE transport requires a URL")
+            raise ValueError("sse 传输方式需要一个 URL")
 
         transport_context = await self.exit_stack.enter_async_context(
             sse_client(self.config.url, headers=self.config.headers)
