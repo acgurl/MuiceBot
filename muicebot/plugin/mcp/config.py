@@ -25,7 +25,7 @@ class McpServer(BaseModel):
 
     @root_validator(pre=True)
     def validate_config(cls, values: Dict[str, Any]) -> Dict[str, Any]:
-        srv_type = values.get("type")
+        srv_type = values.get("type", "stdio")
         command = values.get("command")
         url = values.get("url")
 
