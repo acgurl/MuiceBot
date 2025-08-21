@@ -22,7 +22,7 @@ class McpServer(BaseModel):
     """服务器URL (用于sse和streamable_http传输方式)"""
 
     @root_validator(pre=True)
-    def validate_config(cls, values):
+    def validate_config(cls, values: Dict[str, Any]) -> Dict[str, Any]:
         srv_type = values.get("type")
         command = values.get("command")
         url = values.get("url")
