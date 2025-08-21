@@ -113,18 +113,11 @@ class Server:
             "sse": self._initialize_sse,
             "streamable_http": self._initialize_streamable_http,
         }
-        try:
-            initializer = transport_initializers.get(transport)
-            if initializer is None:
-                raise ValueError(f"Unsupported transport type: {transport}")
-            read, write = await initializer()
-            session = await self.exit_stack.enter_async_context(ClientSession(read, write))
-            await session.initialize()
-            self.session = session
-        except Exception as e:
-            logging.error(f"初始化 MCP Server 实例时遇到错误 {self.name}: {e}")
-            await self.cleanup()
-            raise
+        initializer = transport_initializers[transport]
+        read, write = await initializer()
+        session = await self.exit_stack.enter_async_context(ClientSession(read, write))
+        await session.initialize()
+        self.session = session
 
     async def list_tools(self) -> list[Tool]:
         """
