@@ -106,7 +106,7 @@ class Server:
         """
         初始化实例
         """
-        transport = self.config.type.lower()
+        transport = self.config.type
         # 使用字典映射传输类型到对应的初始化方法
         transport_initializers = {
             "stdio": self._initialize_stdio,
