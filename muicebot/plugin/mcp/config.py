@@ -2,6 +2,7 @@ import json
 from pathlib import Path
 from typing import Any, Dict, Literal
 
+from nonebot import logger
 from pydantic import BaseModel, Field, root_validator
 
 CONFIG_PATH = Path("./configs/mcp.json")
@@ -48,11 +49,13 @@ def get_mcp_server_config() -> McpConfig:
     try:
         with open(CONFIG_PATH, "r", encoding="utf-8") as f:
             configs = json.load(f) or {}
-    except json.JSONDecodeError:
-        # 如果 JSON 解码失败，返回空配置
+    except json.JSONDecodeError as e:
+        # 如果 JSON 解码失败，记录错误并返回空配置
+        logger.error(f"读取MCP配置时发生JSON解码错误: {e}")
         return {}
-    except Exception:
-        # 处理其他可能的文件读取异常
+    except (IOError, OSError) as e:
+        # 处理文件读取相关的异常
+        logger.error(f"读取MCP配置文件时发生IO错误: {e}")
         return {}
 
     mcp_config: McpConfig = dict()
