@@ -2,7 +2,7 @@ import json
 from pathlib import Path
 from typing import Any, Dict, Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, root_validator
 
 CONFIG_PATH = Path("./configs/mcp.json")
 
@@ -21,6 +21,19 @@ class McpServer(BaseModel):
     url: str | None = Field(default=None)
     """服务器URL (用于sse和streamable_http传输方式)"""
 
+    @root_validator(pre=True)
+    def validate_config(cls, values):
+        srv_type = values.get("type")
+        command = values.get("command")
+        url = values.get("url")
+
+        if srv_type == "stdio" and not command:
+            raise ValueError("当 type 为 'stdio' 时，command 字段必须存在")
+        elif srv_type in ["sse", "streamable_http"] and not url:
+            raise ValueError(f"当 type 为 '{srv_type}' 时，url 字段必须存在")
+
+        return values
+
 
 McpConfig = Dict[str, McpServer]
 
@@ -32,8 +45,15 @@ def get_mcp_server_config() -> McpConfig:
     if not CONFIG_PATH.exists():
         return {}
 
-    with open(CONFIG_PATH, "r", encoding="utf-8") as f:
-        configs = json.load(f) or {}
+    try:
+        with open(CONFIG_PATH, "r", encoding="utf-8") as f:
+            configs = json.load(f) or {}
+    except json.JSONDecodeError:
+        # 如果 JSON 解码失败，返回空配置
+        return {}
+    except Exception:
+        # 处理其他可能的文件读取异常
+        return {}
 
     mcp_config: McpConfig = dict()
 

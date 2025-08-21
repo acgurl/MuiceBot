@@ -59,8 +59,6 @@ class Server:
 
         :return: (read, write) 元组
         """
-        if self.config.command is None:
-            raise ValueError("command 字段对于 stdio 传输方式是必需的")
         command = shutil.which("npx") if self.config.command == "npx" else self.config.command
         if command is None:
             raise ValueError(f"command 字段必须为一个有效值, 且目标指令必须存在于环境变量中: {self.config.command}")
@@ -79,9 +77,6 @@ class Server:
 
         :return: (read, write) 元组
         """
-        if not self.config.url:
-            raise ValueError("sse 传输方式需要一个 URL")
-
         transport_context = await self.exit_stack.enter_async_context(
             sse_client(self.config.url, headers=self.config.headers)
         )
@@ -93,9 +88,6 @@ class Server:
 
         :return: (read, write) 元组
         """
-        if not self.config.url:
-            raise ValueError("streamable_http 传输方式需要一个 URL")
-
         transport_context = await self.exit_stack.enter_async_context(
             streamablehttp_client(self.config.url, headers=self.config.headers)
         )
