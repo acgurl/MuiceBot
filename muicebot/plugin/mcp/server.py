@@ -53,7 +53,7 @@ class Server:
         self._cleanup_lock: asyncio.Lock = asyncio.Lock()
         self.exit_stack: AsyncExitStack = AsyncExitStack()
 
-    async def _initialize_stdio(self):
+    async def _initialize_stdio(self) -> tuple[Any, Any]:
         """
         初始化 stdio 传输方式
 
@@ -73,7 +73,7 @@ class Server:
         transport_context = await self.exit_stack.enter_async_context(stdio_client(server_params))
         return transport_context[0], transport_context[1]
 
-    async def _initialize_sse(self):
+    async def _initialize_sse(self) -> tuple[Any, Any]:
         """
         初始化 sse 传输方式
 
@@ -87,7 +87,7 @@ class Server:
         )
         return transport_context[0], transport_context[1]
 
-    async def _initialize_streamable_http(self):
+    async def _initialize_streamable_http(self) -> tuple[Any, Any]:
         """
         初始化 streamable_http 传输方式
 
@@ -106,17 +106,17 @@ class Server:
         初始化实例
         """
         transport = self.config.type.lower()
-
+        # 使用字典映射传输类型到对应的初始化方法
+        transport_initializers = {
+            "stdio": self._initialize_stdio,
+            "sse": self._initialize_sse,
+            "streamable_http": self._initialize_streamable_http,
+        }
         try:
-            if transport == "stdio":
-                read, write = await self._initialize_stdio()
-            elif transport == "sse":
-                read, write = await self._initialize_sse()
-            elif transport == "streamable_http":
-                read, write = await self._initialize_streamable_http()
-            else:
+            initializer = transport_initializers.get(transport)
+            if initializer is None:
                 raise ValueError(f"Unsupported transport type: {transport}")
-
+            read, write = await initializer()
             session = await self.exit_stack.enter_async_context(ClientSession(read, write))
             await session.initialize()
             self.session = session

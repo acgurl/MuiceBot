@@ -41,6 +41,3 @@ def get_mcp_server_config() -> McpConfig:
         mcp_config[name] = McpServer(**srv_config)
 
     return mcp_config
-
-
-server_config = get_mcp_server_config()
