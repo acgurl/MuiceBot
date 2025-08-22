@@ -7,7 +7,6 @@ from importlib.metadata import PackageNotFoundError, version
 from io import BytesIO
 from mimetypes import guess_type
 from pathlib import Path
-from typing import Optional
 
 import fleep
 import httpx
@@ -36,7 +35,7 @@ User_Agent = (
 
 
 async def download_file(
-    file_url: str, file_name: Optional[str] = None, proxy: Optional[str] = None, cache: bool = False
+    file_url: str, file_name: str | None = None, proxy: str | None = None, cache: bool = False
 ) -> str:
     """
     保存文件至本地目录(在未提供后缀的情况下, 默认为.jpg后缀)
@@ -62,7 +61,7 @@ async def download_file(
         return str(local_path)
 
 
-async def save_image_as_base64(image_url: str, proxy: Optional[str] = None) -> str:
+async def save_image_as_base64(image_url: str, proxy: str | None = None) -> str:
     """
     从在线 url 获取图像 Base64
 
@@ -78,7 +77,7 @@ async def save_image_as_base64(image_url: str, proxy: Optional[str] = None) -> s
     return image_base64.decode("utf-8")
 
 
-async def get_file_via_adapter(message: MessageSegment, event: Event) -> Optional[str]:
+async def get_file_via_adapter(message: MessageSegment, event: Event) -> str | None:
     """
     通过适配器自有方式获取文件地址并保存到本地
 
@@ -193,7 +192,7 @@ def get_version() -> str:
         return "Unknown"
 
 
-async def get_username(user_id: Optional[str] = None, event: Optional[Event] = None) -> str:
+async def get_username(user_id: str | None = None, event: Event | None = None) -> str:
     """
     获取当前对话的用户名，如果失败就返回用户id
 
@@ -208,7 +207,7 @@ async def get_username(user_id: Optional[str] = None, event: Optional[Event] = N
     return user_info.user_name if user_info else user_id
 
 
-def guess_mimetype(resource: Resource) -> Optional[str]:
+def guess_mimetype(resource: Resource) -> str | None:
     """
     尝试获取 minetype 类型
     """

@@ -1,4 +1,4 @@
-from typing import Any, AsyncGenerator, List, Literal, Union, overload
+from typing import Any, AsyncGenerator, Literal, overload
 
 from .. import (
     BaseLLM,
@@ -26,7 +26,7 @@ class Echo(BaseLLM):
 
         此模型加载器支持的多模态类型: `audio` `image` `video` `file`
         """
-        user_content: List[dict] = [{"type": "text", "text": request.prompt}]
+        user_content: list[dict] = [{"type": "text", "text": request.prompt}]
 
         for resource in request.resources:
             if resource.path is None:
@@ -122,7 +122,7 @@ class Echo(BaseLLM):
 
     async def ask(
         self, request: ModelRequest, *, stream: bool = False
-    ) -> Union[ModelCompletions, AsyncGenerator[ModelStreamCompletions, None]]:
+    ) -> ModelCompletions | AsyncGenerator[ModelStreamCompletions, None]:
         """
         模型交互询问
 

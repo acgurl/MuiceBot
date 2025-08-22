@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, List, Literal, Optional, Type
+from typing import TYPE_CHECKING, Literal, Type
 
 from pydantic import BaseModel
 
@@ -18,12 +18,12 @@ class ModelRequest:
     """
 
     prompt: str
-    history: List[Message] = field(default_factory=list)
-    resources: List[Resource] = field(default_factory=list)
-    tools: Optional[List[dict]] = field(default_factory=list)
-    system: Optional[str] = None
+    history: list[Message] = field(default_factory=list)
+    resources: list[Resource] = field(default_factory=list)
+    tools: list[dict] | None = field(default_factory=list)
+    system: str | None = None
     format: Literal["string", "json"] = "string"
-    json_schema: Optional[Type[BaseModel]] = None
+    json_schema: Type[BaseModel] | None = None
 
 
 @dataclass
@@ -36,7 +36,7 @@ class ModelCompletions:
     """输出文本内容"""
     usage: int = -1
     """总调用用量"""
-    resources: List[Resource] = field(default_factory=list)
+    resources: list[Resource] = field(default_factory=list)
     """模型输出多模态资源列表"""
     succeed: bool = True
     """调用成功（如不成功会在 `text` 中输出错误信息）"""
@@ -52,7 +52,7 @@ class ModelStreamCompletions:
     """输出文本块"""
     usage: int = -1
     """总调用用量（累增，一般取最后一个块的用量）"""
-    resources: Optional[List[Resource]] = field(default_factory=list)
+    resources: list[Resource] | None = field(default_factory=list)
     """模型输出多模态资源列表"""
     succeed: bool = True
     """调用成功（如不成功会在 `chunk` 中输出错误信息）"""
@@ -64,12 +64,12 @@ class EmbeddingsBatchResult:
     嵌入输出
     """
 
-    embeddings: List[List[float]]
+    embeddings: list[list[float]]
     usage: int = -1
     succeed: bool = True
 
     @property
-    def array(self) -> List["ndarray"]:
+    def array(self) -> list["ndarray"]:
         from numpy import array
 
         return [array(embedding) for embedding in self.embeddings]

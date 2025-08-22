@@ -2,7 +2,7 @@ import asyncio
 import json
 from dataclasses import dataclass
 from functools import partial
-from typing import AsyncGenerator, Generator, List, Literal, Optional, Union, overload
+from typing import AsyncGenerator, Generator, Literal, overload
 
 import dashscope
 from dashscope.api_entities.dashscope_response import (
@@ -105,7 +105,7 @@ class Dashscope(BaseLLM):
 
         此模型加载器支持的多模态类型: `audio` `image`
         """
-        multi_contents: List[dict[str, str]] = []
+        multi_contents: list[dict[str, str]] = []
 
         for item in request.resources:
             if item.type == "audio":
@@ -122,7 +122,7 @@ class Dashscope(BaseLLM):
 
         return {"role": "user", "content": user_content}
 
-    def _build_messages(self, request: ModelRequest) -> List[dict]:
+    def _build_messages(self, request: ModelRequest) -> list[dict]:
         messages = []
 
         if request.system:
@@ -150,8 +150,8 @@ class Dashscope(BaseLLM):
     async def _GenerationResponse_handle(
         self,
         messages: list,
-        tools: List[dict],
-        response_format: Optional[dict],
+        tools: list[dict],
+        response_format: dict | None,
         response: GenerationResponse | MultiModalConversationResponse,
         total_tokens: int,
     ) -> ModelCompletions:
@@ -190,8 +190,8 @@ class Dashscope(BaseLLM):
     async def _Generator_handle(
         self,
         messages: list,
-        tools: List[dict],
-        response_format: Optional[dict],
+        tools: list[dict],
+        response_format: dict | None,
         response: Generator[GenerationResponse, None, None] | Generator[MultiModalConversationResponse, None, None],
         total_tokens: int = 0,
     ) -> AsyncGenerator[ModelStreamCompletions, None]:
@@ -250,9 +250,9 @@ class Dashscope(BaseLLM):
 
     async def _tool_calls_handle_sync(
         self,
-        messages: List,
-        tools: List[dict],
-        response_format: Optional[dict],
+        messages: list,
+        tools: list[dict],
+        response_format: dict | None,
         response: GenerationResponse | MultiModalConversationResponse,
         total_tokens: int,
     ) -> ModelCompletions:
@@ -279,9 +279,9 @@ class Dashscope(BaseLLM):
 
     async def _tool_calls_handle_stream(
         self,
-        messages: List,
-        tools: List[dict],
-        response_format: Optional[dict],
+        messages: list,
+        tools: list[dict],
+        response_format: dict | None,
         func_stream: FunctionCallStream,
         total_tokens: int,
     ) -> AsyncGenerator[ModelStreamCompletions, None]:
@@ -322,10 +322,10 @@ class Dashscope(BaseLLM):
     async def _ask(
         self,
         messages: list,
-        tools: List[dict],
-        response_format: Optional[dict],
+        tools: list[dict],
+        response_format: dict | None,
         total_tokens: int = 0,
-    ) -> Union[ModelCompletions, AsyncGenerator[ModelStreamCompletions, None]]:
+    ) -> ModelCompletions | AsyncGenerator[ModelStreamCompletions, None]:
         loop = asyncio.get_event_loop()
 
         # 因为 Dashscope 对于多模态模型的接口不同，所以这里不能统一函数
@@ -387,7 +387,7 @@ class Dashscope(BaseLLM):
 
     async def ask(
         self, request: ModelRequest, *, stream: bool = False
-    ) -> Union[ModelCompletions, AsyncGenerator[ModelStreamCompletions, None]]:
+    ) -> ModelCompletions | AsyncGenerator[ModelStreamCompletions, None]:
         self.stream = stream if stream is not None else False
 
         tools = request.tools if request.tools else []

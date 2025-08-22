@@ -1,8 +1,7 @@
 import base64
-from typing import Optional
 
 
-def get_file_base64(local_path: Optional[str] = None, file_bytes: Optional[bytes] = None) -> str:
+def get_file_base64(local_path: str | None = None, file_bytes: bytes | None = None) -> str:
     """
     获取本地图像 Base64 的方法
     """
