@@ -3,7 +3,7 @@ from typing import Any
 from nonebot import logger
 from nonebot_plugin_alconna import get_message_id
 
-from muicebot.agent.utils import call_agent, get_agent_lists
+from muicebot.agent.utils import call_agent, get_agent_configs_dict
 from muicebot.plugin.context import get_bot, get_event
 from muicebot.plugin.func_call import get_function_calls
 from muicebot.plugin.mcp import handle_mcp_tool
@@ -35,7 +35,7 @@ async def function_call_handler(func: str, arguments: dict[str, str] | None = No
         return result
 
     # 处理Agent工具调用
-    if get_agent_lists().get(func):
+    if get_agent_configs_dict().get(func):
         message_id = get_current_message_id()
         result = await call_agent(func, arguments, message_id)
         return result

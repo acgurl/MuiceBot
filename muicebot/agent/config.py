@@ -16,6 +16,7 @@ class AgentPluginConfig(BaseModel):
 
     max_loop_count: int = Field(default=5, description="最大循环次数")
     api_call_interval: float = Field(default=1.0, description="API调用间隔")
+    task_chain_timeout: int = Field(default=600, description="任务链超时时间(秒)")
 
 
 agent_plugin_config = get_plugin_config(AgentPluginConfig)

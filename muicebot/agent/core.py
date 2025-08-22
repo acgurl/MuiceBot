@@ -14,9 +14,8 @@ class Agent:
     def __init__(self, config: AgentConfig, agent_name: str = ""):
         self.config = config
         self.agent_name = agent_name or "Agent"
-        # 使用现有的load_model函数加载模型，传入模型配置
         self.model = load_model(config.model_config_obj)
-        self.tools: List[dict] = []  # 初始化为空列表，工具将在需要时异步加载
+        self.tools: Optional[List[dict]] = None
 
     async def _load_tools(self, tools_list: Optional[List[str]]) -> List[dict]:
         """加载Agent可调用的工具 - 使用通用工具加载函数"""
@@ -32,7 +31,11 @@ class Agent:
 
         # 准备提示词和工具列表
         prompt = self._prepare_prompt(task, "Muice", True)
-        tools = await self._prepare_tools()
+
+        # 如果工具列表尚未加载，则加载工具列表
+        if self.tools is None:
+            self.tools = await self._load_tools(self.config.tools_list)
+        tools = self.tools
 
         logger.debug(f"Agent提示词准备完成: prompt长度={len(prompt)}")
         logger.debug(f"Agent工具准备完成: 工具数量={len(tools)}")
@@ -76,15 +79,9 @@ class Agent:
             return f"{system_prompt}\n\n{task}"
         return task
 
-    async def _prepare_tools(self) -> List[dict]:
-        """准备工具列表"""
-        # 如果工具列表为空，则异步加载工具
-        if not self.tools:
-            self.tools = await self._load_tools(self.config.tools_list)
-        return self.tools
-
     def _parse_response(self, model_response) -> AgentResponse:
         """解析模型响应"""
+
         # 检查是否为错误响应
         if not model_response.succeed:
             logger.error(f"LLM响应错误: {model_response.text}")

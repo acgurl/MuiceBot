@@ -70,7 +70,7 @@ async def get_agent_list() -> List[Dict[str, Any]]:
     return agent_tools
 
 
-def get_agent_lists() -> Dict[str, Union[AgentConfig, Any]]:
+def get_agent_configs_dict() -> Dict[str, Union[AgentConfig, Any]]:
     """
     获取所有可用Agent的字典，格式类似于get_function_calls()
 

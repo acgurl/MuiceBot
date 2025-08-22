@@ -4,7 +4,7 @@ from typing import ClassVar, Dict, Optional
 from nonebot import logger
 
 from muicebot.agent.chain import TaskChain
-from muicebot.agent.config import AgentResponse
+from muicebot.agent.config import AgentResponse, agent_plugin_config
 from muicebot.agent.manager import AgentManager
 
 
@@ -42,16 +42,15 @@ class AgentCommunication:
         """请求Agent协助"""
         try:
             # 检查现有的TaskChain是否超时，如果超时则移除
-            # 这里默认超时时间为10分钟 (600秒)
+            # 使用配置中的超时时间，默认为10分钟 (600秒)
             current_time = time.time()
-            expired_task_chains = []
-            for task_id, task_chain in self.task_chains.items():
+            timeout = agent_plugin_config.task_chain_timeout
+            self.task_chains = {
+                task_id: task_chain
+                for task_id, task_chain in self.task_chains.items()
                 # 使用最近活动时间判断过期，避免误清理活跃任务链
-                last_active_time = max(task_chain.creation_time, task_chain.last_call_time)
-                if current_time - last_active_time > 600:
-                    expired_task_chains.append(task_id)
-            for task_id in expired_task_chains:
-                self.task_chains.pop(task_id, None)
+                if current_time - max(task_chain.creation_time, task_chain.last_call_time) <= timeout
+            }
 
             logger.info(f"开始请求Agent协助: agent_name={agent_name}, arguments={arguments}, request_id={request_id}")
 
