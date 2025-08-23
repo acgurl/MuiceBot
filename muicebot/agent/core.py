@@ -39,7 +39,7 @@ class Agent:
         logger.debug(f"Agent工具准备完成: 工具数量={len(tools)}")
 
         # 构造模型请求
-        model_request = ModelRequest(prompt=prompt, tools=tools if self.config.model_config_obj.function_call else [])
+        model_request = ModelRequest(prompt=prompt, tools=tools)
 
         logger.info("Agent模型请求构造完成，开始调用模型")
 
