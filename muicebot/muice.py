@@ -1,6 +1,6 @@
 import os
 import time
-from typing import AsyncGenerator, Optional, Union
+from typing import AsyncGenerator
 
 from nonebot import logger
 from nonebot_plugin_orm import async_scoped_session
@@ -114,7 +114,7 @@ class Muice:
 
         return True
 
-    def _on_config_changed(self, new_config: ModelConfig, old_config: Optional[ModelConfig] = None):
+    def _on_config_changed(self, new_config: ModelConfig, old_config: ModelConfig | None = None):
         """配置文件变更时的回调函数"""
         logger.info("检测到配置文件变更，自动重载模型...")
         # 更新配置
@@ -128,7 +128,7 @@ class Muice:
         self.load_model()
         logger.success(f"模型自动重载完成: {old_config_name} -> {self.model_config_name}")
 
-    def change_model_config(self, config_name: Optional[str] = None, reload: bool = False) -> str:
+    def change_model_config(self, config_name: str | None = None, reload: bool = False) -> str:
         """
         更换模型配置文件并重新加载模型
 
@@ -338,7 +338,7 @@ class Muice:
 
         total_reply = ""
         total_resources: list[Resource] = []
-        item: Optional[ModelStreamCompletions] = None
+        item: ModelStreamCompletions | None = None
 
         async for item in response:
             await hook_manager.run(HookType.ON_STREAM_CHUNK, item)
@@ -386,7 +386,7 @@ class Muice:
 
     async def refresh(
         self, userid: str, session: async_scoped_session
-    ) -> Union[AsyncGenerator[ModelStreamCompletions, None], ModelCompletions]:
+    ) -> AsyncGenerator[ModelStreamCompletions, None] | ModelCompletions:
         """
         刷新对话
 

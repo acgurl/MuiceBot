@@ -1,7 +1,6 @@
 import asyncio
 import shutil
 from pathlib import Path
-from typing import Optional
 
 import aiohttp
 from nonebot import logger
@@ -17,7 +16,7 @@ PLUGIN_DIR = Path("plugins/store")
 PLUGIN_DIR.mkdir(parents=True, exist_ok=True)
 
 
-async def get_index() -> Optional[dict[str, PluginInfo]]:
+async def get_index() -> dict[str, PluginInfo] | None:
     """
     获取插件索引
     """

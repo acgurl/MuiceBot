@@ -9,7 +9,7 @@
 """
 
 import inspect
-from typing import Any, Optional, Type, get_type_hints
+from typing import Any, Type, get_type_hints
 
 from nonebot import logger
 from nonebot.adapters import Bot, Event
@@ -30,16 +30,16 @@ _caller_data: dict[str, "Caller"] = {}
 
 
 class Caller:
-    def __init__(self, description: str, params: Optional[Type[BaseModel]] = None, rule: Optional[Rule] = None):
+    def __init__(self, description: str, params: Type[BaseModel] | None = None, rule: Rule | None = None):
         self._name: str = ""
         """函数名称"""
         self._description: str = description
         """函数描述"""
-        self._rule: Optional[Rule] = rule
+        self._rule: Rule | None = rule
         """启用规则"""
         self._parameters: dict[str, Parameter] = {}
         """函数参数字典"""
-        self._parameters_model: Optional[Type[BaseModel]] = params
+        self._parameters_model: Type[BaseModel] | None = params
         """函数参数 pydantic 模型"""
         self.function: ASYNC_FUNCTION_CALL_FUNC
         """函数对象"""
@@ -172,7 +172,7 @@ class Caller:
         }
 
 
-def on_function_call(description: str, params: Optional[Type[BaseModel]] = None, rule: Optional[Rule] = None) -> Caller:
+def on_function_call(description: str, params: Type[BaseModel] | None = None, rule: Rule | None = None) -> Caller:
     """
     返回一个Caller类，可用于装饰一个函数，使其注册为一个可被AI调用的function call函数
 

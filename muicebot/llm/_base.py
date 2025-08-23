@@ -5,7 +5,7 @@ import json
 from abc import ABC, abstractmethod
 from functools import lru_cache
 from pathlib import Path
-from typing import Any, AsyncGenerator, Literal, Optional, Union, overload
+from typing import Any, AsyncGenerator, Literal, overload
 
 import numpy as np
 from nonebot import logger
@@ -106,7 +106,7 @@ class BaseLLM(ABC):
     @abstractmethod
     async def ask(
         self, request: "ModelRequest", *, stream: bool = False
-    ) -> Union["ModelCompletions", AsyncGenerator["ModelStreamCompletions", None]]:
+    ) -> "ModelCompletions" | AsyncGenerator["ModelStreamCompletions", None]:
         """
         模型交互询问
 
@@ -159,7 +159,7 @@ class EmbeddingModel(ABC):
         if missing_fields:
             raise ValueError(f"对于 {self.config.provider} 嵌入模型，以下配置是必需的: {', '.join(missing_fields)}")
 
-    def _get_embedding_cache_path(self, text: str) -> Optional[Path]:
+    def _get_embedding_cache_path(self, text: str) -> Path | None:
         """
         获取嵌入缓存文件路径
 
@@ -175,7 +175,7 @@ class EmbeddingModel(ABC):
         return self.cache_dir / cache_key
 
     @lru_cache(maxsize=256)
-    def _load_embedding_from_cache(self, text: str) -> Optional[ndarray]:
+    def _load_embedding_from_cache(self, text: str) -> ndarray | None:
         """
         从缓存文件中加载嵌入向量
 

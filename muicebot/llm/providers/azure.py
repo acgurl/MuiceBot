@@ -1,6 +1,6 @@
 import json
 import os
-from typing import AsyncGenerator, List, Literal, Optional, Union, overload
+from typing import AsyncGenerator, Literal, overload
 
 from azure.ai.inference.aio import ChatCompletionsClient
 from azure.ai.inference.models import (
@@ -58,7 +58,7 @@ class Azure(BaseLLM):
 
         此模型加载器支持的多模态类型: `audio` `image`
         """
-        multi_content_items: List[ContentItem] = []
+        multi_content_items: list[ContentItem] = []
 
         for resource in request.resources:
             if resource.path is None:
@@ -84,7 +84,7 @@ class Azure(BaseLLM):
 
         return UserMessage(content=content)
 
-    def __build_tools_definition(self, tools: List[dict]) -> List[ChatCompletionsToolDefinition]:
+    def __build_tools_definition(self, tools: list[dict]) -> list[ChatCompletionsToolDefinition]:
         tool_definitions = []
 
         for tool in tools:
@@ -99,8 +99,8 @@ class Azure(BaseLLM):
 
         return tool_definitions
 
-    def _build_messages(self, request: ModelRequest) -> List[ChatRequestMessage]:
-        messages: List[ChatRequestMessage] = []
+    def _build_messages(self, request: ModelRequest) -> list[ChatRequestMessage]:
+        messages: list[ChatRequestMessage] = []
 
         if request.system:
             messages.append(SystemMessage(request.system))
@@ -120,7 +120,7 @@ class Azure(BaseLLM):
 
         return messages
 
-    def _tool_messages_precheck(self, tool_calls: Optional[List[ChatCompletionsToolCall]] = None) -> bool:
+    def _tool_messages_precheck(self, tool_calls: list[ChatCompletionsToolCall] | None = None) -> bool:
         if not (tool_calls and len(tool_calls) == 1):
             return False
 
@@ -133,9 +133,9 @@ class Azure(BaseLLM):
 
     async def _ask_sync(
         self,
-        messages: List[ChatRequestMessage],
-        tools: List[ChatCompletionsToolDefinition],
-        response_format: Optional[JsonSchemaFormat],
+        messages: list[ChatRequestMessage],
+        tools: list[ChatCompletionsToolDefinition],
+        response_format: JsonSchemaFormat | None,
         total_tokens: int = 0,
     ) -> ModelCompletions:
         client = ChatCompletionsClient(endpoint=self.endpoint, credential=AzureKeyCredential(self.token))
@@ -207,9 +207,9 @@ class Azure(BaseLLM):
 
     async def _ask_stream(
         self,
-        messages: List[ChatRequestMessage],
-        tools: List[ChatCompletionsToolDefinition],
-        response_format: Optional[JsonSchemaFormat],
+        messages: list[ChatRequestMessage],
+        tools: list[ChatCompletionsToolDefinition],
+        response_format: JsonSchemaFormat | None,
         total_tokens: int = 0,
     ) -> AsyncGenerator[ModelStreamCompletions, None]:
         client = ChatCompletionsClient(endpoint=self.endpoint, credential=AzureKeyCredential(self.token))
@@ -314,7 +314,7 @@ class Azure(BaseLLM):
 
     async def ask(
         self, request: ModelRequest, *, stream: bool = False
-    ) -> Union[ModelCompletions, AsyncGenerator[ModelStreamCompletions, None]]:
+    ) -> ModelCompletions | AsyncGenerator[ModelStreamCompletions, None]:
         messages = self._build_messages(request)
 
         tools = self.__build_tools_definition(request.tools) if request.tools else []

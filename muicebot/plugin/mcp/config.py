@@ -1,6 +1,6 @@
 import json
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any
 
 from pydantic import BaseModel, Field
 
@@ -16,7 +16,7 @@ class mcpServer(BaseModel):
     """环境配置"""
 
 
-mcpConfig = Dict[str, mcpServer]
+mcpConfig = dict[str, mcpServer]
 
 
 def get_mcp_server_config() -> mcpConfig:

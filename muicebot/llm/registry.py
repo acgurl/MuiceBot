@@ -1,9 +1,9 @@
-from typing import Dict, Type
+from typing import Type
 
 from ._base import BaseLLM, EmbeddingModel
 
-LLM_REGISTRY: Dict[str, Type[BaseLLM]] = {}
-EMBEDDING_REGISTRY: Dict[str, Type[EmbeddingModel]] = {}
+LLM_REGISTRY: dict[str, Type[BaseLLM]] = {}
+EMBEDDING_REGISTRY: dict[str, Type[EmbeddingModel]] = {}
 
 
 def register(name: str):

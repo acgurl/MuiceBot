@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from types import ModuleType
-from typing import TYPE_CHECKING, Any, Optional, Type, Union
+from typing import TYPE_CHECKING, Any, Type
 
 from nonebot.plugin import PluginMetadata as NonebotPluginMetadata
 
@@ -19,9 +19,9 @@ class PluginMetadata(NonebotPluginMetadata):
     """插件描述"""
     usage: str
     """插件用法"""
-    homepage: Optional[str] = None
+    homepage: str | None = None
     """(可选) 插件主页，通常为开源存储库地址"""
-    config: Optional[Type["BaseModel"]] = None
+    config: Type["BaseModel"] | None = None
     """插件配置项类，如无需配置可不填写"""
     extra: dict[Any, Any] = field(default_factory=dict)
     """不知道干嘛的 extra 信息，我至今都没搞懂，喜欢的可以填"""
@@ -37,7 +37,7 @@ class Plugin:
     """插件模块对象"""
     package_name: str
     """模块包名"""
-    meta: Optional[Union[PluginMetadata, NonebotPluginMetadata]] = None
+    meta: PluginMetadata | NonebotPluginMetadata | None = None
     """插件元数据"""
 
     def __hash__(self) -> int:
