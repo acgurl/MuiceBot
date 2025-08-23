@@ -18,15 +18,10 @@ class TaskChain:
         self.request_id = request_id
         self.max_loops = max_loops if max_loops is not None else agent_plugin_config.max_loop_count
 
-        self.current_loop = 0
         self.call_count = 0  # 调用计数器
         self.last_call_time = 0.0  # 上次调用时间
         self._last_call_monotonic = 0.0  # 上次调用时间（单调时钟）
         self.creation_time = time.time()  # 创建时间
-
-    def increment_loop(self) -> None:
-        """增加循环计数"""
-        self.current_loop += 1
 
     def increment_call_count(self) -> None:
         """增加调用计数"""
@@ -64,7 +59,6 @@ class TaskChain:
 
     def reset(self) -> None:
         """重置调用计数"""
-        self.current_loop = 0
         self.call_count = 0
         self.last_call_time = 0.0
         self._last_call_monotonic = 0.0

@@ -93,7 +93,6 @@ class AgentCommunication:
             # 调用Agent执行任务
             try:
                 response = await self.agent_manager.dispatch_agent_task(agent_name, task)
-                task_chain.increment_loop()
                 logger.info(f"Agent调用完成: response={response}")
 
             except Exception as e:
