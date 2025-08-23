@@ -51,6 +51,11 @@ class Server:
         self.session: ClientSession | None = None
         self._cleanup_lock: asyncio.Lock = asyncio.Lock()
         self.exit_stack: AsyncExitStack = AsyncExitStack()
+        self._transport_initializers = {
+            "stdio": self._initialize_stdio,
+            "sse": self._initialize_sse,
+            "streamable_http": self._initialize_streamable_http,
+        }
 
     async def _initialize_stdio(self) -> tuple[Any, Any]:
         """
@@ -94,13 +99,7 @@ class Server:
         初始化实例
         """
         transport = self.config.type
-        # 使用字典映射传输类型到对应的初始化方法
-        transport_initializers = {
-            "stdio": self._initialize_stdio,
-            "sse": self._initialize_sse,
-            "streamable_http": self._initialize_streamable_http,
-        }
-        initializer = transport_initializers[transport]
+        initializer = self._transport_initializers[transport]
         read, write = await initializer()
         session = await self.exit_stack.enter_async_context(ClientSession(read, write))
         await session.initialize()
