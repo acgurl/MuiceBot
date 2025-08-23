@@ -21,6 +21,7 @@ class TaskChain:
         self.current_loop = 0
         self.call_count = 0  # 调用计数器
         self.last_call_time = 0.0  # 上次调用时间
+        self._last_call_monotonic = 0.0  # 上次调用时间（单调时钟）
         self.creation_time = time.time()  # 创建时间
 
     def increment_loop(self) -> None:
@@ -45,14 +46,11 @@ class TaskChain:
         """
         在调用之间添加API调用间隔
         """
-        current_time = time.time()
         api_call_interval = agent_plugin_config.api_call_interval
 
         # 如果不是第一次调用，检查是否需要等待
-        if self.last_call_time > 0:
-            # 计算距离上次调用的时间
-            time_since_last_call = current_time - self.last_call_time
-            # 如果距离上次调用的时间小于配置的间隔，则等待
+        if self._last_call_monotonic > 0:
+            time_since_last_call = time.monotonic() - self._last_call_monotonic
             if time_since_last_call < api_call_interval:
                 wait_time = api_call_interval - time_since_last_call
                 await asyncio.sleep(wait_time)
@@ -62,9 +60,11 @@ class TaskChain:
 
         # 更新上次调用时间
         self.last_call_time = time.time()
+        self._last_call_monotonic = time.monotonic()
 
     def reset(self) -> None:
         """重置调用计数"""
         self.current_loop = 0
         self.call_count = 0
         self.last_call_time = 0.0
+        self._last_call_monotonic = 0.0

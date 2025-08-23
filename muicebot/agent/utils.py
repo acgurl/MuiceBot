@@ -8,7 +8,7 @@ from nonebot import logger
 from pydantic import BaseModel, Field
 
 from muicebot.agent.communication import AgentCommunication
-from muicebot.agent.config import AgentConfig, AgentConfigManager
+from muicebot.agent.config import AgentConfigManager
 from muicebot.agent.manager import AgentManager
 
 
@@ -70,28 +70,10 @@ async def get_agent_list() -> list[dict[str, Any]]:
     return agent_tools
 
 
-def get_agent_configs_dict() -> dict[str, AgentConfig]:
-    """
-    获取所有可用Agent的字典，格式类似于get_function_calls()
-
-    Returns:
-        Dict[str, AgentConfig]: Agent字典，键为Agent名称，值为Agent对象
-    """
-    agent_dict = {}
+def is_agent(agent_name: str) -> bool:
+    """检查一个名称是否对应一个已配置的Agent"""
     config_manager = AgentConfigManager.get_instance()
-    agents = config_manager.list_agents()
-
-    # 为每个Agent创建字典项
-    for agent_name in agents:
-        try:
-            config = config_manager.get_agent_config(agent_name)
-            # 将Agent配置添加到字典中
-            agent_dict[agent_name] = config
-        except Exception as e:
-            logger.warning(f"获取Agent配置失败，跳过该Agent: agent_name={agent_name}, error={e}")
-            continue
-
-    return agent_dict
+    return agent_name in config_manager.list_agents()
 
 
 async def call_agent(func: str, arguments: dict[str, str], message_id: str | None = None) -> str:

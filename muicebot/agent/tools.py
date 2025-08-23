@@ -45,12 +45,13 @@ class AgentToolLoader:
             工具列表
         """
         available_tools = []
+        tools_set = set(tools_list)
 
         def _filter_tools(source_tools: list[dict], source_name: str) -> None:
             """过滤工具列表"""
             for tool in source_tools:
                 tool_name = tool.get("function", {}).get("name")
-                if tool_name in tools_list:
+                if tool_name in tools_set:
                     available_tools.append(tool)
 
         # 获取所有可用的Function Call工具
