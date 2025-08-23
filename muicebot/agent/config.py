@@ -1,3 +1,4 @@
+import threading
 from pathlib import Path
 
 import yaml
@@ -79,6 +80,7 @@ class AgentToolCall(BaseModel):
 class AgentConfigManager:
     """Agent配置管理器"""
 
+    _lock = threading.Lock()
     _instance = None
     _initialized = False
 
@@ -98,7 +100,9 @@ class AgentConfigManager:
     def get_instance(cls) -> "AgentConfigManager":
         """获取AgentConfigManager单例实例"""
         if cls._instance is None:
-            cls._instance = cls()
+            with cls._lock:
+                if cls._instance is None:
+                    cls._instance = cls()
         return cls._instance
 
     def _load_configs(self) -> None:

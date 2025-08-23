@@ -2,7 +2,7 @@ from nonebot import logger
 
 from muicebot.agent.config import AgentConfig, AgentResponse, format_agent_output
 from muicebot.agent.tools import load_agent_tools
-from muicebot.llm import ModelRequest, load_model
+from muicebot.llm import ModelCompletions, ModelRequest, load_model
 from muicebot.templates import generate_prompt_from_template
 
 
@@ -77,7 +77,7 @@ class Agent:
             return f"{system_prompt}\n\n{task}"
         return task
 
-    def _parse_response(self, model_response) -> AgentResponse:
+    def _parse_response(self, model_response: ModelCompletions) -> AgentResponse:
         """解析模型响应"""
 
         # 检查是否为错误响应

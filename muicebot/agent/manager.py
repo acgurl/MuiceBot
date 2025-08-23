@@ -1,3 +1,5 @@
+import threading
+
 from nonebot import logger
 
 from muicebot.agent.config import AgentConfigManager, AgentResponse
@@ -7,6 +9,7 @@ from muicebot.agent.core import Agent
 class AgentManager:
     """Agent管理器"""
 
+    _lock = threading.Lock()
     _instance = None
     _initialized = False
 
@@ -20,14 +23,16 @@ class AgentManager:
             return
 
         self.config_manager = AgentConfigManager.get_instance()
-        self._agents: dict = {}
+        self._agents: dict[str, Agent] = {}
         self.__class__._initialized = True
 
     @classmethod
     def get_instance(cls) -> "AgentManager":
         """获取AgentManager单例实例"""
         if cls._instance is None:
-            cls._instance = cls()
+            with cls._lock:
+                if cls._instance is None:
+                    cls._instance = cls()
         return cls._instance
 
     async def dispatch_agent_task(self, agent_name: str, task: str) -> AgentResponse:

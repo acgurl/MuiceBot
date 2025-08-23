@@ -1,3 +1,4 @@
+import threading
 import time
 from typing import ClassVar
 
@@ -11,6 +12,7 @@ from muicebot.agent.manager import AgentManager
 class AgentCommunication:
     """Agent与主模型通信接口"""
 
+    _lock: ClassVar[threading.Lock] = threading.Lock()
     _instance: ClassVar["AgentCommunication" | None] = None
     _initialized: bool = False
 
@@ -32,7 +34,9 @@ class AgentCommunication:
     def get_instance(cls) -> "AgentCommunication":
         """获取AgentCommunication单例实例"""
         if cls._instance is None:
-            cls._instance = cls()
+            with cls._lock:
+                if cls._instance is None:
+                    cls._instance = cls()
         return cls._instance
 
     async def request_agent_assistance(
