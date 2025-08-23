@@ -1,6 +1,6 @@
 import threading
 import time
-from typing import ClassVar
+from typing import ClassVar, Optional
 
 from nonebot import logger
 
@@ -13,7 +13,7 @@ class AgentCommunication:
     """Agent与主模型通信接口"""
 
     _lock: ClassVar[threading.Lock] = threading.Lock()
-    _instance: ClassVar["AgentCommunication" | None] = None
+    _instance: ClassVar[Optional["AgentCommunication"]] = None
     _initialized: bool = False
 
     def __new__(cls) -> "AgentCommunication":
