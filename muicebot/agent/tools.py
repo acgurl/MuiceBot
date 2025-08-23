@@ -3,6 +3,7 @@ from nonebot import logger
 from muicebot.agent.config import AgentConfigManager
 from muicebot.plugin.func_call import get_function_list
 from muicebot.plugin.mcp import get_mcp_list
+from muicebot.plugin.mcp.config import server_config
 
 
 class AgentToolLoader:
@@ -46,27 +47,34 @@ class AgentToolLoader:
         """
         available_tools = []
         tools_set = set(tools_list)
-
-        def _filter_tools(source_tools: list[dict]) -> None:
-            """过滤工具列表"""
-            for tool in source_tools:
-                tool_name = tool.get("function", {}).get("name")
-                if tool_name in tools_set:
-                    available_tools.append(tool)
+        mcp_server_names = set(server_config.keys())
 
         # 获取所有可用的Function Call工具
         try:
             function_tools = await get_function_list()
-            _filter_tools(function_tools)
+            # 按工具名称过滤Function Call工具
+            for tool in function_tools:
+                tool_name = tool.get("function", {}).get("name")
+                if tool_name in tools_set:
+                    available_tools.append(tool)
         except Exception as e:
             logger.warning(f"Function Call工具加载失败: error={e}")
 
         # 获取所有可用的MCP工具
         try:
             mcp_tools = await get_mcp_list()
-            _filter_tools(mcp_tools)
+            # 如果配置中包含MCP服务器名称，则加载该服务器的所有工具
+            if any(server_name in tools_set for server_name in mcp_server_names):
+                available_tools.extend(mcp_tools)
+            else:
+                # 否则按工具名称过滤MCP工具
+                for tool in mcp_tools:
+                    tool_name = tool.get("function", {}).get("name")
+                    if tool_name in tools_set:
+                        available_tools.append(tool)
         except Exception as e:
             logger.warning(f"MCP工具加载失败，仅使用Function Call工具: error={e}")
+
         return available_tools
 
 
