@@ -1,5 +1,5 @@
 import time
-from typing import ClassVar, Dict, Optional
+from typing import ClassVar
 
 from nonebot import logger
 
@@ -11,23 +11,22 @@ from muicebot.agent.manager import AgentManager
 class AgentCommunication:
     """Agent与主模型通信接口"""
 
-    _instance: ClassVar[Optional["AgentCommunication"]] = None
+    _instance: ClassVar["AgentCommunication" | None] = None
     _initialized: bool = False
 
-    def __new__(cls):
+    def __new__(cls) -> "AgentCommunication":
         if cls._instance is None:
             cls._instance = super().__new__(cls)
-            cls._instance._initialized = False
         return cls._instance
 
     def __init__(self) -> None:
-        if self._initialized:
+        if self.__class__._initialized:
             return
 
         self.agent_manager = AgentManager.get_instance()
-        self.task_chains: Dict[str, TaskChain] = {}  # 用于存储不同请求ID的task_chain
+        self.task_chains: dict[str, TaskChain] = {}  # 用于存储不同请求ID的task_chain
 
-        self._initialized = True
+        self.__class__._initialized = True
 
     @classmethod
     def get_instance(cls) -> "AgentCommunication":
@@ -37,7 +36,7 @@ class AgentCommunication:
         return cls._instance
 
     async def request_agent_assistance(
-        self, agent_name: str, arguments: dict, request_id: Optional[str] = None
+        self, agent_name: str, arguments: dict, request_id: str | None = None
     ) -> AgentResponse:
         """请求Agent协助"""
         try:

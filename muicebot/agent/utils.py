@@ -2,7 +2,7 @@
 Agent工具函数模块
 """
 
-from typing import Any, Dict, List, Union
+from typing import Any
 
 from nonebot import logger
 from pydantic import BaseModel, Field
@@ -21,7 +21,7 @@ class AgentTaskParameters(BaseModel):
     )
 
 
-def create_agent_tool_description(agent_name: str, agent_description: str) -> Dict[str, Any]:
+def create_agent_tool_description(agent_name: str, agent_description: str) -> dict[str, Any]:
     """
     创建Agent工具描述，复用现有的工具描述生成逻辑
 
@@ -42,7 +42,7 @@ def create_agent_tool_description(agent_name: str, agent_description: str) -> Di
     }
 
 
-async def get_agent_list() -> List[Dict[str, Any]]:
+async def get_agent_list() -> list[dict[str, Any]]:
     """
     获取所有可用Agent的信息列表，格式化为工具调用格式
 
@@ -70,12 +70,12 @@ async def get_agent_list() -> List[Dict[str, Any]]:
     return agent_tools
 
 
-def get_agent_configs_dict() -> Dict[str, Union[AgentConfig, Any]]:
+def get_agent_configs_dict() -> dict[str, AgentConfig]:
     """
     获取所有可用Agent的字典，格式类似于get_function_calls()
 
     Returns:
-        Dict[str, Any]: Agent字典，键为Agent名称，值为Agent对象
+        Dict[str, AgentConfig]: Agent字典，键为Agent名称，值为Agent对象
     """
     agent_dict = {}
     config_manager = AgentConfigManager.get_instance()
@@ -94,7 +94,7 @@ def get_agent_configs_dict() -> Dict[str, Union[AgentConfig, Any]]:
     return agent_dict
 
 
-async def call_agent(func: str, arguments: Dict[str, str], message_id: str | None = None) -> str:
+async def call_agent(func: str, arguments: dict[str, str], message_id: str | None = None) -> str:
     """
     调用Agent并处理响应
 

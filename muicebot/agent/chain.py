@@ -1,6 +1,5 @@
 import asyncio
 import time
-from typing import Optional
 
 from muicebot.agent.config import agent_plugin_config
 
@@ -15,7 +14,7 @@ class TaskChain:
             self.max_loops = max_loops
             super().__init__(f"调用次数已达到最大限制 {max_loops}")
 
-    def __init__(self, request_id: Optional[str] = None, max_loops: Optional[int] = None) -> None:
+    def __init__(self, request_id: str | None = None, max_loops: int | None = None) -> None:
         self.request_id = request_id
         self.max_loops = max_loops if max_loops is not None else agent_plugin_config.max_loop_count
 

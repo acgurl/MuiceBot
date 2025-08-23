@@ -10,19 +10,18 @@ class AgentManager:
     _instance = None
     _initialized = False
 
-    def __new__(cls):
+    def __new__(cls) -> "AgentManager":
         if cls._instance is None:
             cls._instance = super().__new__(cls)
-            cls._instance._initialized = False
         return cls._instance
 
-    def __init__(self):
-        if self._initialized:
+    def __init__(self) -> None:
+        if self.__class__._initialized:
             return
 
         self.config_manager = AgentConfigManager.get_instance()
         self._agents: dict = {}
-        self._initialized = True
+        self.__class__._initialized = True
 
     @classmethod
     def get_instance(cls) -> "AgentManager":

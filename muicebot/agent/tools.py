@@ -1,5 +1,3 @@
-from typing import List, Optional
-
 from nonebot import logger
 
 from muicebot.agent.config import AgentConfigManager
@@ -10,10 +8,10 @@ from muicebot.plugin.mcp import get_mcp_list
 class AgentToolLoader:
     """Agent通用工具加载器"""
 
-    def __init__(self):
+    def __init__(self) -> None:
         pass
 
-    async def load_agent_tools(self, agent_name: str, tools_list: Optional[List[str]] = None) -> List[dict]:
+    async def load_agent_tools(self, agent_name: str, tools_list: list[str] | None = None) -> list[dict]:
         """
         为指定Agent加载工具
 
@@ -36,7 +34,7 @@ class AgentToolLoader:
         logger.debug(f"工具加载完成: agent={agent_name}, loaded_tools={len(tools)}")
         return tools
 
-    async def _load_tools_from_sources(self, tools_list: List[str]) -> List[dict]:
+    async def _load_tools_from_sources(self, tools_list: list[str]) -> list[dict]:
         """
         从各种来源加载工具 - 使用muicebot的工具调用机制
 
@@ -48,24 +46,24 @@ class AgentToolLoader:
         """
         available_tools = []
 
-        # 获取所有可用的Function Call工具
-        try:
-            function_tools = await get_function_list()
-            for tool in function_tools:
+        def _filter_tools(source_tools: list[dict], source_name: str) -> None:
+            """过滤工具列表"""
+            for tool in source_tools:
                 tool_name = tool.get("function", {}).get("name")
                 if tool_name in tools_list:
                     available_tools.append(tool)
+
+        # 获取所有可用的Function Call工具
+        try:
+            function_tools = await get_function_list()
+            _filter_tools(function_tools, "Function Call")
         except Exception as e:
             logger.warning(f"Function Call工具加载失败: error={e}")
 
         # 获取所有可用的MCP工具
         try:
             mcp_tools = await get_mcp_list()
-            for tool in mcp_tools:
-                # 检查工具名称是否在配置的工具列表中
-                tool_name = tool.get("function", {}).get("name")
-                if tool_name in tools_list:
-                    available_tools.append(tool)
+            _filter_tools(mcp_tools, "MCP")
         except Exception as e:
             logger.warning(f"MCP工具加载失败，仅使用Function Call工具: error={e}")
         return available_tools
@@ -76,7 +74,7 @@ class AgentToolLoader:
 _tool_loader = AgentToolLoader()
 
 
-async def load_agent_tools(agent_name: str, tools_list: Optional[List[str]] = None) -> List[dict]:
+async def load_agent_tools(agent_name: str, tools_list: list[str] | None = None) -> list[dict]:
     """
     为Agent加载工具的通用函数
 

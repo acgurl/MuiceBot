@@ -1,5 +1,4 @@
 from pathlib import Path
-from typing import Dict, List, Optional
 
 import yaml
 from nonebot import get_plugin_config
@@ -26,14 +25,14 @@ class AgentConfig(BaseModel):
     """Agent配置模型"""
 
     # Agent 特有配置
-    tools_list: List[str] = Field(default_factory=list, description="Agent可用的工具列表")
-    description: Optional[str] = Field(default=None, description="Agent描述")
+    tools_list: list[str] = Field(default_factory=list, description="Agent可用的工具列表")
+    description: str | None = Field(default=None, description="Agent描述")
 
     # 模型配置名称
     model_config_name: str = Field(description="Agent使用的模型配置名称")
 
     # 通过模型配置名称获取的模型配置对象（不直接序列化）
-    _model_config: Optional[ModelConfig] = None
+    _model_config: ModelConfig | None = None
 
     @property
     def model_config_obj(self) -> ModelConfig:
@@ -74,7 +73,7 @@ class AgentToolCall(BaseModel):
 
     name: str
     arguments: dict
-    result: Optional[str] = None
+    result: str | None = None
 
 
 class AgentConfigManager:
@@ -83,18 +82,17 @@ class AgentConfigManager:
     _instance = None
     _initialized = False
 
-    def __new__(cls):
+    def __new__(cls) -> "AgentConfigManager":
         if cls._instance is None:
             cls._instance = super().__new__(cls)
-            cls._instance._initialized = False
         return cls._instance
 
-    def __init__(self):
-        if self._initialized:
+    def __init__(self) -> None:
+        if self.__class__._initialized:
             return
-        self._configs: Dict[str, AgentConfig] = {}
+        self._configs: dict[str, AgentConfig] = {}
         self._load_configs()
-        self._initialized = True
+        self.__class__._initialized = True
 
     @classmethod
     def get_instance(cls) -> "AgentConfigManager":
@@ -103,7 +101,7 @@ class AgentConfigManager:
             cls._instance = cls()
         return cls._instance
 
-    def _load_configs(self):
+    def _load_configs(self) -> None:
         """加载Agent配置文件"""
         # 合并检查配置文件不存在和配置文件为空的情况
         if not AGENTS_CONFIG_PATH.exists():
@@ -140,11 +138,11 @@ class AgentConfigManager:
             raise ValueError(f"Agent配置不存在: {agent_name}")
         return self._configs[agent_name]
 
-    def list_agents(self) -> List[str]:
+    def list_agents(self) -> list[str]:
         """列出所有Agent"""
         return list(self._configs.keys())
 
-    def reload_configs(self):
+    def reload_configs(self) -> None:
         """重新加载配置文件"""
         self._configs.clear()
         self._load_configs()
@@ -163,7 +161,7 @@ class AgentConfigManager:
         # 检查是否启用工具调用且工具列表不为空
         return config.model_config_obj.function_call and len(config.tools_list) > 0
 
-    def get_available_tools(self, agent_name: str) -> List[str]:
+    def get_available_tools(self, agent_name: str) -> list[str]:
         """
         获取Agent可用的工具列表
         """

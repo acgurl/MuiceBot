@@ -1,5 +1,3 @@
-from typing import List, Optional
-
 from nonebot import logger
 
 from muicebot.agent.config import AgentConfig, AgentResponse, format_agent_output
@@ -15,9 +13,9 @@ class Agent:
         self.config = config
         self.agent_name = agent_name or "Agent"
         self.model = load_model(config.model_config_obj)
-        self.tools: Optional[List[dict]] = None
+        self.tools: list[dict] | None = None
 
-    async def _load_tools(self, tools_list: Optional[List[str]]) -> List[dict]:
+    async def _load_tools(self, tools_list: list[str] | None) -> list[dict]:
         """加载Agent可调用的工具 - 使用通用工具加载函数"""
         return await load_agent_tools(self.agent_name, tools_list)
 
