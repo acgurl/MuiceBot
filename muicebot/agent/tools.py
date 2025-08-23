@@ -47,7 +47,7 @@ class AgentToolLoader:
         available_tools = []
         tools_set = set(tools_list)
 
-        def _filter_tools(source_tools: list[dict], source_name: str) -> None:
+        def _filter_tools(source_tools: list[dict]) -> None:
             """过滤工具列表"""
             for tool in source_tools:
                 tool_name = tool.get("function", {}).get("name")
@@ -57,14 +57,14 @@ class AgentToolLoader:
         # 获取所有可用的Function Call工具
         try:
             function_tools = await get_function_list()
-            _filter_tools(function_tools, "Function Call")
+            _filter_tools(function_tools)
         except Exception as e:
             logger.warning(f"Function Call工具加载失败: error={e}")
 
         # 获取所有可用的MCP工具
         try:
             mcp_tools = await get_mcp_list()
-            _filter_tools(mcp_tools, "MCP")
+            _filter_tools(mcp_tools)
         except Exception as e:
             logger.warning(f"MCP工具加载失败，仅使用Function Call工具: error={e}")
         return available_tools
