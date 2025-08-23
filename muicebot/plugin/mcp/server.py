@@ -87,11 +87,10 @@ class Server:
 
         :return: (read, write) 元组
         """
-        transport_context = await self.exit_stack.enter_async_context(
+        read, write, *_ = await self.exit_stack.enter_async_context(
             streamablehttp_client(self.config.url, headers=self.config.headers)
         )
-        # 只返回 read_stream 和 write_stream
-        return transport_context[:2]
+        return read, write
 
     async def initialize(self) -> None:
         """
