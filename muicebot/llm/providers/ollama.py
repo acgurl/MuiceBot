@@ -1,4 +1,4 @@
-from typing import Any, AsyncGenerator, List, Literal, Optional, Union, overload
+from typing import Any, AsyncGenerator, Literal, overload
 
 import ollama
 from nonebot import logger
@@ -83,8 +83,8 @@ class Ollama(BaseLLM):
     async def _ask_sync(
         self,
         messages: list,
-        tools: List[dict[str, Any]],
-        response_format: Optional[dict[str, Any]],
+        tools: list[dict[str, Any]],
+        response_format: dict[str, Any] | None,
         total_tokens: int = -1,
     ) -> ModelCompletions:
         completions = ModelCompletions()
@@ -136,8 +136,8 @@ class Ollama(BaseLLM):
     async def _ask_stream(
         self,
         messages: list,
-        tools: List[dict[str, Any]],
-        response_format: Optional[dict[str, Any]],
+        tools: list[dict[str, Any]],
+        response_format: dict[str, Any] | None,
         total_tokens: int = -1,
     ) -> AsyncGenerator[ModelStreamCompletions, None]:
         try:
@@ -201,7 +201,7 @@ class Ollama(BaseLLM):
 
     async def ask(
         self, request: ModelRequest, *, stream: bool = False
-    ) -> Union[ModelCompletions, AsyncGenerator[ModelStreamCompletions, None]]:
+    ) -> ModelCompletions | AsyncGenerator[ModelStreamCompletions, None]:
         tools = request.tools if request.tools else []
         messages = self._build_messages(request)
         if request.format == "json" and request.json_schema:

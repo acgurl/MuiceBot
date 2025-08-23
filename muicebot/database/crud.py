@@ -1,6 +1,6 @@
 import json
 from datetime import datetime
-from typing import List, Literal, Optional
+from typing import Literal
 
 from nonebot_plugin_orm import async_scoped_session
 from sqlalchemy import desc, func, select, update
@@ -62,7 +62,7 @@ class MessageORM:
         )
 
     @staticmethod
-    async def get_user_history(session: async_scoped_session, userid: str, limit: int = 0) -> List[Message]:
+    async def get_user_history(session: async_scoped_session, userid: str, limit: int = 0) -> list[Message]:
         """
         获取用户的所有对话历史
 
@@ -80,7 +80,7 @@ class MessageORM:
         return [MessageORM._convert(msg) for msg in rows][::-1]
 
     @staticmethod
-    async def get_group_history(session: async_scoped_session, groupid: str, limit: int = 0) -> List[Message]:
+    async def get_group_history(session: async_scoped_session, groupid: str, limit: int = 0) -> list[Message]:
         """
         获取群组的所有对话历史，返回一个列表
 
@@ -100,7 +100,7 @@ class MessageORM:
     async def mark_history_as_unavailable(
         session: async_scoped_session,
         userid: str,
-        limit: Optional[int] = None,
+        limit: int | None = None,
     ):
         """
         将用户消息上下文标记为不可用 (适用于 reset 命令)
@@ -197,9 +197,9 @@ class UsageORM:
     @staticmethod
     async def get_usage(
         session: async_scoped_session,
-        plugin: Optional[str],
-        date: Optional[str],
-        type: Optional[Literal["chat", "embedding"]] = None,
+        plugin: str | None,
+        date: str | None,
+        type: Literal["chat", "embedding"] | None = None,
     ) -> int:
         """
         获取用量信息

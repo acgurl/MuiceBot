@@ -1,5 +1,4 @@
 import asyncio
-from typing import Dict, List, Optional
 
 from nonebot import logger
 from nonebot.adapters import Event
@@ -10,7 +9,7 @@ from ..config import plugin_config
 
 class SessionManager:
     def __init__(self) -> None:
-        self.sessions: Dict[str, List[UniMsg]] = {}
+        self.sessions: dict[str, list[UniMsg]] = {}
         self._lock: asyncio.Lock = asyncio.Lock()
         self._timeout = plugin_config.input_timeout
 
@@ -32,7 +31,7 @@ class SessionManager:
 
         return merged_message
 
-    async def put_and_wait(self, event: Event, message: UniMsg) -> Optional[UniMessage]:
+    async def put_and_wait(self, event: Event, message: UniMsg) -> UniMessage | None:
         sid = event.get_session_id()
         await self._put(sid, message)
 

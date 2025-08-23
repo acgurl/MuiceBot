@@ -12,7 +12,6 @@ Functions:
 import inspect
 import os
 from pathlib import Path
-from typing import Dict, Optional, Set
 
 import nonebot_plugin_localstore as store
 from nonebot import load_plugin as load_plugin_as_nonebot
@@ -22,13 +21,13 @@ from nonebot.plugin import PluginMetadata
 from .models import Plugin
 from .utils import path_to_module_name
 
-_plugins: Dict[str, Plugin] = {}
+_plugins: dict[str, Plugin] = {}
 """插件注册表"""
-_declared_plugins: Set[str] = set()
+_declared_plugins: set[str] = set()
 """已声明插件注册表（不一定加载成功）"""
 
 
-def load_plugin(plugin_path: Path | str, base_path=Path.cwd()) -> Optional[Plugin]:
+def load_plugin(plugin_path: Path | str, base_path=Path.cwd()) -> Plugin | None:
     """
     加载单个插件
 
@@ -52,7 +51,7 @@ def load_plugin(plugin_path: Path | str, base_path=Path.cwd()) -> Optional[Plugi
         assert nb_plugin
 
         # get plugin metadata
-        metadata: Optional[PluginMetadata] = nb_plugin.metadata
+        metadata: PluginMetadata | None = nb_plugin.metadata
 
         plugin = Plugin(name=nb_plugin.module_name, module=nb_plugin.module, package_name=module_name, meta=metadata)
 
@@ -93,7 +92,7 @@ def load_plugins(*plugins_dirs: Path | str, base_path=Path.cwd()) -> set[Plugin]
     return plugins
 
 
-def _get_caller_plugin_name() -> Optional[str]:
+def _get_caller_plugin_name() -> str | None:
     """
     获取当前调用插件名
     （默认跳过 `muicebot` 本身及其内嵌插件）
@@ -127,14 +126,14 @@ def _get_caller_plugin_name() -> Optional[str]:
     return None
 
 
-def get_plugins() -> Dict[str, Plugin]:
+def get_plugins() -> dict[str, Plugin]:
     """
     获取插件列表
     """
     return _plugins
 
 
-def get_plugin_by_module_name(module_name: str) -> Optional[Plugin]:
+def get_plugin_by_module_name(module_name: str) -> Plugin | None:
     """
     通过包名获取插件对象
     """

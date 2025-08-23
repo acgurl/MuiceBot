@@ -1,7 +1,7 @@
 import base64
 import json
 from io import BytesIO
-from typing import AsyncGenerator, List, Literal, Union, overload
+from typing import AsyncGenerator, Literal, overload
 
 import openai
 from nonebot import logger
@@ -28,8 +28,8 @@ from ..utils.tools import function_call_handler
 
 @register("openai")
 class Openai(BaseLLM):
-    _tools: List[ChatCompletionToolParam]
-    modalities: Union[List[Literal["text", "audio"]], NotGiven]
+    _tools: list[ChatCompletionToolParam]
+    modalities: list[Literal["text", "audio"]] | NotGiven
 
     def __init__(self, model_config: ModelConfig) -> None:
         super().__init__(model_config)
@@ -52,7 +52,7 @@ class Openai(BaseLLM):
 
         此模型加载器支持的多模态类型: `audio` `image` `video` `file`
         """
-        user_content: List[dict] = [{"type": "text", "text": request.prompt}]
+        user_content: list[dict] = [{"type": "text", "text": request.prompt}]
 
         for resource in request.resources:
             if resource.path is None:
@@ -125,8 +125,8 @@ class Openai(BaseLLM):
     async def _ask_sync(
         self,
         messages: list,
-        tools: Union[List[ChatCompletionToolParam], NotGiven],
-        response_format: Union[ResponseFormatJSONSchema, NotGiven],
+        tools: list[ChatCompletionToolParam] | NotGiven,
+        response_format: ResponseFormatJSONSchema | NotGiven,
         total_tokens: int = 0,
     ) -> ModelCompletions:
         completions = ModelCompletions()
@@ -205,8 +205,8 @@ class Openai(BaseLLM):
     async def _ask_stream(
         self,
         messages: list,
-        tools: Union[List[ChatCompletionToolParam], NotGiven],
-        response_format: Union[ResponseFormatJSONSchema, NotGiven],
+        tools: list[ChatCompletionToolParam] | NotGiven,
+        response_format: ResponseFormatJSONSchema | NotGiven,
         total_tokens: int = 0,
     ) -> AsyncGenerator[ModelStreamCompletions, None]:
         is_insert_think_label = False
@@ -354,7 +354,7 @@ class Openai(BaseLLM):
 
     async def ask(
         self, request: ModelRequest, *, stream: bool = False
-    ) -> Union[ModelCompletions, AsyncGenerator[ModelStreamCompletions, None]]:
+    ) -> ModelCompletions | AsyncGenerator[ModelStreamCompletions, None]:
         tools = request.tools if request.tools else NOT_GIVEN
 
         messages = self._build_messages(request)

@@ -1,5 +1,3 @@
-from typing import List
-
 from pydantic import BaseModel, ConfigDict, Field
 
 
@@ -22,7 +20,7 @@ class PromptTemplatesConfig(BaseModel):
     master_nickname: str = "沐沐(Muika)"
     """AI 开发者昵称"""
 
-    userinfos: List[Userinfo] = Field(default=[])
+    userinfos: list[Userinfo] = Field(default=[])
     """用户信息列表"""
 
     model_config = ConfigDict(extra="allow")

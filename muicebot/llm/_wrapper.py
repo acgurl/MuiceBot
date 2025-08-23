@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import asyncio
 from functools import wraps
-from typing import TYPE_CHECKING, AsyncGenerator, Awaitable, Callable, TypeAlias, Union
+from typing import TYPE_CHECKING, AsyncGenerator, Awaitable, Callable, TypeAlias
 
 from nonebot_plugin_orm import get_scoped_session
 
@@ -18,7 +18,7 @@ from ._schema import (
 if TYPE_CHECKING:
     from ._base import BaseLLM, EmbeddingModel
 
-ASK_FUNC: TypeAlias = Callable[..., Awaitable[Union[ModelCompletions, AsyncGenerator[ModelStreamCompletions, None]]]]
+ASK_FUNC: TypeAlias = Callable[..., Awaitable[ModelCompletions | AsyncGenerator[ModelStreamCompletions, None]]]
 EMBED_FUNC: TypeAlias = Callable[..., Awaitable[EmbeddingsBatchResult]]
 
 _usage_write_lock = asyncio.Lock()

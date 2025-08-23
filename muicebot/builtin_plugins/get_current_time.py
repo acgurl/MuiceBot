@@ -1,5 +1,3 @@
-from typing import Optional
-
 from nonebot import get_plugin_config
 from pydantic import BaseModel, Field, field_validator
 
@@ -12,11 +10,11 @@ __plugin_meta__ = PluginMetadata(
 
 
 class Config(BaseModel):
-    timezone: Optional[str] = Field(default=None, description="当前时区", examples=["Asia/Shanghai"])
+    timezone: str | None = Field(default=None, description="当前时区", examples=["Asia/Shanghai"])
 
     @field_validator("timezone", mode="before")
     @classmethod
-    def validate_timezone(cls, value: Optional[str]) -> Optional[str]:
+    def validate_timezone(cls, value: str | None) -> str | None:
         if not value:
             return value
 

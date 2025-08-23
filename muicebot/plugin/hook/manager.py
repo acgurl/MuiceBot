@@ -4,9 +4,6 @@ from typing import (
     Any,
     Awaitable,
     Callable,
-    Dict,
-    List,
-    Optional,
     Union,
     get_args,
     get_origin,
@@ -38,7 +35,7 @@ def _match_union(param_type: type, arg: object) -> bool:
 
 class HookManager:
     def __init__(self):
-        self._hooks: Dict[HookType, List["Hooked"]] = defaultdict(list)
+        self._hooks: dict[HookType, list["Hooked"]] = defaultdict(list)
 
     async def _inject_dependencies(self, function: HOOK_FUNC, *hook_args: HOOK_ARGS) -> dict:
         """
@@ -114,16 +111,14 @@ hook_manager = HookManager()
 class Hooked:
     """挂钩函数对象"""
 
-    def __init__(
-        self, hook_type: HookType, priority: int = 10, stream: Optional[bool] = None, rule: Optional[Rule] = None
-    ):
+    def __init__(self, hook_type: HookType, priority: int = 10, stream: bool | None = None, rule: Rule | None = None):
         self.hook_type = hook_type
         """钩子函数类型"""
         self.priority = priority
         """函数调用优先级"""
         self.stream = stream
         """是否仅在(非)流式中运行"""
-        self.rule: Optional[Rule] = rule
+        self.rule: Rule | None = rule
         """启用规则"""
 
         self.function: HOOK_FUNC
@@ -146,7 +141,7 @@ class Hooked:
         return func
 
 
-def on_before_pretreatment(priority: int = 10, rule: Optional[Rule] = None) -> Hooked:
+def on_before_pretreatment(priority: int = 10, rule: Rule | None = None) -> Hooked:
     """
     注册一个钩子函数
     这个函数将在传入消息 (`Muice` 的 `_prepare_prompt()`) 前调用
@@ -158,7 +153,7 @@ def on_before_pretreatment(priority: int = 10, rule: Optional[Rule] = None) -> H
     return Hooked(HookType.BEFORE_PRETREATMENT, priority=priority, rule=rule)
 
 
-def on_before_completion(priority: int = 10, rule: Optional[Rule] = None) -> Hooked:
+def on_before_completion(priority: int = 10, rule: Rule | None = None) -> Hooked:
     """
     注册一个钩子函数。
     这个函数将在传入模型(`Muice` 的 `model.ask()`)前调用
@@ -170,7 +165,7 @@ def on_before_completion(priority: int = 10, rule: Optional[Rule] = None) -> Hoo
     return Hooked(HookType.BEFORE_MODEL_COMPLETION, priority=priority, rule=rule)
 
 
-def on_stream_chunk(priority: int = 10, rule: Optional[Rule] = None) -> Hooked:
+def on_stream_chunk(priority: int = 10, rule: Rule | None = None) -> Hooked:
     """
     注册一个钩子函数。
     这个函数将在流式调用中途(`Muice` 的 `model.ask()`)调用
@@ -182,7 +177,7 @@ def on_stream_chunk(priority: int = 10, rule: Optional[Rule] = None) -> Hooked:
     return Hooked(HookType.ON_STREAM_CHUNK, priority=priority, rule=rule)
 
 
-def on_after_completion(priority: int = 10, stream: Optional[bool] = None, rule: Optional[Rule] = None) -> Hooked:
+def on_after_completion(priority: int = 10, stream: bool | None = None, rule: Rule | None = None) -> Hooked:
     """
     注册一个钩子函数。
     这个函数将在传入模型(`Muice` 的 `model.ask()`)后调用（流式则传入整合后的数据）
@@ -197,7 +192,7 @@ def on_after_completion(priority: int = 10, stream: Optional[bool] = None, rule:
     return Hooked(HookType.AFTER_MODEL_COMPLETION, priority=priority, stream=stream, rule=rule)
 
 
-def on_finish_chat(priority: int = 10, rule: Optional[Rule] = None) -> Hooked:
+def on_finish_chat(priority: int = 10, rule: Rule | None = None) -> Hooked:
     """
     注册一个钩子函数。
     这个函数将在结束对话(存库前)调用
