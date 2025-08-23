@@ -3,7 +3,7 @@ from nonebot import logger
 from muicebot.agent.config import AgentConfigManager
 from muicebot.plugin.func_call import get_function_list
 from muicebot.plugin.mcp import get_mcp_list
-from muicebot.plugin.mcp.config import server_config
+from muicebot.plugin.mcp.config import get_mcp_server_config
 
 
 class AgentToolLoader:
@@ -47,7 +47,7 @@ class AgentToolLoader:
         """
         available_tools = []
         tools_set = set(tools_list)
-        mcp_server_names = set(server_config.keys())
+        mcp_server_names = set(get_mcp_server_config().keys())
 
         # 获取所有可用的Function Call工具
         try:

@@ -94,6 +94,6 @@ async def call_agent(func: str, arguments: dict[str, str], message_id: str | Non
     # 使用message_id作为request_id，确保同一用户请求中的多次调用使用同一个任务链
     request_id = message_id
     response = await agent_comm.request_agent_assistance(func, arguments, request_id)
-    result = await agent_manager.handle_agent_response(response)
+    result = agent_manager.handle_agent_response(response)
     logger.success(f"Agent call 成功，返回: {result}")
     return result

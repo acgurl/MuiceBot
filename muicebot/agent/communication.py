@@ -48,12 +48,13 @@ class AgentCommunication:
             # 使用配置中的超时时间，默认为10分钟 (600秒)
             current_time = time.time()
             timeout = agent_plugin_config.task_chain_timeout
-            self.task_chains = {
-                task_id: task_chain
+            expired_ids = [
+                task_id
                 for task_id, task_chain in self.task_chains.items()
-                # 使用最近活动时间判断过期，避免误清理活跃任务链
-                if current_time - max(task_chain.creation_time, task_chain.last_call_time) <= timeout
-            }
+                if current_time - max(task_chain.creation_time, task_chain.last_call_time) > timeout
+            ]
+            for task_id in expired_ids:
+                del self.task_chains[task_id]
 
             logger.info(f"开始请求Agent协助: agent_name={agent_name}, arguments={arguments}, request_id={request_id}")
 

@@ -68,7 +68,7 @@ class AgentManager:
         logger.debug(f"使用Agent实例: {agent_name}")
         return self._agents[agent_name]
 
-    async def handle_agent_response(self, response: AgentResponse) -> str:
+    def handle_agent_response(self, response: AgentResponse) -> str:
         """处理Agent返回的结果"""
         logger.info("Agent响应处理完成，结果已返回")
         return response.result
