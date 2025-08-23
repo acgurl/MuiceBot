@@ -50,7 +50,7 @@ async def get_agent_list() -> List[Dict[str, Any]]:
         List[Dict[str, Any]]: Agent信息列表，格式化为工具调用格式
     """
     agent_tools = []
-    config_manager = AgentConfigManager()
+    config_manager = AgentConfigManager.get_instance()
     agents = config_manager.list_agents()
 
     # 为每个Agent创建工具描述
@@ -78,7 +78,7 @@ def get_agent_configs_dict() -> Dict[str, Union[AgentConfig, Any]]:
         Dict[str, Any]: Agent字典，键为Agent名称，值为Agent对象
     """
     agent_dict = {}
-    config_manager = AgentConfigManager()
+    config_manager = AgentConfigManager.get_instance()
     agents = config_manager.list_agents()
 
     # 为每个Agent创建字典项

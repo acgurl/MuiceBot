@@ -71,7 +71,7 @@ class AgentCommunication:
             )
 
             # 从arguments中提取task参数
-            task = arguments.get("task", "") if arguments else ""
+            task = arguments.get("task", "")
 
             # 增加调用计数
             task_chain.increment_call_count()

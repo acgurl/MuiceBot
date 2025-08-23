@@ -80,9 +80,28 @@ class AgentToolCall(BaseModel):
 class AgentConfigManager:
     """Agent配置管理器"""
 
+    _instance = None
+    _initialized = False
+
+    def __new__(cls):
+        if cls._instance is None:
+            cls._instance = super().__new__(cls)
+            cls._instance._initialized = False
+        return cls._instance
+
     def __init__(self):
+        if self._initialized:
+            return
         self._configs: Dict[str, AgentConfig] = {}
         self._load_configs()
+        self._initialized = True
+
+    @classmethod
+    def get_instance(cls) -> "AgentConfigManager":
+        """获取AgentConfigManager单例实例"""
+        if cls._instance is None:
+            cls._instance = cls()
+        return cls._instance
 
     def _load_configs(self):
         """加载Agent配置文件"""

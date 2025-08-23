@@ -26,7 +26,7 @@ class AgentToolLoader:
         """
         # 如果没有提供工具列表，从配置中获取
         if tools_list is None:
-            config_manager = AgentConfigManager()
+            config_manager = AgentConfigManager.get_instance()
             tools_list = config_manager.get_available_tools(agent_name)
 
         # 加载工具

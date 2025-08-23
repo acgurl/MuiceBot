@@ -20,14 +20,16 @@ class AgentManager:
         if self._initialized:
             return
 
-        self.config_manager = AgentConfigManager()
+        self.config_manager = AgentConfigManager.get_instance()
         self._agents: dict = {}
         self._initialized = True
 
-    @staticmethod
-    def get_instance():
+    @classmethod
+    def get_instance(cls) -> "AgentManager":
         """获取AgentManager单例实例"""
-        return AgentManager()
+        if cls._instance is None:
+            cls._instance = cls()
+        return cls._instance
 
     async def dispatch_agent_task(self, agent_name: str, task: str) -> AgentResponse:
         """分发任务给指定Agent"""
