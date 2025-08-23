@@ -56,9 +56,7 @@ class AgentCommunication:
 
             # 获取或创建对应请求ID的task_chain
             if request_id is not None:
-                if request_id not in self.task_chains:
-                    self.task_chains[request_id] = TaskChain(request_id=request_id)
-                task_chain = self.task_chains[request_id]
+                task_chain = self.task_chains.setdefault(request_id, TaskChain(request_id=request_id))
             else:
                 # 如果request_id为None，创建一个临时的TaskChain
                 task_chain = TaskChain(request_id=request_id)
