@@ -32,9 +32,9 @@ class McpServer(BaseModel):
         if srv_type == "stdio":
             if not command:
                 raise ValueError("当 type 为 'stdio' 时，command 字段必须存在")
-            # 检查command是否存在于环境变量中
+            # 检查 command 是否为可执行的命令
             if not shutil.which(command):
-                raise ValueError(f"command 字段必须为一个有效值, 且目标指令必须存在于环境变量中: {command}")
+                raise ValueError(f"命令 '{command}' 不存在或不可执行。")
         elif srv_type in ["sse", "streamable_http"] and not url:
             raise ValueError(f"当 type 为 '{srv_type}' 时，url 字段必须存在")
 
