@@ -17,8 +17,8 @@ def get_current_message_id() -> str | None:
         bot = get_bot()
         event = get_event()
         return get_message_id(event, bot)
-    except Exception:
-        # 如果无法获取消息ID，返回None
+    except Exception as e:
+        logger.warning(f"获取当前消息ID时出错: {e}")
         return None
 
 
