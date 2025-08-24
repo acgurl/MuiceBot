@@ -84,13 +84,6 @@ class AgentConfigManager:
     _instance = None
     _initialized = False
 
-    def __new__(cls) -> "AgentConfigManager":
-        if cls._instance is None:
-            with cls._lock:
-                if cls._instance is None:
-                    cls._instance = super().__new__(cls)
-        return cls._instance
-
     def __init__(self) -> None:
         if self.__class__._initialized:
             return
