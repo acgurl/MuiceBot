@@ -53,16 +53,15 @@ class AgentCommunication:
             expired_ids = [
                 task_id
                 for task_id, task_chain in self.task_chains.items()
-                if current_monotonic_time
-                - max(
-                    getattr(task_chain, "_creation_time_monotonic", task_chain.creation_time),
-                    (
+                if (
+                    current_monotonic_time
+                    - (
                         task_chain._last_call_monotonic
                         if task_chain.last_call_time > 0
                         else getattr(task_chain, "_creation_time_monotonic", task_chain.creation_time)
-                    ),
+                    )
+                    > timeout
                 )
-                > timeout
             ]
             for task_id in expired_ids:
                 del self.task_chains[task_id]
