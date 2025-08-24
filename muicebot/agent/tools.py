@@ -62,15 +62,21 @@ class AgentToolLoader:
 
         # 获取所有可用的MCP工具
         try:
-            mcp_tools = await get_mcp_list()
-            # 如果配置中包含MCP服务器名称，则加载该服务器的所有工具
-            if any(server_name in tools_set for server_name in mcp_server_names):
+            # 找出tools_set中包含的MCP服务器名称
+            specified_mcp_servers = [server_name for server_name in mcp_server_names if server_name in tools_set]
+
+            if specified_mcp_servers:
+                # 如果配置中包含MCP服务器名称，则只加载指定服务器的工具
+                mcp_tools = await get_mcp_list(specified_mcp_servers)
                 available_tools.extend(mcp_tools)
-            else:
-                # 否则按工具名称过滤MCP工具
+
+            # 处理不是服务器名称的工具（按工具名称过滤）
+            non_server_tools = tools_set - mcp_server_names
+            if non_server_tools:
+                mcp_tools = await get_mcp_list()
                 for tool in mcp_tools:
                     tool_name = tool.get("function", {}).get("name")
-                    if tool_name in tools_set:
+                    if tool_name in non_server_tools:
                         available_tools.append(tool)
         except Exception as e:
             logger.warning(f"MCP工具加载失败，仅使用Function Call工具: error={e}")

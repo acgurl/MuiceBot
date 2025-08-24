@@ -22,6 +22,7 @@ class TaskChain:
         self.last_call_time = 0.0  # 上次调用时间
         self._last_call_monotonic = 0.0  # 上次调用时间（单调时钟）
         self.creation_time = time.time()  # 创建时间
+        self._creation_time_monotonic = time.monotonic()  # 创建时间（单调时钟）
 
     def increment_call_count(self) -> None:
         """增加调用计数"""

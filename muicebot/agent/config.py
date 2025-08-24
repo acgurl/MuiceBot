@@ -2,8 +2,8 @@ import threading
 from pathlib import Path
 
 import yaml
-from nonebot import get_plugin_config
-from pydantic import BaseModel, Field
+from nonebot import get_plugin_config, logger
+from pydantic import BaseModel, Field, ValidationError
 
 from muicebot.config import get_model_config
 from muicebot.llm._config import ModelConfig
@@ -30,7 +30,7 @@ class AgentConfig(BaseModel):
     description: str | None = Field(default=None, description="Agent描述")
 
     # 模型配置名称
-    model_config_name: str = Field(description="Agent使用的模型配置名称")
+    model: str = Field(description="Agent使用的模型配置名称")
 
     # 通过模型配置名称获取的模型配置对象（不直接序列化）
     _model_config: ModelConfig | None = None
@@ -39,7 +39,7 @@ class AgentConfig(BaseModel):
     def model_config_obj(self) -> ModelConfig:
         """获取模型配置对象"""
         if self._model_config is None:
-            self._model_config = get_model_config(self.model_config_name)
+            self._model_config = get_model_config(self.model)
         return self._model_config
 
 
@@ -129,14 +129,11 @@ class AgentConfigManager:
         for name, config in configs_dict.items():
             # 创建Agent配置对象
             agent_config_data = config.copy()
-
-            # 确保有model_config_name字段
-            if "model_config_name" not in agent_config_data:
-                # 如果没有指定model_config_name，使用默认模型
-                # get_model_config(None) 会返回默认模型配置
-                agent_config_data["model_config_name"] = ""
-
-            self._configs[name] = AgentConfig(**agent_config_data)
+            try:
+                self._configs[name] = AgentConfig(**agent_config_data)
+            except ValidationError as e:
+                logger.warning(f"Agent '{name}' 配置无效，缺少必需的 'model' 字段，将跳过此 Agent: {e}")
+                continue
 
     def get_agent_config(self, agent_name: str) -> AgentConfig:
         """获取指定Agent的配置"""

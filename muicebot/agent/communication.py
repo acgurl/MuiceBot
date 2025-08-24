@@ -48,12 +48,21 @@ class AgentCommunication:
         try:
             # 检查现有的TaskChain是否超时，如果超时则移除
             # 使用配置中的超时时间，默认为10分钟 (600秒)
-            current_time = time.time()
+            current_monotonic_time = time.monotonic()
             timeout = agent_plugin_config.task_chain_timeout
             expired_ids = [
                 task_id
                 for task_id, task_chain in self.task_chains.items()
-                if current_time - max(task_chain.creation_time, task_chain.last_call_time) > timeout
+                if current_monotonic_time
+                - max(
+                    getattr(task_chain, "_creation_time_monotonic", task_chain.creation_time),
+                    (
+                        task_chain._last_call_monotonic
+                        if task_chain.last_call_time > 0
+                        else getattr(task_chain, "_creation_time_monotonic", task_chain.creation_time)
+                    ),
+                )
+                > timeout
             ]
             for task_id in expired_ids:
                 del self.task_chains[task_id]
