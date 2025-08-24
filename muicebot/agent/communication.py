@@ -57,8 +57,8 @@ class AgentCommunication:
                     current_monotonic_time
                     - (
                         task_chain._last_call_monotonic
-                        if task_chain.last_call_time > 0
-                        else getattr(task_chain, "_creation_time_monotonic", task_chain.creation_time)
+                        if task_chain._last_call_monotonic > 0
+                        else task_chain._creation_time_monotonic
                     )
                     > timeout
                 )
