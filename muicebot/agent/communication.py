@@ -18,7 +18,9 @@ class AgentCommunication:
 
     def __new__(cls) -> "AgentCommunication":
         if cls._instance is None:
-            cls._instance = super().__new__(cls)
+            with cls._lock:
+                if cls._instance is None:
+                    cls._instance = super().__new__(cls)
         return cls._instance
 
     def __init__(self) -> None:
