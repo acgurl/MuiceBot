@@ -1,11 +1,8 @@
 from typing import (
     AsyncGenerator,
     Awaitable,
-    List,
     Literal,
-    Optional,
     Type,
-    Union,
     overload,
 )
 
@@ -85,7 +82,7 @@ class Gemini(BaseLLM):
         )
 
     def _build_gemini_config(
-        self, tools: Optional[List[dict]], response_format: Optional[Type[BaseModel]]
+        self, tools: list[dict] | None, response_format: Type[BaseModel] | None
     ) -> GenerateContentConfig:
         gemini_config = self.gemini_config.model_copy()
         format_tools = []
@@ -130,7 +127,7 @@ class Gemini(BaseLLM):
         return user_parts
 
     def _build_messages(self, request: ModelRequest) -> list[ContentOrDict]:
-        messages: List[ContentOrDict] = []
+        messages: list[ContentOrDict] = []
 
         if request.history:
             for index, item in enumerate(request.history):
@@ -148,8 +145,8 @@ class Gemini(BaseLLM):
     async def _ask_sync(
         self,
         messages: list[ContentOrDict],
-        tools: Optional[List[dict]],
-        response_format: Optional[Type[BaseModel]],
+        tools: list[dict] | None,
+        response_format: Type[BaseModel] | None,
         total_tokens: int = 0,
     ) -> ModelCompletions:
         gemini_config = self._build_gemini_config(tools, response_format)
@@ -216,8 +213,8 @@ class Gemini(BaseLLM):
     async def _ask_stream(
         self,
         messages: list,
-        tools: Optional[List[dict]],
-        response_format: Optional[Type[BaseModel]],
+        tools: list[dict] | None,
+        response_format: Type[BaseModel] | None,
         total_tokens: int = 0,
     ) -> AsyncGenerator[ModelStreamCompletions, None]:
         gemini_config = self._build_gemini_config(tools, response_format)
@@ -305,7 +302,7 @@ class Gemini(BaseLLM):
 
     async def ask(
         self, request: ModelRequest, *, stream: bool = False
-    ) -> Union[ModelCompletions, AsyncGenerator[ModelStreamCompletions, None]]:
+    ) -> ModelCompletions | AsyncGenerator[ModelStreamCompletions, None]:
         messages = self._build_messages(request)
         response_format = request.json_schema if request.format == "json" else None
 

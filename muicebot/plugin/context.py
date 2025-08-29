@@ -3,7 +3,6 @@
 """
 
 from contextvars import ContextVar
-from typing import Tuple
 
 from nonebot.adapters import Bot, Event
 from nonebot.matcher import Matcher
@@ -43,7 +42,7 @@ def set_ctx(bot: Bot, event: Event, state: T_State, matcher: Matcher):
     mather_context.set(matcher)
 
 
-def get_ctx() -> Tuple[Bot, Event, T_State, Matcher]:
+def get_ctx() -> tuple[Bot, Event, T_State, Matcher]:
     """
     获取当前上下文
     """

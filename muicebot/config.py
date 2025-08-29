@@ -5,7 +5,7 @@ import os
 import threading
 import time
 from pathlib import Path
-from typing import Callable, List, Literal, Optional
+from typing import Callable, Literal
 
 import yaml as yaml_
 from nonebot import get_plugin_config, logger
@@ -20,7 +20,7 @@ MODELS_CONFIG_PATH = Path("configs/models.yml").resolve()
 SCHEDULES_CONFIG_PATH = Path("configs/schedules.yml").resolve()
 EMBEDDINGS_CONFIG_PATH = Path("configs/embeddings.yml").resolve()
 
-_model_config_manager: Optional["ModelConfigManager"] = None
+_model_config_manager: "ModelConfigManager" | None = None
 _embeddings_configs: dict[str, EmbeddingConfig] = {}
 
 
@@ -39,7 +39,7 @@ class PluginConfig(BaseModel):
     """启用的 Nonebot 适配器"""
     input_timeout: int = 0
     """输入等待时间"""
-    default_template: Optional[str] = "Muice"
+    default_template: str | None = "Muice"
     """默认使用人设模板名称"""
     thought_process_mode: Literal[0, 1, 2] = 2
     """针对 Deepseek-R1 等思考模型的思考过程提取模式"""
@@ -55,9 +55,9 @@ class Schedule(BaseModel):
     """调度器 ID"""
     trigger: Literal["cron", "interval"]
     """调度器类别"""
-    ask: Optional[str] = None
+    ask: str | None = None
     """向大语言模型询问的信息"""
-    say: Optional[str] = None
+    say: str | None = None
     """直接输出的信息"""
     args: dict[str, int]
     """调度器参数"""
@@ -67,7 +67,7 @@ class Schedule(BaseModel):
     """触发几率"""
 
 
-def get_schedule_configs() -> List[Schedule]:
+def get_schedule_configs() -> list[Schedule]:
     """
     从配置文件 `configs/schedules.yml` 中获取所有调度器配置
 
@@ -115,7 +115,7 @@ class ConfigFileHandler(FileSystemEventHandler):
 class ModelConfigManager:
     """模型配置管理器"""
 
-    _instance: Optional["ModelConfigManager"] = None
+    _instance: "ModelConfigManager" | None = None
     _lock = threading.Lock()
     _initialized: bool
     configs: dict[str, ModelConfig]
@@ -136,9 +136,9 @@ class ModelConfigManager:
         """所有模型配置"""
         self.default_config = None
         """默认模型配置（非主 Muice 使用模型）"""
-        self.observer: Optional[BaseObserver] = None
+        self.observer: BaseObserver | None = None
         """文件监视器"""
-        self._listeners: List[Callable] = []
+        self._listeners: list[Callable] = []
         """监听器列表"""
 
         self._load_configs()
@@ -210,7 +210,7 @@ class ModelConfigManager:
         if listener in self._listeners:
             self._listeners.remove(listener)
 
-    def get_model_config(self, model_config_name: Optional[str] = None) -> ModelConfig:
+    def get_model_config(self, model_config_name: str | None = None) -> ModelConfig:
         """获取指定模型的配置"""
         if model_config_name in [None, ""]:
             if not self.default_config:
@@ -256,7 +256,7 @@ def get_model_config_manager() -> ModelConfigManager:
     return _model_config_manager
 
 
-def get_model_config(model_config_name: Optional[str] = None) -> ModelConfig:
+def get_model_config(model_config_name: str | None = None) -> ModelConfig:
     """
     从配置文件 `configs/models.yml` 中获取指定模型的配置对象
 
@@ -268,7 +268,7 @@ def get_model_config(model_config_name: Optional[str] = None) -> ModelConfig:
     return model_config_manager.get_model_config(model_config_name)
 
 
-def get_embedding_model_config(embedding_config_name: Optional[str] = None) -> EmbeddingConfig:
+def get_embedding_model_config(embedding_config_name: str | None = None) -> EmbeddingConfig:
     """
     从配置文件 `configs/models.yml` 中获取指定模型的配置对象
 
