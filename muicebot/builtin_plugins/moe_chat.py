@@ -38,28 +38,38 @@ command_stick = on_alconna(
 )
 
 
-@command_poke.handle()
-async def poke(event: Event, target: Match[At] = AlconnaMatch("target")):
+async def common_handle(action: str, event: Event, target: At) -> UniMessage:
     user_id = event.get_user_id()
     user_name = await get_username(user_id, event)
 
-    message = UniMessage(f"{user_name}敲了") + At(flag="user", target=target.result.target) + UniMessage("!")
+    if user_id == target.target:
+        return UniMessage(f"笨蛋不可以自己{action}自己哦！")
+
+    message = UniMessage(f"{user_name} {action}了{action}") + At(flag="user", target=target.target) + UniMessage("!")
+
+    return message
+
+
+@command_poke.handle()
+async def poke(event: Event, target: Match[At] = AlconnaMatch("target")):
+    message = await common_handle("敲", event, target.result)
     await command_poke.finish(message)
 
 
 @command_hug.handle()
 async def hug(event: Event, target: Match[At] = AlconnaMatch("target")):
-    user_id = event.get_user_id()
-    user_name = await get_username(user_id, event)
-
-    message = UniMessage(f"{user_name}抱了抱") + At(flag="user", target=target.result.target) + UniMessage("!")
-    await command_hug.finish(message)
+    message = await common_handle("抱", event, target.result)
+    await command_poke.finish(message)
 
 
 @command_stick.handle()
 async def stick(event: Event, target: Match[At] = AlconnaMatch("target")):
     user_id = event.get_user_id()
     user_name = await get_username(user_id, event)
+
+    if user_id == target.result.target:
+        await command_stick.finish("笨蛋不可以自己贴自己哦！")
+        return
 
     message = UniMessage(f"{user_name}和") + At(flag="user", target=target.result.target) + UniMessage("贴贴~")
     await command_stick.finish(message)
